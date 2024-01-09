@@ -35,6 +35,7 @@ relayer:
 
 ambs:
   - mock
+  - polymer
 
 chains:
 
@@ -59,3 +60,6 @@ mock: #TODO why are these not under 'ambs'?
 wormhole:
   incentivesAddress: "0x000000731594E9be29E6c45Ab477034939053d4E"
   isTestnet: true
+
+polymer:
+  incentivesAddress: "0x0000000000000000000000000000000000000000"
