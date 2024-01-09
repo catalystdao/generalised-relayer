@@ -29,6 +29,9 @@ export class GetterController implements OnModuleInit {
     const defaultGetterInterval =
       configDefaultGetterInterval ?? DEFAULT_GETTER_INTERVAL;
 
+    const defaultMaxBlocks =
+      this.configService.relayerConfig.getter['maxBlocks'] ?? undefined;
+
     this.configService.chainsConfig.forEach((chainConfig) => {
       const chainId = chainConfig.chainId;
 
@@ -42,7 +45,7 @@ export class GetterController implements OnModuleInit {
           incentivesAddresses,
           interval: chainConfig.getter['interval'] ?? defaultGetterInterval,
           blockDelay: chainConfig.blockDelay ?? 0,
-          maxBlocks: chainConfig.getter['maxBlocks'],
+          maxBlocks: chainConfig.getter['maxBlocks'] ?? defaultMaxBlocks,
           loggerOptions: this.loggerService.loggerOptions,
         },
       });

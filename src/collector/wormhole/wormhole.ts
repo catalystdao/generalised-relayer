@@ -107,6 +107,9 @@ function initiatePacketSnifferWorkers(
   const defaultWorkerInterval =
     configService.relayerConfig.getter['interval'] ?? DEFAULT_GETTER_INTERVAL;
 
+  const defaultMaxBlocks =
+    configService.relayerConfig.getter['maxBlocks'] ?? undefined;
+
   configService.chainsConfig.forEach((chainConfig) => {
     // Spawn a worker for every Wormhole implementation
 
@@ -127,6 +130,7 @@ function initiatePacketSnifferWorkers(
           wormholeAddress,
           chainConfig,
           interval: chainConfig.getter['interval'] ?? defaultWorkerInterval,
+          maxBlocks: chainConfig.getter['maxBlocks'] ?? defaultMaxBlocks,
           loggerOptions: loggerService.loggerOptions,
         },
       });

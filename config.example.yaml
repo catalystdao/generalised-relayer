@@ -4,6 +4,7 @@ relayer:
   blockDelay: 5   # Delay with which to process blocks
   getter:
     interval: 5000
+    maxBlocks: 1000
   submitter:
     enabled: true
     retryInterval: 2000

@@ -16,6 +16,9 @@ export default (moduleInterface: CollectorModuleInterface) => {
   const defaultGetterInterval =
     configService.relayerConfig.getter['interval'] ?? DEFAULT_GETTER_INTERVAL;
 
+  const defaultMaxBlocks =
+    configService.relayerConfig.getter['maxBlocks'] ?? undefined;
+
   const workers: Record<string, Worker | null> = {};
 
   configService.chainsConfig.forEach(async (chainConfig) => {
@@ -38,7 +41,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
         incentivesAddress,
         mockPrivateKey,
         interval: chainConfig.getter['interval'] ?? defaultGetterInterval,
-        maxBlocks: chainConfig.getter['maxBlocks'],
+        maxBlocks: chainConfig.getter['maxBlocks'] ?? defaultMaxBlocks,
         blockDelay: chainConfig.blockDelay ?? 0,
         loggerOptions: loggerService.loggerOptions,
       },

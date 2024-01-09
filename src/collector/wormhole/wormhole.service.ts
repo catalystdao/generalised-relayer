@@ -16,6 +16,7 @@ import { decodeWormholeMessage } from './wormhole.utils';
 
 const bootstrap = async () => {
   const interval = workerData.interval;
+  const maxBlocks = workerData.maxBlocks;
   const incentivesAddress = workerData.incentivesAddress;
   const wormholeAddress = workerData.wormholeAddress;
   const chainConfig: ChainConfig = workerData.chainConfig;
@@ -49,6 +50,11 @@ const bootstrap = async () => {
     if (startBlock > endBlock || !endBlock) {
       await wait(interval);
       continue;
+    }
+
+    const blocksToProcess = endBlock - startBlock;
+    if (blocksToProcess > maxBlocks) {
+      endBlock = startBlock + maxBlocks;
     }
 
     logger.info(
