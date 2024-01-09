@@ -1,0 +1,33 @@
+FROM node:18 AS BUILD_IMAGE
+
+WORKDIR /usr/catalyst-relayer
+
+# Copy packages and install
+COPY package.json yarn.lock tsconfig*.json ./
+COPY abis ./abis
+RUN yarn install --frozen-lockfile --prod=false
+
+# Copy src and build
+COPY src ./src
+COPY drizzle ./drizzle
+RUN yarn build
+
+# Remove devDependencies
+RUN npm prune --production
+
+
+# Production image
+FROM node:18-alpine
+
+WORKDIR /usr/catalyst-relayer
+
+COPY --from=BUILD_IMAGE /usr/catalyst-relayer/dist ./dist
+COPY --from=BUILD_IMAGE /usr/catalyst-relayer/node_modules ./node_modules
+
+COPY --from=BUILD_IMAGE /usr/catalyst-relayer/drizzle ./drizzle
+
+ENV NODE_ENV=${NODE_ENV}
+
+EXPOSE ${RELAYER_PORT}
+
+CMD ["node", "dist/main.js"]

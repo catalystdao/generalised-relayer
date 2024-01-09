@@ -1,0 +1,44 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis-docker
+    expose:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    attach: false
+
+  spy:
+    image: ghcr.io/wormhole-foundation/guardiand:latest
+    platform: linux/amd64
+    container_name: spy
+    expose:
+      - ${SPY_PORT}:${SPY_PORT}
+    entrypoint: /guardiand
+    command:
+      - spy
+      - --nodeKey
+      - /node.key
+      - --spyRPC
+      - '[::]:${SPY_PORT}'
+      - --network
+      - /wormhole/testnet/2/1
+      - --bootstrap
+      - '/dns4/t-guardian-01.nodes.stable.io/udp/8999/quic/p2p/12D3KooWCW3LGUtkCVkHZmVSZHzL3C4WRKWfqAiJPz1NR7dT9Bxh,/dns4/t-guardian-02.nodes.stable.io/udp/8999/quic/p2p/12D3KooWJXA6goBCiWM8ucjzc4jVUBSqL9Rri6UpjHbkMPErz5zK'
+    attach: false
+    profiles: ['wormhole']
+
+  relayer:
+    build:
+      context: .
+      dockerfile: dockerfile.relayer
+    volumes:
+      - ./config.${NODE_ENV}.yaml:/usr/catalyst-relayer/config.${NODE_ENV}.yaml
+      - ./.env:/usr/catalyst-relayer/.env
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - USE_DOCKER=true
+    ports:
+      - ${RELAYER_PORT}:${RELAYER_PORT}
+    container_name: relayer
+    restart: unless-stopped
+    depends_on:
+      - redis

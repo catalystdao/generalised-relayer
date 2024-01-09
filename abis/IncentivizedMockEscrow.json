@@ -1,0 +1,898 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sendLostGasTo",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "uniqueChainIndex",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "signer",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "costOfMessages_",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "AckGasPriceMustBeIncreased",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AckHasNotBeenExecuted",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeliveryGasPriceMustBeIncreased",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "currentImplementation",
+        "type": "bytes"
+      }
+    ],
+    "name": "ImplementationAddressAlreadySet",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "expected",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "actual",
+        "type": "uint128"
+      }
+    ],
+    "name": "IncorrectValueProvided",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidBytes65Address",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidImplementationAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "expected",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "actual",
+        "type": "uint128"
+      }
+    ],
+    "name": "InvalidTotalIncentive",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageAlreadyAcked",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageAlreadyBountied",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageAlreadySpent",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageDoesNotExist",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoImplementationAddressSet",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint128",
+        "name": "expected",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "actual",
+        "type": "uint128"
+      }
+    ],
+    "name": "NotEnoughGasProvided",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotEnoughGasProvidedForVerification",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotImplementedError",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int128",
+        "name": "difference",
+        "type": "int128"
+      }
+    ],
+    "name": "TargetExecutionTimeInvalid",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "expected",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "actual",
+        "type": "uint8"
+      }
+    ],
+    "name": "feeRecipitentIncorrectFormatted",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "uniqueIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "gasSpentOnDestination",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "gasSpentOnSource",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "destinationRelayerReward",
+        "type": "uint128"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "sourceRelayerReward",
+        "type": "uint128"
+      }
+    ],
+    "name": "BountyClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "deliveryGasPriceIncrease",
+        "type": "uint96"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "ackGasPriceIncrease",
+        "type": "uint96"
+      }
+    ],
+    "name": "BountyIncreased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "maxGasDelivery",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "maxGasAck",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "refundGasTo",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfDeliveryGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfAckGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetDelta",
+            "type": "uint64"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+        "name": "incentive",
+        "type": "tuple"
+      }
+    ],
+    "name": "BountyPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "destinationIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "recipitent",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "message",
+        "type": "bytes"
+      }
+    ],
+    "name": "Message",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageAcked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageDelivered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageTimedout",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "application",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "chainIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "implementationAddressHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "implementationAddress",
+        "type": "bytes"
+      }
+    ],
+    "name": "RemoteImplementationSet",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "MESSAGE_REVERTED",
+    "outputs": [
+      {
+        "internalType": "bytes1",
+        "name": "",
+        "type": "bytes1"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "NO_AUTHENTICATION",
+    "outputs": [
+      {
+        "internalType": "bytes1",
+        "name": "",
+        "type": "bytes1"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SEND_LOST_GAS_TO",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "UNIQUE_SOURCE_IDENTIFIER",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "acceptOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "accumulator",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "bounty",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "maxGasDelivery",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "maxGasAck",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "refundGasTo",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfDeliveryGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfAckGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetDelta",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+        "name": "incentive",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "collectPayments",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "evmAddress",
+        "type": "address"
+      }
+    ],
+    "name": "convertEVMTo65",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "costOfMessages",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "estimateAdditionalCost",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "asset",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "implementationAddress",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "implementationAddressHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint96",
+        "name": "deliveryGasPriceIncrease",
+        "type": "uint96"
+      },
+      {
+        "internalType": "uint96",
+        "name": "ackGasPriceIncrease",
+        "type": "uint96"
+      }
+    ],
+    "name": "increaseBounty",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "messageDelivered",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "hasMessageBeenExecuted",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "data",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "multicall",
+    "outputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "results",
+        "type": "bytes[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pendingOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "messagingProtocolContext",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "rawMessage",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "feeRecipitent",
+        "type": "bytes32"
+      }
+    ],
+    "name": "processPacket",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "messagingProtocolContext",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "rawMessage",
+        "type": "bytes"
+      }
+    ],
+    "name": "recoverAck",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "destinationIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "implementation",
+        "type": "bytes"
+      }
+    ],
+    "name": "setRemoteImplementation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "destinationIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "destinationAddress",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "message",
+        "type": "bytes"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "maxGasDelivery",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "maxGasAck",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "refundGasTo",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfDeliveryGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfAckGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetDelta",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+        "name": "incentive",
+        "type": "tuple"
+      }
+    ],
+    "name": "submitMessage",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "gasRefund",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "thisBytes65",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

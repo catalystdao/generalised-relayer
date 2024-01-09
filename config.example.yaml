@@ -1,0 +1,61 @@
+relayer:
+  privateKey: ""
+  logLevel: "info"
+  blockDelay: 5   # Delay with which to process blocks
+  getter:
+    interval: 5000
+  submitter:
+    enabled: true
+    retryInterval: 2000
+    processingInterval: 100
+    maxTries: 3
+    maxPendingTransactions: 50
+    transactionTimeout: 60000
+    gasLimitBuffer:
+      default: 10000
+      mock: 50000
+
+    # ! The following properties are here for illustrative purposes, but must always be applied
+    # ! on a per-chain basis. Gas properties set at a global level are ignored.
+    # maxFeePerGas                    # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
+    # maxPriorityFeeAdjustmentFactor  # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'. 
+                                      # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
+                                      # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
+    # maxAllowedPriorityFeePerGas     # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
+
+    # gasPriceAdjustmentFactor        # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
+                                      # value is set as the 'gasPrice' property of the transaction if it is smaller than the 
+                                      # configuration property 'maxAllowedGasPrice' (if set).
+    # maxAllowedGasPrice              # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
+
+  persister:
+    enabled: false
+    postgresString: "postgresql://username:password@location/database?sslmode=require"
+
+
+ambs:
+  - mock
+
+chains:
+
+  - chainId: 80001 
+    name: "Mumbai"
+    rpc: "https://polygon-mumbai-pokt.nodies.app"
+    wormhole:
+      wormholeChainId: 5
+    # startingBlock: 44349400
+  
+  - chainId: 11155111 
+    name: "Sepolia"
+    rpc: "https://eth-sepolia-public.unifra.io"
+    wormhole:
+      wormholeChainId: 10002
+    # startingBlock: 5014200
+
+mock: #TODO why are these not under 'ambs'?
+  incentivesAddress: "0x0000006aA532b110f36f393887079b35F6C6979a"
+  privateKey: ""
+
+wormhole:
+  incentivesAddress: "0x000000731594E9be29E6c45Ab477034939053d4E"
+  isTestnet: true

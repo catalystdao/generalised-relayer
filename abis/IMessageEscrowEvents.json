@@ -1,0 +1,185 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "uniqueIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "gasSpentOnDestination",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "gasSpentOnSource",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "destinationRelayerReward",
+        "type": "uint128"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "sourceRelayerReward",
+        "type": "uint128"
+      }
+    ],
+    "name": "BountyClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "deliveryGasPriceIncrease",
+        "type": "uint96"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "ackGasPriceIncrease",
+        "type": "uint96"
+      }
+    ],
+    "name": "BountyIncreased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "maxGasDelivery",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "maxGasAck",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "refundGasTo",
+            "type": "address"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfDeliveryGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "priceOfAckGas",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetDelta",
+            "type": "uint64"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+        "name": "incentive",
+        "type": "tuple"
+      }
+    ],
+    "name": "BountyPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageAcked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageDelivered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "messageIdentifier",
+        "type": "bytes32"
+      }
+    ],
+    "name": "MessageTimedout",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "application",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "chainIdentifier",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "implementationAddressHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "implementationAddress",
+        "type": "bytes"
+      }
+    ],
+    "name": "RemoteImplementationSet",
+    "type": "event"
+  }
+]
