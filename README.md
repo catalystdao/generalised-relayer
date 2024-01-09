@@ -74,7 +74,7 @@ It holds the map of currently tracked bounties, all pending bounties are sent to
 
 ## Evaluator
 
-The evaluator takes in messages along with their parameters to estimate if it is worth it to relay the message. It exposes a method to do so which can be called from the getter after a new bounty has been placed.
+The evaluator takes in messages along with their parameters to estimate if it is worth it to relay the message. It exposes a method which is called on the submittor for evaluations.
 
 ## Collector
 
@@ -83,67 +83,17 @@ The collector service is collecting information from various AMB's to pair with 
 ## Submitter
 
 The submitter service gets the information gathered by all the services, simulates the transaction for gas usage and compares it to the evaluator’s conditions.
-If it is profitable the submitter will relay the message using the [processPacket](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/abis/IncentivizedMessageEscrow.json#L398-L412) method from the [IncentivizedMessageEscrow](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/abis/IncentivizedMessageEscrow.json) contract.
+If it is profitable the submitter will relay the message using the [processPacket](https://github.com/catalystdao/GeneralisedRelayer/blob/32cc0c56d1891f03257971723ce9ba9d15b900af/abis/IncentivizedMockEscrow.json#L735-L757) method from the IncentivizedMessageEscrow contract.
 
 # Adding a new AMB
 
 In order to add a new AMB you need to create a new service folder under [collector](https://github.com/catalystdao/GeneralisedRelayer/blob/main/src/collector) and make an independent service that can be run on it's own worker thread. For each chain, a worker will be spawned with the appropiate context. For more documentation, read the documentation for the bootstrap function of mock.
 
-Inside the service after when you recieve the amb information use `parentPort.postMessage(ambInfo)` to send it up to the worker thread caller.
+Inside the service after you recieve the amb information use `redis.postMessage(emitToChannel, ambPayload)` to deliver it to the submitter.
 
-The worker thread caller will recieve that information and will get the matching bounty for your amb using the unique messageIdentifier [this.bountiesService.getBounty(messageIdentifier)](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/getter/bounties.service.ts#L22).
+To ensure the AMB is being created, add it to the both the use config but also `config.example.yaml`.
 
-Using the bounty information and the AMB information you can use the submitter service [simulateAndSubmitDeliveryTx](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/submitter/submitter.service.ts#L18) to submit the message.
-
-This service will look something like this
-
-```ts
-  async startService() {
-    //Fetching info from chains..
-    app.listen(
-      {
-        //chain1...
-        //chain2...
-      },
-      async (ambInfo: any) => {
-        const messageIdentifier = ambInfo.messageIdentifier;
-
-        parentPort.postMessage({
-          destinationChain: ambInfo.destinationChain,
-          messageIdentifier: ambInfo.messageIdentifier,
-          rawMessage:ambInfo.rawMessage,
-        });
-      },
-    );
-  }
-```
-
-Add the amb to the [ambs.config.json](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/ambs.config.json) file with true to make it active and call the service in the
-[CollectorController](https://github.com/catalystdao/GeneralisedRelayer/blob/main/src/collector/collector.controller.ts) like so
-
-```ts
-if (ambConfig.myNewAMB) {
-  this.loggerService.info('Starting my new Service...');
-
-  const worker = new Worker(join(__dirname, './myNewAMB/myNewAMB.service.js'));
-
-  worker.on('message', (ambInfo: AMBInfo) => {
-    const bounty = this.bountiesService.getBounty(ambInfo.messageIdentifier);
-
-    if (bounty) {
-      this.submitterService.simulateAndSubmitDeliveryTx(
-        ambInfo.rawMessage,
-        ambInfo.destinationChain,
-        bounty,
-      );
-    }
-  });
-}
-```
 
 # Using the Mock implementation
 
-The mock implementation is a simple message signing service which sends the signing output message using the [processPacket](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/abis/IncentivizedMockEscrow.json) method from the [IncentivizedMockEscrow](https://github.com/catalystdao/GeneralisedRelayer/blob/c5c697693cad82a972a4ddbd72be229e599777ef/src/abis/IncentivizedMockEscrow.json) contract.
-It can be used for testing the contract since it only requires the signature info.
-
-Under [mock.service](https://github.com/catalystdao/GeneralisedRelayer/blob/main/src/collector/mock/mock.service.ts) you will find the method to start mock by providing a chain and a mock contract address.
+The mock implementation is PoA scheme which works well for testnet, development, or testing. To use it, deploy a [Mock Generalised Incentive](https://github.com/catalystdao/GeneralisedIncentives/tree/main/src/apps/mock) implementation using a known key. Then set the key in the config and run the relayer.
