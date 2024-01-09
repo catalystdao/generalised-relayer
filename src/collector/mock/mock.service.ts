@@ -41,7 +41,7 @@ const bootstrap = async () => {
   const store = new Store(chainConfig.chainId);
 
   // Start a logger. The provided logger options should be used.
-  // For the worker name, use the AMB's name and include the service. 
+  // For the worker name, use the AMB's name and include the service.
   // If the AMB require multiple worker for different parts of the relaying job,
   // then use collector-<AMB> as the bounty worker and collector-<OTHER JOBS>-<AMB>
   // for the other job(s).
@@ -73,14 +73,17 @@ const bootstrap = async () => {
   );
   const bytes32Address = ethers.utils.hexZeroPad(incentivesAddress, 32);
 
+  // In case this worker crashes (say bad RPC), the worker will be restarted.
+  // If the error is indeed from the RPC, it is better to wait a bit before calling the RPC again.
+  await wait(interval);
+
   let startBlock =
     chainConfig.startingBlock ?? (await provider.getBlockNumber()) - blockDelay;
 
+  // The stopping block is used if the relayer is only running for a fixed amount of time.
   const stopBlock = chainConfig.stoppingBlock ?? Infinity;
 
-  // In case this worker crashes (say bad RPC), the worker will be restarted.
-  await wait(interval);
-
+  // Main worker loop.
   while (true) {
     let endBlock: number;
     try {
@@ -91,15 +94,18 @@ const bootstrap = async () => {
       continue;
     }
 
+    // If there has been no new block, wait.
     if (startBlock > endBlock || !endBlock) {
       await wait(interval);
       continue;
     }
 
+    // Used to stop the relayer after a certain block.
     if (endBlock > stopBlock) {
       endBlock = stopBlock;
     }
 
+    // If the relayer was started in the pass, we can skip some parts of the logic for faster catching up.
     let isCatchingUp = false;
     const blocksToProcess = endBlock - startBlock;
     if (blocksToProcess > maxBlocks) {
@@ -113,6 +119,7 @@ const bootstrap = async () => {
 
     let messageLogs;
     try {
+      // Get the Mock message.
       messageLogs = await contract.queryFilter(
         contract.filters.Message(),
         startBlock,
@@ -127,6 +134,7 @@ const bootstrap = async () => {
       continue;
     }
 
+    // If we found any, we should process them.
     if (messageLogs) {
       for (const messageEvent of messageLogs) {
         try {
@@ -135,11 +143,15 @@ const bootstrap = async () => {
           // Derive the message identifier
           const amb = decodeMockMessage(message);
 
-          // Encode and sign the message for delivery
+          // Encode and sign the message for delivery.
+          // This is the proof which enables us to submit the transaciton later.
+          // For Mock, this is essentially PoA with a single key. The deployment needs to match the private key available
+          // to the relayer.
           const encodedMessage = encodeMessage(bytes32Address, message);
           const signature = signingKey.signDigest(keccak256(encodedMessage));
           const executionContext = encodeSignature(signature);
 
+          // Get the channel so that we can the message can be evaluated and submitted.
           const emitToChannel = Store.getChannel(
             'submit',
             convertHexToDecimal(amb.destinationChain),
@@ -148,16 +160,19 @@ const bootstrap = async () => {
             `Collected message ${amb.messageIdentifier} to ${emitToChannel}`,
           );
 
+          // Construct the payload.
           const ambPayload: AmbPayload = {
             messageIdentifier: amb.messageIdentifier,
             amb: 'mock',
             destinationChainId: convertHexToDecimal(amb.destinationChain),
             message: encodedMessage,
-            messageCtx: executionContext,
+            messageCtx: executionContext, // If the generalised incentives implementation does not use the context set it to "0x".
           };
 
+          // Set the proof into redis. (So we can work on it later.)
           store.setAmb(amb);
 
+          // Submit the message to any listeners so that it can be promptly submitted.
           await store.postMessage(emitToChannel, ambPayload);
         } catch (error) {
           logger.error(error, `Failed to process mock message`);
