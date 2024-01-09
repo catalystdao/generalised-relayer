@@ -1,0 +1,2 @@
+ALTER TABLE "ambPayloads" ADD COLUMN "recoveryContext" text;--> statement-breakpoint
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_transactionHash_chainId_unique" UNIQUE("transactionHash","chainId");

@@ -66,7 +66,10 @@ const bootstrap = async () => {
         const payload = event.args.payload;
         const amb = decodeWormholeMessage(payload);
         logger.info(`Collected message ${amb.messageIdentifier}`);
-        store.setAmb(amb);
+        store.setAmb({
+          ...amb,
+          recoveryContext: event.args.sequence.toString(),
+        });
       }
 
       startBlock = endBlock + 1;

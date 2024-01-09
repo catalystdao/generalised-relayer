@@ -297,6 +297,7 @@ class PersisterWorker {
         amb: parsedValue.amb,
         destinationChain: parsedValue.destinationChain,
         payload: parsedValue.payload,
+        recoveryContext: parsedValue.recoveryContext,
       };
 
       // Check if there exists an equiv bounty.

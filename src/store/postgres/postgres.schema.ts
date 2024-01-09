@@ -71,6 +71,7 @@ export const ambPayloads = pgTable('ambPayloads', {
   destinationChain: text('destinationChain').notNull(),
   payload: text('payload').notNull(), // This is specifically Generalised Incentive payload.
   message: text('message'), // This is the message to execute.
+  recoveryContext: text('recoveryContext'),
   messageCtx: text('messageCtx'), // This is the message context to execute the message with.
 });
 
