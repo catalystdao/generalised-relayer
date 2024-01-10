@@ -74,6 +74,7 @@ const bootstrap = async () => {
         logger.info(`Collected message ${amb.messageIdentifier}`);
         store.setAmb({
           ...amb,
+          sourceChain: chainConfig.chainId,
           recoveryContext: event.args.sequence.toString(),
         });
       }

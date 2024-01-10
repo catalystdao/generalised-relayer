@@ -2,9 +2,11 @@ CREATE TABLE IF NOT EXISTS "ambPayloads" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"bountyId" integer NOT NULL,
 	"amb" text NOT NULL,
+	"sourceChain" text NOT NULL,
 	"destinationChain" text NOT NULL,
 	"payload" text NOT NULL,
 	"message" text,
+	"recoveryContext" text,
 	"messageCtx" text
 );
 --> statement-breakpoint
@@ -29,7 +31,8 @@ CREATE TABLE IF NOT EXISTS "bounties" (
 CREATE TABLE IF NOT EXISTS "transactions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"transactionHash" text NOT NULL,
-	"chainId" text NOT NULL
+	"chainId" text NOT NULL,
+	CONSTRAINT "transactions_transactionHash_chainId_unique" UNIQUE("transactionHash","chainId")
 );
 --> statement-breakpoint
 DO $$ BEGIN

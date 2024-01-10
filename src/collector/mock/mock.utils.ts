@@ -8,8 +8,9 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
   if (rawMockPayload.includes('0x')) rawMockPayload = rawMockPayload.slice(2);
 
   let counter = 0;
-  // The source chain identifier is the first 32 bytes. We don't care about that.
-  counter += 32 * 2;
+  const sourceChain = BigInt(
+    '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
+  ).toString();
   // The destination chain identifier is the next of the first 32 bytes.
   const destinationChain = BigInt(
     '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
@@ -26,6 +27,7 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
   return {
     messageIdentifier,
     amb: 'mock',
+    sourceChain,
     destinationChain,
     payload: payload,
   };

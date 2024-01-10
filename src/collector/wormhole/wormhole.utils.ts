@@ -1,6 +1,8 @@
 import { AmbMessage } from 'src/store/types/store.types';
 
-export function decodeWormholeMessage(rawWormholePayload: string): AmbMessage {
+export function decodeWormholeMessage(
+  rawWormholePayload: string,
+): Omit<AmbMessage, 'sourceChain'> {
   // Remove 0x.
   if (rawWormholePayload.includes('0x'))
     rawWormholePayload = rawWormholePayload.slice(2);

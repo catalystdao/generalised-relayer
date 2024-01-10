@@ -68,6 +68,7 @@ export const ambPayloads = pgTable('ambPayloads', {
     .notNull()
     .references(() => bounties.id),
   amb: text('amb').notNull(),
+  sourecChain: text('sourceChain').notNull(),
   destinationChain: text('destinationChain').notNull(),
   payload: text('payload').notNull(), // This is specifically Generalised Incentive payload.
   message: text('message'), // This is the message to execute.

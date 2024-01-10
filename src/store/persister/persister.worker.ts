@@ -295,6 +295,7 @@ class PersisterWorker {
       const sqlReadyBounty: typeof ambPayloads.$inferInsert = {
         bountyId,
         amb: parsedValue.amb,
+        sourecChain: parsedValue.sourceChain,
         destinationChain: parsedValue.destinationChain,
         payload: parsedValue.payload,
         recoveryContext: parsedValue.recoveryContext,

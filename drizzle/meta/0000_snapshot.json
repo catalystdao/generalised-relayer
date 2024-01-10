@@ -1,5 +1,5 @@
 {
-  "id": "3cfc25d6-89d4-4a40-9bd0-985904c7c76d",
+  "id": "033856ce-d741-45bf-98aa-17d623acd6e5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -26,6 +26,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sourceChain": {
+          "name": "sourceChain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "destinationChain": {
           "name": "destinationChain",
           "type": "text",
@@ -40,6 +46,12 @@
         },
         "message": {
           "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recoveryContext": {
+          "name": "recoveryContext",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -236,7 +248,16 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "transactions_transactionHash_chainId_unique": {
+          "name": "transactions_transactionHash_chainId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "transactionHash",
+            "chainId"
+          ]
+        }
+      }
     }
   },
   "enums": {},
