@@ -314,7 +314,7 @@ class PersisterWorker {
         )
         .limit(1); // TODO: Fix this.
       // TODO: There is currently a change for overlaps. Even if we also index by everything else, someone could replicate a bountyId.
-      // todo: For the explorer, we should overhaul how the current bountyId system works.
+      // TODO: See comment in the store.
       if (payloadsSelected.length === 0) {
         // insert
         this.logger.debug(`Inserting ${key} as amb`);

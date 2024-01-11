@@ -85,31 +85,4 @@ export class GetterController implements OnModuleInit {
     };
     setInterval(logStatus, STATUS_LOG_INTERVAL);
   }
-
-  //TODO implement
-  // /**
-  //  * Gets a sepcific bounty by id
-  //  * @param id Bounty id
-  //  * @returns Bounty DTO
-  //  */
-  // @Get('bounty/:id')
-  // getBounty(@Param('id') id: string): BountyDTO | undefined {
-  //   const bounty = this.bountiesService.getBounty(id);
-  //   if (bounty) return bountyToDTO(bounty);
-  // }
-
-  //TODO implement
-  // /**
-  //  * Exposes currently active bounties as an endpoint
-  //  * @returns Active bounties
-  //  */
-  // @Get('bounties')
-  // getTrackedBounties(): BountyDTO[] {
-  //   const bounties: BountyDTO[] = [];
-  //   this.bountiesService
-  //     .getBounties()
-  //     .forEach((bounty) => bounties.push(bountyToDTO(bounty)));
-
-  //   return bounties;
-  // }
 }

@@ -211,30 +211,4 @@ export class SubmitterService {
 
     return gasLimitBuffers;
   }
-
-  // TODO: implement with redis
-  // async submitWithoutEvaluating(
-  //   amb: string,
-  //   messageIdentifier: string,
-  //   destinationChainId: string,
-  //   rawMessage: string,
-  //   messagingctx: BytesLike = ethers.constants.HashZero,
-  // ) {
-  //   const worker = this.workers.get(destinationChainId);
-
-  //   if (worker == undefined) {
-  //     this.loggerService.warn(
-  //       `Unable to submit priority message ${messageIdentifier} on chain ${destinationChainId}. Unsupported target chain.`,
-  //     );
-  //     return;
-  //   }
-
-  //   worker.postMessage({
-  //     amb,
-  //     messageIdentifier,
-  //     message: rawMessage,
-  //     messageContext: messagingctx,
-  //     priority: true,
-  //   });
-  // }
 }

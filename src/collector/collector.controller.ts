@@ -41,39 +41,4 @@ export class CollectorController implements OnModuleInit {
       module.default(moduleInterface);
     }
   }
-
-  /**
-   * Gets a the amb metadata
-   * @returns cdata and destination chain
-   */
-  @Get('metadata')
-  async getCallData(
-    @Req() request: Request,
-  ): Promise<AssetSwapMetaData | undefined> {
-    const body = (await request.json()) as AssetSwapRequest;
-    const store = new Store(body.chainId);
-    const amb = await store.getAmb(body.swapIdentifier);
-
-    // TODO: decode cdata base on payload.
-    // if (amb?.cdata)
-    //   return {
-    //     destinationChain: amb.destinationChain,
-    //     cdata: amb.cdata,
-    //   };
-
-    return undefined;
-  }
-
-  /**
-   * Prioritises relaying a message
-   * @param request
-   */
-  @Post('prioritise')
-  async prioritise(@Req() request: Request) {
-    const body = (await request.json()) as AssetSwapRequest;
-    const store = new Store(body.chainId);
-    const amb = await store.getAmb(body.swapIdentifier);
-
-    //TODO implement
-  }
 }

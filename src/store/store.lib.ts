@@ -319,7 +319,6 @@ export class Store {
       // Then we need to create some kind of baseline with the information we know.
       const bounty = {
         messageIdentifier: messageIdentifier, // we know the ID. The ID isn't going to change.
-        // TODO: We technically also know the chainid, do we want to set?
         status: BountyStatus.BountyClaimed, // Well, we know the the message has now been delivered.
         ackTransactionHash: event.transactionHash,
         fromChainId: this.chainId,

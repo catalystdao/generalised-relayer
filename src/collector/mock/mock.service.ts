@@ -198,14 +198,3 @@ const bootstrap = async () => {
 };
 
 bootstrap();
-
-// TODO: Fix
-// const setAMBFromMessage = (payload: string, destinationChain: Chain) => {
-//   const messageIdentifier = add0X(payload.substring(132, 198));
-//   const amb: AMB = {
-//     messageIdentifier,
-//     destinationChain: destinationChain.chainId,
-//     payload,
-//   };
-//   parentPort?.postMessage(amb);
-// };
