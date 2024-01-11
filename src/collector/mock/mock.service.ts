@@ -169,10 +169,11 @@ const bootstrap = async () => {
             messageCtx: executionContext, // If the generalised incentives implementation does not use the context set it to "0x".
           };
 
-          // Set the proof into redis. (So we can work on it later.)
+          // Set the message collect on-chain. This is not the proof but the raw message.
+          // It can be used by plugins to facilitate other jobs.
           store.setAmb(amb);
 
-          // Submit the message to any listeners so that it can be promptly submitted.
+          // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
           await store.postMessage(emitToChannel, ambPayload);
         } catch (error) {
           logger.error(error, `Failed to process mock message`);

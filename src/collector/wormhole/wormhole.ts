@@ -136,10 +136,6 @@ function initiatePacketSnifferWorkers(
       });
       workers[chainConfig.chainId] = worker;
 
-      worker.on('message', (amb: AmbMessage) => {
-        store.setAmb(amb);
-      });
-
       worker.on('error', (error) =>
         loggerService.fatal(error, 'Error on Wormhole service worker.'),
       );
