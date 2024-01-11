@@ -314,7 +314,7 @@ class SubmitterWorker {
         } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
       );
 
-      if (BigNumber.from(gasLimit) < gasEstimation) {
+      if (BigNumber.from(gasLimit).lt(gasEstimation)) {
         return 0; // Do not relay packet
       }
 
@@ -328,7 +328,7 @@ class SubmitterWorker {
         } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
       );
 
-      if (BigNumber.from(gasLimit) < gasEstimation) {
+      if (BigNumber.from(gasLimit).lt(gasEstimation)) {
         return 0; // Do not relay packet
       }
 
@@ -538,7 +538,7 @@ class SubmitterWorker {
       if (
         maxPriorityFeePerGas != undefined &&
         this.gasFeeConfig.maxAllowedPriorityFeePerGas != undefined &&
-        this.gasFeeConfig.maxAllowedPriorityFeePerGas < maxPriorityFeePerGas
+        this.gasFeeConfig.maxAllowedPriorityFeePerGas.lt(maxPriorityFeePerGas)
       ) {
         maxPriorityFeePerGas = this.gasFeeConfig.maxAllowedPriorityFeePerGas;
       }
@@ -567,7 +567,7 @@ class SubmitterWorker {
       if (
         gasPrice != undefined &&
         this.gasFeeConfig.maxAllowedGasPrice != undefined &&
-        this.gasFeeConfig.maxAllowedGasPrice < gasPrice
+        this.gasFeeConfig.maxAllowedGasPrice.lt(gasPrice)
       ) {
         gasPrice = this.gasFeeConfig.maxAllowedGasPrice;
       }
