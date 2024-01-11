@@ -27,6 +27,8 @@ docker compose up (-d)
 ```
 Adding `-d` runs the relayer in the background rather than foreground.
 
+Starting the relayer without configuration does not make sense. See [configuration](https://github.com/catalystdao/GeneralisedRelayer/tree/main#configuration) for further information.
+
 # Development
 
 For development, the requiresments vary by AMB. For the specific requirements, see the docker compose file.
@@ -51,13 +53,28 @@ yarn start
 
 ## Configuration
 
-To run the relayer, it is mandatory to provide a config file. A reference is provided as `/config.example.yaml`. The `relayer.privateKey` field needs to be set with a funded privatekey for all chains the relayer should run on.
+To run the relayer, it is mandatory to provide a config file and an relevant environment variables. Start by making a copy of `.env.example`
+```bash
+cp .env.example .env
+```
+Set `COMPOSE_PROFILES` as a comma seperates list of the AMBs you want to relay for. If it is AMB_X and AMB_Y then set it as: `"amb_x,amb_y"`. Soon we will also set these ambs in the config. You should also set `NODE_ENV` which you can find more information about in the [node.js docs](https://nodejs.org/en/learn/getting-started/nodejs-the-difference-between-development-and-production). We recommend setting it to `production`:
+```bash
+echo NODE_ENV=production >> .env
+```
 
-The supported AMBs can be set under `ambs`  and chains can be configured under `chains`. The current example rpcs are public and are hopefully good enough to run the relayer for a short period. For production environment we recommend using paid rpcs.
+A config reference is provided as `config.example.yaml`. Make a copy:
+```bash
+cp config.example.yaml config.<NODE_ENV>.yaml
+```
+where `<NODE_ENV>` is the value you set `NODE_ENV` to.
+
+The field `relayer.privateKey` needs to be set with a funded privatekey for all chains the relayer should run on. You should also update the amb to include all AMBs you specificed in `COMPOSE_PROFILES`.
+
+Supported chains can be configured under `chains`. The current example rpcs are public and hopefully good enough to run the relayer for a short period. For production environment we recommend using paid rpcs.
 
 # Relayer Structure
 
-The Relayer is devided into 4 main services: `Getter`, `Evaluator`, `Collector`, `Submitter`. These services work together to get all messages, evaluate their value, collect message proofs, and submit them on chain. The services communicate using `redis` and are run in parallel. Wherever it makes sense, chains are allocated seperate workers to ensure a chain fault doesn't propagate and impact the performance on other chains.
+The Relayer is devided into 4 main services: `Getter`, `Evaluator`, `Collector`, and `Submitter`. These services work together to get all bounties, evaluate their value, collect message proofs, and submit them on chain. The services communicate using `redis` and are run in parallel. Wherever it makes sense, chains are allocated seperate workers to ensure a chain fault doesn't propagate and impact the performance on other chains.
 
 ## Getter
 
