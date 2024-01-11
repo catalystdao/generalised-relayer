@@ -43,6 +43,7 @@ export class Store {
   static readonly bountyMidfix: string = 'bounty';
   static readonly ambMidfix: string = 'amb';
   static readonly proofMidfix: string = 'proof';
+  static readonly wordConnecter: string = ':';
 
   readonly chainId: string | null;
 
@@ -113,12 +114,8 @@ export class Store {
     return Store.combineString(channel, describer);
   }
 
-  static combineString(...vals: string[]) {
-    let combinedString = vals[0];
-    for (const val of vals.slice(1)) {
-      combinedString = `${combinedString}:${val}`;
-    }
-    return combinedString;
+  static combineString(...vals: string[]): string {
+    return vals.join(Store.wordConnecter);
   }
 
   async postMessage(channel: string, payload: { [key: string]: any }) {
