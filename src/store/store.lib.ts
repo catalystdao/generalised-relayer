@@ -47,10 +47,9 @@ const DB_INDEX = 4;
 
 // Now assume multiple exists. None of the previous findings apply since if any
 // 2 AMBs share similar chain ids structures you could compute an equal value.
-// Worse: If an AMB has multiple Generalised Incentives deployments this could be even worse.
 
-// As a result, we at minimum we need to add the origin contract to the bounty information.
-// TODO: Figure out how to do this.
+// As a result, we need to add the AMB id to the message identifier.
+// TODO: Figure out how to do.
 
 export class Store {
   readonly redis: Redis;
