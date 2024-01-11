@@ -29,6 +29,29 @@ const DB_INDEX = 4;
 // TODO: Carify storage types: Move Bounty type here?
 // TODO: Fix cases where bounty doesn't exist.
 
+//---------- UNIQUE KEYS ----------//
+// Generalised Incentives uses a message identifier:
+// return keccak256(
+//   abi.encodePacked(
+//       bytes32(block.number),
+//       chainId(),  <-- Assume to be ~unique for an AMB.
+//       destinationIdentifier,
+//       message
+//   )
+// );
+// Assume that only 1 AMB exist
+// The result is that the message identifier is unique.
+// In a single block, there cannot be 2 equal message identifiers since there is a check to protect
+// against 2 equal active message identifiers. Between 2 different blocks they aren't the same since
+// hash contains the block number.
+
+// Now assume multiple exists. None of the previous findings apply since if any
+// 2 AMBs share similar chain ids structures you could compute an equal value.
+// Worse: If an AMB has multiple Generalised Incentives deployments this could be even worse.
+
+// As a result, we at minimum we need to add the origin contract to the bounty information.
+// TODO: Figure out how to do this.
+
 export class Store {
   readonly redis: Redis;
   // When a redis connection is used to listen for subscriptions, it cannot be
@@ -201,8 +224,6 @@ export class Store {
       finalised: false,
       submitTransactionHash: event.transactionHash,
     };
-
-    //TODO evaluate bounty
 
     // TODO: Also set key for the AMB being used.
     const key = Store.combineString(
@@ -379,8 +400,6 @@ export class Store {
           ? newAckGasPrice
           : currentAckGasPrice,
       };
-
-      //TODO evaluate
 
       await this.set(key, JSON.stringify(newBounty));
     }
