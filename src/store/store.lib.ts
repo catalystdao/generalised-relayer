@@ -2,7 +2,12 @@ import { BigNumber } from 'ethers';
 import { Redis } from 'ioredis';
 
 import { BountyStatus } from 'src/store/types/bounty.enum';
-import { AmbMessage, Bounty, BountyJson } from 'src/store/types/store.types';
+import {
+  AmbMessage,
+  AmbPayload,
+  Bounty,
+  BountyJson,
+} from 'src/store/types/store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
 (BigNumber.prototype as any).toJSON = function () {
@@ -419,6 +424,9 @@ export class Store {
     return amb;
   }
 
+  /**
+   * Set an Amb message (not payload).
+   */
   async setAmb(amb: AmbMessage): Promise<void> {
     const key = Store.combineString(
       Store.relayerStorePrefix,
@@ -426,5 +434,15 @@ export class Store {
       amb.messageIdentifier,
     );
     return this.set(key, JSON.stringify(amb));
+  }
+
+  /**
+   * Proofs are only available through subscriptions. This posts the messages to any
+   * listeners on Store.getChannel('submit', destinationChain).
+   */
+  async submitProof(destinationChain: string, ambPayload: AmbPayload) {
+    const emitToChannel = Store.getChannel('submit', destinationChain);
+
+    await this.postMessage(emitToChannel, ambPayload);
   }
 }

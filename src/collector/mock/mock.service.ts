@@ -143,6 +143,10 @@ const bootstrap = async () => {
           // Derive the message identifier
           const amb = decodeMockMessage(message);
 
+          // Set the collect message  on-chain. This is not the proof but the raw message.
+          // It can be used by plugins to facilitate other jobs.
+          store.setAmb(amb);
+
           // Encode and sign the message for delivery.
           // This is the proof which enables us to submit the transaciton later.
           // For Mock, this is essentially PoA with a single key. The deployment needs to match the private key available
@@ -151,30 +155,23 @@ const bootstrap = async () => {
           const signature = signingKey.signDigest(keccak256(encodedMessage));
           const executionContext = encodeSignature(signature);
 
-          // Get the channel so that we can the message can be evaluated and submitted.
-          const emitToChannel = Store.getChannel(
-            'submit',
-            convertHexToDecimal(amb.destinationChain),
-          );
-          logger.info(
-            `Collected message ${amb.messageIdentifier} to ${emitToChannel}`,
-          );
+          const destinationChainId = convertHexToDecimal(amb.destinationChain);
 
           // Construct the payload.
           const ambPayload: AmbPayload = {
             messageIdentifier: amb.messageIdentifier,
             amb: 'mock',
-            destinationChainId: convertHexToDecimal(amb.destinationChain),
+            destinationChainId,
             message: encodedMessage,
             messageCtx: executionContext, // If the generalised incentives implementation does not use the context set it to "0x".
           };
 
-          // Set the message collect on-chain. This is not the proof but the raw message.
-          // It can be used by plugins to facilitate other jobs.
-          store.setAmb(amb);
+          logger.info(
+            `Got mock message ${amb.messageIdentifier}, emitting to ${destinationChainId}`,
+          );
 
           // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
-          await store.postMessage(emitToChannel, ambPayload);
+          await store.submitProof(destinationChainId, ambPayload);
         } catch (error) {
           logger.error(error, `Failed to process mock message`);
           await wait(interval);

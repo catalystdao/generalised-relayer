@@ -86,8 +86,6 @@ const bootstrap = async () => {
       String(wormholeInfo.destinationChain),
     );
 
-    const emitToChannel = Store.getChannel('submit', destinationChain);
-
     const ambPayload: AmbPayload = {
       messageIdentifier: wormholeInfo.messageIdentifier,
       amb: 'wormhole',
@@ -96,9 +94,9 @@ const bootstrap = async () => {
       messageCtx: '0x',
     };
     logger.warn(
-      `Got wormhole vaa ${vaa.sequence}, emitting to ${emitToChannel}`,
+      `Got wormhole vaa ${vaa.sequence}, emitting to ${destinationChain}`,
     );
-    await store.postMessage(emitToChannel, ambPayload);
+    await store.submitProof(destinationChain, ambPayload);
   });
 
   app.listen();
