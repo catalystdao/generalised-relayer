@@ -1,10 +1,8 @@
-import { Controller, Get, OnModuleInit, Post, Req } from '@nestjs/common';
+import { Controller, Get, OnModuleInit, Query } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { SubmitterService } from 'src/submitter/submitter.service';
 import { Store } from '../store/store.lib';
-import { AssetSwapMetaData } from './interfaces/asset-swap-metadata.interface';
-import { AssetSwapRequest } from './interfaces/asset-swap-request.interface';
 
 export interface CollectorModuleInterface {
   configService: ConfigService;
@@ -40,5 +38,23 @@ export class CollectorController implements OnModuleInit {
       const module = await import(`./${amb}/${amb}`);
       module.default(moduleInterface);
     }
+  }
+
+  /**
+   * Gets a the amb metadata
+   * @returns cdata and destination chain
+   */
+  @Get('getAMBs')
+  async getAMBs(@Query() query: any): Promise<any | undefined> {
+    const chainId = query.chainId;
+    const txHash = query.txHash;
+
+    if (chainId == undefined || txHash == undefined) {
+      return undefined; //TODO return error
+    }
+
+    const store = new Store(chainId);
+    const amb = await store.getAMBsByTxHash(chainId, txHash);
+    if (amb != null) return JSON.stringify(amb);
   }
 }

@@ -69,6 +69,7 @@ export class Store {
   static readonly relayerStorePrefix: string = 'relayer';
   static readonly bountyMidfix: string = 'bounty';
   static readonly ambMidfix: string = 'amb';
+  static readonly hashAmbMapMidfix: string = 'hashAmbMap';
   static readonly proofMidfix: string = 'proof';
   static readonly wordConnecter: string = ':';
 
@@ -424,16 +425,70 @@ export class Store {
     return amb;
   }
 
+  async getAMBsByTxHash(
+    chainId: string,
+    txHash: string,
+  ): Promise<AmbMessage[]> {
+    const query: string | null = await this.redis.get(
+      Store.combineString(
+        Store.relayerStorePrefix,
+        Store.hashAmbMapMidfix,
+        chainId,
+        txHash,
+      ),
+    );
+
+    const messageIdentifiers: string[] =
+      query === null ? [] : JSON.parse(query);
+
+    const ambs: Promise<AmbMessage | null>[] = [];
+    for (const messageId of messageIdentifiers) {
+      ambs.push(this.getAmb(messageId));
+    }
+
+    return (await Promise.all(ambs)).filter(
+      (amb) => amb != undefined,
+    ) as AmbMessage[];
+  }
+
   /**
    * Set an Amb message (not payload).
    */
-  async setAmb(amb: AmbMessage): Promise<void> {
+  async setAmb(amb: AmbMessage, txHash: string): Promise<void> {
     const key = Store.combineString(
       Store.relayerStorePrefix,
       Store.ambMidfix,
       amb.messageIdentifier,
     );
-    return this.set(key, JSON.stringify(amb));
+    await this.set(key, JSON.stringify(amb));
+
+    await this.registerAmbTxHash(
+      amb.sourceChain,
+      amb.messageIdentifier,
+      txHash,
+    );
+  }
+
+  async registerAmbTxHash(
+    chainId: string,
+    messageIdentifier: string,
+    txHash: string,
+  ): Promise<void> {
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.hashAmbMapMidfix,
+      chainId,
+      txHash,
+    );
+
+    const currentValue = await this.get(key);
+    if (currentValue == null) {
+      await this.set(key, JSON.stringify([messageIdentifier]));
+    } else {
+      const parsedValue = JSON.parse(currentValue);
+      parsedValue.push(messageIdentifier);
+      await this.set(key, JSON.stringify(parsedValue));
+    }
   }
 
   /**

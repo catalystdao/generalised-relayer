@@ -16,7 +16,7 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
     '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
   ).toString();
 
-  const payload = rawMockPayload.slice(counter);
+  const payload = '0x' + rawMockPayload.slice(counter);
 
   // Skip the context
   counter += 1 * 2;

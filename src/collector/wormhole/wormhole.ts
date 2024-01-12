@@ -4,8 +4,6 @@ import { CollectorModuleInterface } from '../collector.controller';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { DEFAULT_GETTER_INTERVAL } from 'src/getter/getter.controller';
-import { Store } from 'src/store/store.lib';
-import { AmbMessage } from 'src/store/types/store.types';
 
 function initiateRelayerEngineWorker(
   configService: ConfigService,
@@ -91,7 +89,6 @@ function initiatePacketSnifferWorkers(
   loggerService: LoggerService,
 ): void {
   loggerService.info('Starting the wormhole packet sniffer workers...');
-  const store = new Store();
 
   const workers: Record<string, Worker | null> = {};
 

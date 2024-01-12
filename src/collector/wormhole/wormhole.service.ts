@@ -72,11 +72,14 @@ const bootstrap = async () => {
         const payload = event.args.payload;
         const amb = decodeWormholeMessage(payload);
         logger.info(`Collected message ${amb.messageIdentifier}`);
-        store.setAmb({
-          ...amb,
-          sourceChain: chainConfig.chainId,
-          recoveryContext: event.args.sequence.toString(),
-        });
+        store.setAmb(
+          {
+            ...amb,
+            sourceChain: chainConfig.chainId,
+            recoveryContext: event.args.sequence.toString(),
+          },
+          event.transactionHash,
+        );
       }
 
       startBlock = endBlock + 1;

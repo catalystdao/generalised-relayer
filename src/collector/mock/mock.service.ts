@@ -145,7 +145,7 @@ const bootstrap = async () => {
 
           // Set the collect message  on-chain. This is not the proof but the raw message.
           // It can be used by plugins to facilitate other jobs.
-          store.setAmb(amb);
+          store.setAmb(amb, messageEvent.transactionHash);
 
           // Encode and sign the message for delivery.
           // This is the proof which enables us to submit the transaciton later.
