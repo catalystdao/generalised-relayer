@@ -126,6 +126,11 @@ class SubmitterWorker {
     this.initiateIntervalStatusLog();
   }
 
+  /***************  Submitter Init Helpers  ***************/
+
+  /**
+   * Start a logger which reports the current submitter queue status.
+   */
   private initiateIntervalStatusLog(): void {
     const logStatus = () => {
       const status = {
@@ -221,11 +226,16 @@ class SubmitterWorker {
     }
   }
 
+  /**
+   * TODO: What is the point of this helper?
+   */
   private async queryBountyInfo(
     messageIdentifier: string,
   ): Promise<Bounty | null> {
     return this.store.getBounty(messageIdentifier);
   }
+
+  /***************  Main Logic Loop.  ***************/
 
   async run(): Promise<void> {
     this.relayerAddress = hexZeroPad(await this.signer.getAddress(), 32);
@@ -234,6 +244,7 @@ class SubmitterWorker {
 
     this.logger.debug(`Relaying messages (relayer: ${this.relayerAddress})`);
 
+    // Start listener.
     this.listenForOrders();
 
     while (true) {
@@ -242,6 +253,8 @@ class SubmitterWorker {
       await this.processEvalQueue();
       await this.processSubmitQueue();
 
+      // If it is time for any of the reties in the queue to be moved
+      // towards the action queues do that.
       await this.processEvalRetryQueue();
       await this.processSubmitRetryQueue();
 
@@ -249,6 +262,9 @@ class SubmitterWorker {
     }
   }
 
+  /**
+   * Subscribe to the Store to listen for relevant payloads to submit.
+   */
   private listenForOrders(): void {
     const listenToChannel = Store.getChannel(
       'submit',
@@ -265,6 +281,40 @@ class SubmitterWorker {
         !!message.priority, // eval priority => undefined = false.
       );
     });
+  }
+
+  private async addSubmitOrder(
+    amb: string,
+    messageIdentifier: string,
+    message: BytesLike,
+    messageCtx: BytesLike,
+    priority: boolean,
+  ) {
+    this.logger.debug(
+      `Submit order received ${messageIdentifier} ${
+        priority ? '(priority)' : ''
+      }`,
+    );
+    if (priority) {
+      // Push directly into the submit queue
+      this.submitQueue.push({
+        amb,
+        messageIdentifier,
+        message,
+        messageCtx,
+        retryCount: 0,
+        gasLimit: undefined, //TODO, allow this to be set? (Some chains might fail with 'undefined')
+      });
+    } else {
+      // Push into the evaluation queue
+      this.newOrdersQueue.push({
+        amb,
+        messageIdentifier,
+        message,
+        messageCtx,
+        processAt: Date.now() + this.newOrdersDelay,
+      });
+    }
   }
 
   private async evaluateBounty(order: EvalOrder): Promise<number> {
@@ -310,7 +360,8 @@ class SubmitterWorker {
       const gasLimit = bounty.maxGasDelivery + gasLimitBuffer;
 
       this.logger.debug(
-        `Bounty evaluation (source to destination) ${messageIdentifier}. Gas limit: ${gasLimit} (${bounty.maxGasDelivery
+        `Bounty evaluation (source to destination) ${messageIdentifier}. Gas limit: ${gasLimit} (${
+          bounty.maxGasDelivery
         } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
       );
 
@@ -324,7 +375,8 @@ class SubmitterWorker {
       const gasLimit = bounty.maxGasAck + gasLimitBuffer;
 
       this.logger.debug(
-        `Bounty evaluation (destination to source) ${messageIdentifier}. Gas limit: ${gasLimit} (${bounty.maxGasAck
+        `Bounty evaluation (destination to source) ${messageIdentifier}. Gas limit: ${gasLimit} (${
+          bounty.maxGasAck
         } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
       );
 
@@ -341,6 +393,8 @@ class SubmitterWorker {
   private getGasLimitBuffer(amb: string): number {
     return this.gasLimitBuffer[amb] ?? this.gasLimitBuffer['default'] ?? 0;
   }
+
+  /***************  New Order Queue  ***************/
 
   private async processNewOrdersQueue(): Promise<void> {
     const currentTimestamp = Date.now();
@@ -367,6 +421,25 @@ class SubmitterWorker {
     this.evalQueue.push(...ordersToEval);
   }
 
+  // Assocaited Helpers for New Order Queue.
+
+  /**
+   * Get the current Submitter Capacity.
+   */
+  private getSubmitterCapacity(): number {
+    return Math.max(
+      0,
+      this.maxPendingTransactions -
+        (this.pendingTransactions +
+          this.evalQueue.length +
+          this.evalRetryQueue.length +
+          this.submitQueue.length +
+          this.submitRetryQueue.length),
+    );
+  }
+
+  /***************  Eval Queue  ***************/
+
   private async processEvalQueue(): Promise<void> {
     for (const order of this.evalQueue) {
       try {
@@ -375,7 +448,8 @@ class SubmitterWorker {
         if (gasLimit > 0) {
           // Move the order to the submit queue
           this.logger.debug(
-            `Successful bounty evaluation for message ${order.messageIdentifier
+            `Successful bounty evaluation for message ${
+              order.messageIdentifier
             } (try ${order.retryCount + 1})`,
           );
           order.retryCount = 0; // Reset the retry count
@@ -386,7 +460,8 @@ class SubmitterWorker {
         } else {
           //TODO improve logging: e.g. bounty already delivered
           this.logger.info(
-            `Bounty insufficient for message ${order.messageIdentifier
+            `Bounty insufficient for message ${
+              order.messageIdentifier
             }. Dropping message (try ${order.retryCount + 1}).`,
           );
         }
@@ -394,7 +469,8 @@ class SubmitterWorker {
         if (error.code === 'CALL_EXCEPTION') {
           //TODO improve error filtering?
           this.logger.info(
-            `Failed to evaluate message ${order}: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message (try ${order.retryCount + 1
+            `Failed to evaluate message ${order}: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message (try ${
+              order.retryCount + 1
             }).`,
           );
           continue;
@@ -425,6 +501,11 @@ class SubmitterWorker {
     this.evalQueue.length = 0;
   }
 
+  /***************  Submit Queue  ***************/
+
+  /**
+   * Handles the submission of transactions
+   */
   private async processSubmitQueue(): Promise<void> {
     if (this.submitQueue.length > 0) await this.updateFeeData();
 
@@ -466,8 +547,10 @@ class SubmitterWorker {
         if (error.code === 'CALL_EXCEPTION') {
           //TODO improve error filtering?
           this.logger.info(
-            `Failed to submit message ${order.messageIdentifier
-            }: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message (try ${order.retryCount + 1
+            `Failed to submit message ${
+              order.messageIdentifier
+            }: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message (try ${
+              order.retryCount + 1
             }).`,
           );
           continue;
@@ -503,6 +586,8 @@ class SubmitterWorker {
     // Clear the 'submit' queue
     this.submitQueue.length = 0;
   }
+
+  // Assocaited Helpers for Submit Queue
 
   private async updateFeeData(): Promise<void> {
     try {
@@ -578,46 +663,6 @@ class SubmitterWorker {
     }
   }
 
-  private async processSubmitRetryQueue(): Promise<void> {
-    // Get the number of elements to move from the `retry` to the `submit` queue. Note that the
-    // `retry` queue elements are in chronological order.
-
-    const nowTimestamp = Date.now();
-
-    let i;
-    for (i = 0; i < this.submitRetryQueue.length; i++) {
-      const retryOrder = this.submitRetryQueue[i];
-      if (retryOrder.retryAtTimestamp <= nowTimestamp) {
-        this.submitQueue.push(retryOrder.order);
-      } else {
-        break;
-      }
-    }
-
-    // Remove the elements to be retried from the `retry` queue
-    this.submitRetryQueue.splice(0, i);
-  }
-
-  private async processEvalRetryQueue(): Promise<void> {
-    // Get the number of elements to move from the `retry` to the `submit` queue. Note that the
-    // `retry` queue elements are in chronological order.
-
-    const nowTimestamp = Date.now();
-
-    let i;
-    for (i = 0; i < this.evalRetryQueue.length; i++) {
-      const retryOrder = this.evalRetryQueue[i];
-      if (retryOrder.retryAtTimestamp <= nowTimestamp) {
-        this.evalQueue.push(retryOrder.order);
-      } else {
-        break;
-      }
-    }
-
-    // Remove the elements to be retried from the `retry` queue
-    this.evalRetryQueue.splice(0, i);
-  }
-
   private registerPendingTransaction(
     promise: Promise<any>,
     order: SubmitOrder,
@@ -658,49 +703,48 @@ class SubmitterWorker {
     );
   }
 
-  private getSubmitterCapacity(): number {
-    return Math.max(
-      0,
-      this.maxPendingTransactions -
-        (this.pendingTransactions +
-          this.evalQueue.length +
-          this.evalRetryQueue.length +
-          this.submitQueue.length +
-          this.submitRetryQueue.length),
-    );
+  /***************  Eval Retry Queue  ***************/
+
+  private async processEvalRetryQueue(): Promise<void> {
+    // Get the number of elements to move from the `retry` to the `submit` queue. Note that the
+    // `retry` queue elements are in chronological order.
+
+    const nowTimestamp = Date.now();
+
+    let i;
+    for (i = 0; i < this.evalRetryQueue.length; i++) {
+      const retryOrder = this.evalRetryQueue[i];
+      if (retryOrder.retryAtTimestamp <= nowTimestamp) {
+        this.evalQueue.push(retryOrder.order);
+      } else {
+        break;
+      }
+    }
+
+    // Remove the elements to be retried from the `retry` queue
+    this.evalRetryQueue.splice(0, i);
   }
 
-  private async addSubmitOrder(
-    amb: string,
-    messageIdentifier: string,
-    message: BytesLike,
-    messageCtx: BytesLike,
-    priority: boolean,
-  ) {
-    this.logger.debug(
-      `Submit order received ${messageIdentifier} ${priority ? '(priority)' : ''
-      }`,
-    );
-    if (priority) {
-      // Push directly into the submit queue
-      this.submitQueue.push({
-        amb,
-        messageIdentifier,
-        message,
-        messageCtx,
-        retryCount: 0,
-        gasLimit: undefined, //TODO, allow this to be set? (Some chains might fail with 'undefined')
-      });
-    } else {
-      // Push into the evaluation queue
-      this.newOrdersQueue.push({
-        amb,
-        messageIdentifier,
-        message,
-        messageCtx,
-        processAt: Date.now() + this.newOrdersDelay,
-      });
+  /***************  Submit Retry Queue  ***************/
+
+  private async processSubmitRetryQueue(): Promise<void> {
+    // Get the number of elements to move from the `retry` to the `submit` queue. Note that the
+    // `retry` queue elements are in chronological order.
+
+    const nowTimestamp = Date.now();
+
+    let i;
+    for (i = 0; i < this.submitRetryQueue.length; i++) {
+      const retryOrder = this.submitRetryQueue[i];
+      if (retryOrder.retryAtTimestamp <= nowTimestamp) {
+        this.submitQueue.push(retryOrder.order);
+      } else {
+        break;
+      }
     }
+
+    // Remove the elements to be retried from the `retry` queue
+    this.submitRetryQueue.splice(0, i);
   }
 }
 

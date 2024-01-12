@@ -14,7 +14,9 @@ export class EvaluatorService {
    * @returns The bounty mutation with the evaluation parameters
    */
   async evaluateBounty(bounty: Bounty, address: string): Promise<Bounty> {
-    this.logger.info(`Checking gas price for bounty ${bounty.messageIdentifier}`);
+    this.logger.info(
+      `Checking gas price for bounty ${bounty.messageIdentifier}`,
+    );
 
     //TODO implement evaluating currently it's just being forwarded
 
