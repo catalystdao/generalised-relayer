@@ -5,6 +5,9 @@ services:
     expose:
       - ${REDIS_PORT}:${REDIS_PORT}
     attach: false
+    logging:
+      options:
+        max-size: 5m
 
   spy:
     image: ghcr.io/wormhole-foundation/guardiand:latest
@@ -25,6 +28,9 @@ services:
       - '/dns4/t-guardian-01.nodes.stable.io/udp/8999/quic/p2p/12D3KooWCW3LGUtkCVkHZmVSZHzL3C4WRKWfqAiJPz1NR7dT9Bxh,/dns4/t-guardian-02.nodes.stable.io/udp/8999/quic/p2p/12D3KooWJXA6goBCiWM8ucjzc4jVUBSqL9Rri6UpjHbkMPErz5zK'
     attach: false
     profiles: ['wormhole']
+    logging:
+      options:
+        max-size: 50m
 
   relayer:
     build:
@@ -42,3 +48,6 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+    logging:
+      options:
+        max-size: 5g
