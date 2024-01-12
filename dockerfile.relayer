@@ -13,7 +13,7 @@ COPY drizzle ./drizzle
 RUN yarn build
 
 # Remove devDependencies
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 
 # Production image
