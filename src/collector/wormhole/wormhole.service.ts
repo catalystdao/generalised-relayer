@@ -1,11 +1,15 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino from 'pino';
 import { ChainConfig } from 'src/config/config.service';
-import { IWormhole__factory } from 'src/contracts';
+import {
+  IWormhole__factory,
+  IncentivizedMessageEscrow__factory,
+} from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
 import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
+import { ParsePayload } from 'src/payload/decode.payload';
 
 // TODO the following features must be implemented for the wormhole collector/engine:
 // - startingBlock
@@ -37,6 +41,10 @@ const bootstrap = async () => {
   await wait(interval);
 
   const contract = IWormhole__factory.connect(wormholeAddress, provider);
+  const messageEscrow = IncentivizedMessageEscrow__factory.connect(
+    incentivesAddress,
+    provider,
+  );
   while (true) {
     let endBlock: number;
     try {
@@ -80,6 +88,22 @@ const bootstrap = async () => {
           },
           event.transactionHash,
         );
+
+        // Decode payload
+        const decodedPayload = ParsePayload(amb.payload);
+        if (decodedPayload === undefined) {
+          logger.info('Could not decode payload.');
+          continue;
+        }
+
+        // Set destination address for the bounty.
+        store.registerDestinationAddress({
+          messageIdentifier: amb.messageIdentifier,
+          destinationAddress: await messageEscrow.implementationAddress(
+            decodedPayload?.sourceApplicationAddress,
+            amb.destinationChain,
+          ),
+        });
       }
 
       startBlock = endBlock + 1;

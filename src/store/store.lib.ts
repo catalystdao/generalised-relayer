@@ -213,7 +213,6 @@ export class Store {
       throw new Error('ChainId is not set: This connection is readonly');
     const messageIdentifier = event.messageIdentifier;
     const incentive = event.incentive;
-    const address = event.incentivesAddress;
 
     let bounty: Bounty = {
       messageIdentifier: messageIdentifier,
@@ -225,12 +224,11 @@ export class Store {
       priceOfAckGas: incentive.priceOfAckGas,
       targetDelta: incentive.targetDelta,
       status: BountyStatus.BountyPlaced,
-      address,
+      sourceAddress: event.incentivesAddress,
       finalised: false,
       submitTransactionHash: event.transactionHash,
     };
 
-    // TODO: Also set key for the AMB being used.
     const key = Store.combineString(
       Store.relayerStorePrefix,
       Store.bountyMidfix,
@@ -254,6 +252,42 @@ export class Store {
   }
 
   /**
+   * Register the destination address of a bounty.
+   */
+  async registerDestinationAddress(event: {
+    messageIdentifier: string;
+    destinationAddress: string;
+  }) {
+    const chainId = this.chainId;
+    if (chainId === null)
+      throw new Error('ChainId is not set: This connection is readonly');
+    const messageIdentifier = event.messageIdentifier;
+
+    // Lets get the bounty.
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.bountyMidfix,
+      messageIdentifier,
+    );
+    const existingValue = await this.redis.get(key);
+    if (!existingValue) {
+      // Then we need to create some kind of baseline with the information we know.
+      const bounty = {
+        destinationAddress: event.destinationAddress,
+      };
+      // We can set this value now.
+      return this.set(key, JSON.stringify(bounty));
+    }
+    // Okay, we know a bounty exists at this value. Lets try to update it without destorying any information.
+    const bountyAsRead: BountyJson = JSON.parse(existingValue);
+    const bounty = {
+      ...bountyAsRead,
+      destinationAddress: event.destinationAddress,
+    };
+    await this.set(key, JSON.stringify(bounty));
+  }
+
+  /**
    * @dev This is generally assumed to be the first time the event is seen and the second time that a bounty is seen.
    * However, we also wanna be able to run the relayer in a way where the event is seen for the second time AND/OR
    * it is the first time the bounty has been seen.
@@ -269,7 +303,6 @@ export class Store {
     const messageIdentifier = event.messageIdentifier;
 
     // Lets get the bounty.
-    // TODO: Also set key for the AMB being used.
     const key = Store.combineString(
       Store.relayerStorePrefix,
       Store.bountyMidfix,
@@ -290,6 +323,7 @@ export class Store {
     // Okay, we know a bounty exists at this value. Lets try to update it without destorying any information.
     const bountyAsRead: BountyJson = JSON.parse(existingValue);
     const bounty = {
+      destinationAddress: event.incentivesAddress,
       ...bountyAsRead,
       status: Math.max(bountyAsRead.status, BountyStatus.MessageDelivered),
       execTransactionHash: event.transactionHash,
@@ -314,7 +348,6 @@ export class Store {
     const messageIdentifier = event.messageIdentifier;
 
     // Lets get the bounty.
-    // TODO: Also set key for the AMB being used.
     const key = Store.combineString(
       Store.relayerStorePrefix,
       Store.bountyMidfix,
@@ -328,6 +361,7 @@ export class Store {
         status: BountyStatus.BountyClaimed, // Well, we know the the message has now been delivered.
         ackTransactionHash: event.transactionHash,
         fromChainId: this.chainId,
+        sourceAddress: event.incentivesAddress,
       };
       // We can set this value now.
       return this.set(key, JSON.stringify(bounty));
@@ -335,6 +369,7 @@ export class Store {
     // Okay, we know a bounty exists at this value. Lets try to update it without destorying any information.
     const bountyAsRead: BountyJson = JSON.parse(existingValue);
     const bounty = {
+      sourceAddress: event.incentivesAddress,
       ...bountyAsRead,
       status: Math.max(BountyStatus.BountyClaimed, bountyAsRead.status),
       ackTransactionHash: event.transactionHash,
@@ -362,7 +397,6 @@ export class Store {
     const newAckGasPrice: BigNumber = event.newAckGasPrice;
 
     // Lets get the bounty.
-    // TODO: Also set key for the AMB being used.
     const key = Store.combineString(
       Store.relayerStorePrefix,
       Store.bountyMidfix,
@@ -375,6 +409,7 @@ export class Store {
         messageIdentifier: messageIdentifier, // we know the ID. The ID isn't going to change.
         priceOfDeliveryGas: newDeliveryGasPrice,
         priceOfAckGas: newAckGasPrice,
+        sourceAddress: event.incentivesAddress,
       };
       // We can set this value now.
       return this.set(key, JSON.stringify(bounty));
@@ -396,6 +431,7 @@ export class Store {
     // If hasChanged is false, then we don't need to do anything.
     if (hasChanged) {
       const newBounty = {
+        sourceAddress: event.incentivesAddress,
         ...bountyAsRead,
         priceOfDeliveryGas: hasDeliveryGasPriceIncreased
           ? newDeliveryGasPrice

@@ -19,7 +19,8 @@ export function bountyFromJson(
     priceOfAckGas: bounty.priceOfAckGas,
     targetDelta: bounty.targetDelta,
     bountyStatus: bounty.status,
-    address: bounty.address,
+    sourceAddress: bounty.sourceAddress,
+    destinationAddress: bounty.destinationAddress,
   };
 }
 

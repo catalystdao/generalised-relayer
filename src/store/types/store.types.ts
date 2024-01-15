@@ -30,7 +30,8 @@ export type Bounty = {
   priceOfAckGas: BigNumber;
   targetDelta: BigNumber;
   status: BountyStatus;
-  address: string;
+  sourceAddress: string;
+  destinationAddress?: string;
   finalised?: boolean;
   submitTransactionHash?: string;
   execTransactionHash?: string;
@@ -48,7 +49,8 @@ export type BountyJson = {
   priceOfAckGas?: string;
   targetDelta?: string;
   status: BountyStatus;
-  address?: string;
+  sourceAddress?: string;
+  destinationAddress?: string;
   finalised?: boolean;
   submitTransactionHash?: string;
   execTransactionHash?: string;
