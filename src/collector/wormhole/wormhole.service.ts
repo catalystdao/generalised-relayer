@@ -10,6 +10,7 @@ import { workerData } from 'worker_threads';
 import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
+import { defaultAbiCoder } from '@ethersproject/abi';
 
 // TODO the following features must be implemented for the wormhole collector/engine:
 // - startingBlock
@@ -101,7 +102,7 @@ const bootstrap = async () => {
           messageIdentifier: amb.messageIdentifier,
           destinationAddress: await messageEscrow.implementationAddress(
             decodedPayload?.sourceApplicationAddress,
-            amb.destinationChain,
+            defaultAbiCoder.encode(['uint256'], [amb.destinationChain]),
           ),
         });
       }
