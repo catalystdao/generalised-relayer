@@ -1,6 +1,6 @@
 import { BigNumber, BytesLike, Wallet } from 'ethers';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
-import pino from 'pino';
+import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { ChainConfig } from 'src/config/config.service';
 import { IncentivizedMessageEscrow } from 'src/contracts';
@@ -35,22 +35,18 @@ class SubmitterWorker {
   constructor() {
     this.chainConfig = workerData.chainConfig;
 
-    this.store = new Store(this.chainConfig.chainId);
-
-    this.provider = new StaticJsonRpcProvider(this.chainConfig.rpc);
-    this.signer = new Wallet(workerData.relayerPrivateKey, this.provider);
-
     this.newOrdersDelay = workerData.workerConfig.newOrdersDelay ?? 0;
     this.processingInterval = workerData.workerConfig.processingInterval;
     this.maxPendingTransactions =
       workerData.workerConfig.maxPendingTransactions ?? Infinity;
 
-    this.logger = pino(workerData.loggerOptions).child({
-      worker: 'submitter',
-      chain: this.chainConfig.chainId,
-    });
-
-    this.logger.info('Submitter worker started.');
+    this.store = new Store(this.chainConfig.chainId);
+    this.logger = this.initializeLogger(
+      this.chainConfig.chainId,
+      workerData.loggerOptions,
+    );
+    this.provider = new StaticJsonRpcProvider(this.chainConfig.rpc);
+    this.signer = new Wallet(workerData.relayerPrivateKey, this.provider);
 
     [this.evalQueue, this.submitQueue] = this.initializeQueues(
       workerData.workerConfig.retryInterval,
@@ -69,6 +65,16 @@ class SubmitterWorker {
   }
 
   /***************  Submitter Init Helpers  ***************/
+
+  private initializeLogger(
+    chainId: string,
+    loggerOptions: LoggerOptions,
+  ): pino.Logger {
+    return pino(loggerOptions).child({
+      worker: 'submitter',
+      chain: chainId,
+    });
+  }
 
   private initializeQueues(
     retryInterval: number,
@@ -109,6 +115,8 @@ class SubmitterWorker {
    * Start a logger which reports the current submitter queue status.
    */
   private initiateIntervalStatusLog(): void {
+    this.logger.info('Submitter worker started.');
+
     const logStatus = () => {
       const status = {
         capacity: this.getSubmitterCapacity(),
