@@ -1,7 +1,6 @@
 import { wait } from 'src/common/utils';
 import pino from 'pino';
 import { workerData } from 'worker_threads';
-import { ChainConfig } from 'src/config/config.service';
 import { utils } from 'ethers';
 import { FormatTypes, LogDescription } from '@ethersproject/abi';
 import {
@@ -11,6 +10,7 @@ import {
 } from '@ethersproject/providers';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
+import { GetterWorkerData } from './getter.controller';
 
 const GET_LOGS_RETRY_INTERVAL = 2000;
 
@@ -20,19 +20,17 @@ const GET_LOGS_RETRY_INTERVAL = 2000;
  * @param workerData.interval Interval of when to scan a bounty
  */
 const bootstrap = async () => {
-  const interval = workerData.interval;
-  const maxBlocks = workerData.maxBlocks;
-  const chainConfig: ChainConfig = workerData.chainConfig;
-  const store = new Store(chainConfig.chainId);
-  const incentivesAddresses: string[] = workerData.incentivesAddresses;
-  const blockDelay = workerData.blockDelay ?? 0;
+  const config = workerData as GetterWorkerData;
+
+  const chainId = config.chainId;
+  const store = new Store(chainId);
 
   const logger = pino(workerData.loggerOptions).child({
     worker: 'getter',
-    chain: chainConfig.chainId,
+    chain: chainId,
   });
 
-  const provider = new StaticJsonRpcProvider(chainConfig.rpc);
+  const provider = new StaticJsonRpcProvider(config.rpc);
 
   const incentivesContractInterface =
     IMessageEscrowEvents__factory.createInterface();
@@ -63,30 +61,31 @@ const bootstrap = async () => {
   ];
 
   logger.info(
-    `Getter worker started (collecting escrowed messages of address(es) ${incentivesAddresses.join(
+    `Getter worker started (collecting escrowed messages of address(es) ${config.incentivesAddresses.join(
       ', ',
-    )} on ${chainConfig.name})`,
+    )} on chain ${chainId})`,
   );
 
   let startBlock =
-    chainConfig.startingBlock ?? (await provider.getBlockNumber()) - blockDelay;
+    config.startingBlock ??
+    (await provider.getBlockNumber()) - config.blockDelay;
 
-  const stopBlock = chainConfig.stoppingBlock ?? Infinity;
+  const stopBlock = config.stoppingBlock ?? Infinity;
 
-  await wait(interval);
+  await wait(config.interval);
 
   while (true) {
     let endBlock: number;
     try {
-      endBlock = (await provider.getBlockNumber()) - blockDelay;
+      endBlock = (await provider.getBlockNumber()) - config.blockDelay;
     } catch (error) {
       logger.error(error, `Failed on getter.service endblock`);
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
     if (startBlock > endBlock || !endBlock) {
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
@@ -96,20 +95,20 @@ const bootstrap = async () => {
 
     let isCatchingUp = false;
     const blocksToProcess = endBlock - startBlock;
-    if (blocksToProcess > maxBlocks) {
-      endBlock = startBlock + maxBlocks;
+    if (config.maxBlocks != null && blocksToProcess > config.maxBlocks) {
+      endBlock = startBlock + config.maxBlocks;
       isCatchingUp = true;
     }
 
     logger.info(
-      `Scanning bounties from block ${startBlock} to ${endBlock} on ${chainConfig.name} Chain`,
+      `Scanning bounties from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
     );
 
     try {
       //Query all bounty events
       const logs = await queryAllBountyEvents(
         provider,
-        incentivesAddresses,
+        config.incentivesAddresses,
         topics,
         startBlock,
         endBlock,
@@ -178,10 +177,10 @@ const bootstrap = async () => {
       }
 
       startBlock = endBlock + 1;
-      if (!isCatchingUp) await wait(interval);
+      if (!isCatchingUp) await wait(config.interval);
     } catch (error) {
       logger.error(error, `Failed on getter.service`);
-      await wait(interval);
+      await wait(config.interval);
     }
   }
 

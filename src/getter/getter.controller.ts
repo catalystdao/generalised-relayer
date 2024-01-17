@@ -2,10 +2,31 @@ import { Controller, OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 // import { bountyToDTO } from 'src/common/utils';
 import { Worker } from 'worker_threads';
-import { ConfigService } from 'src/config/config.service';
+import { ChainConfig, ConfigService } from 'src/config/config.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { LoggerOptions } from 'pino';
 
 export const DEFAULT_GETTER_INTERVAL = 5000;
+export const DEFAULT_GETTER_BLOCK_DELAY = 0;
+export const DEFAULT_GETTER_MAX_BLOCKS = null;
+
+interface DefaultGetterWorkerData {
+  blockDelay: number;
+  interval: number;
+  maxBlocks: number | null;
+}
+
+export interface GetterWorkerData {
+  chainId: string;
+  rpc: string;
+  startingBlock?: number;
+  stoppingBlock?: number;
+  blockDelay: number;
+  interval: number;
+  maxBlocks: number | null;
+  incentivesAddresses: string[];
+  loggerOptions: LoggerOptions;
+}
 
 @Controller()
 export class GetterController implements OnModuleInit {
@@ -19,35 +40,23 @@ export class GetterController implements OnModuleInit {
   onModuleInit() {
     this.loggerService.info(`Starting Bounty Collection on all chains...`);
 
-    const configDefaultGetterInterval =
-      this.configService.relayerConfig.getter['interval'];
-    if (configDefaultGetterInterval == undefined) {
-      this.loggerService.warn(
-        `No 'getter: interval' configuration set. Defaulting to ${DEFAULT_GETTER_INTERVAL}`,
-      );
-    }
-    const defaultGetterInterval =
-      configDefaultGetterInterval ?? DEFAULT_GETTER_INTERVAL;
+    this.initializeWorkers();
 
-    const defaultMaxBlocks =
-      this.configService.relayerConfig.getter['maxBlocks'] ?? undefined;
+    this.initiateIntervalStatusLog();
+  }
+
+  private initializeWorkers(): void {
+    const defaultWorkerConfig = this.loadDefaultWorkerConfig();
 
     this.configService.chainsConfig.forEach((chainConfig) => {
       const chainId = chainConfig.chainId;
-
-      const incentivesAddresses = Array.from(
-        this.configService.ambsConfig.values(),
-      ).map((amb) => amb.getIncentivesAddress(chainId));
+      const workerData = this.loadWorkerConfig(
+        chainConfig,
+        defaultWorkerConfig,
+      );
 
       const worker = new Worker(join(__dirname, 'getter.service.js'), {
-        workerData: {
-          chainConfig,
-          incentivesAddresses,
-          interval: chainConfig.getter['interval'] ?? defaultGetterInterval,
-          blockDelay: chainConfig.blockDelay ?? 0,
-          maxBlocks: chainConfig.getter['maxBlocks'] ?? defaultMaxBlocks,
-          loggerOptions: this.loggerService.loggerOptions,
-        },
+        workerData,
       });
       this.workers[chainId] = worker;
 
@@ -65,8 +74,44 @@ export class GetterController implements OnModuleInit {
         );
       });
     });
+  }
 
-    this.initiateIntervalStatusLog();
+  private loadDefaultWorkerConfig(): DefaultGetterWorkerData {
+    const relayerConfig = this.configService.relayerConfig;
+    const globalGetterConfig = relayerConfig.getter;
+
+    const blockDelay = relayerConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
+    const interval = globalGetterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
+    const maxBlocks = globalGetterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
+
+    return {
+      interval,
+      blockDelay,
+      maxBlocks,
+    };
+  }
+
+  private loadWorkerConfig(
+    chainConfig: ChainConfig,
+    defaultConfig: DefaultGetterWorkerData,
+  ): GetterWorkerData {
+    const chainId = chainConfig.chainId;
+
+    const incentivesAddresses = Array.from(
+      this.configService.ambsConfig.values(),
+    ).map((amb) => amb.getIncentivesAddress(chainId));
+
+    return {
+      chainId,
+      rpc: chainConfig.rpc,
+      startingBlock: chainConfig.startingBlock,
+      stoppingBlock: chainConfig.stoppingBlock,
+      blockDelay: chainConfig.blockDelay ?? defaultConfig.blockDelay,
+      interval: chainConfig.getter.interval ?? defaultConfig.interval,
+      maxBlocks: chainConfig.getter.maxBlocks ?? defaultConfig.maxBlocks,
+      incentivesAddresses,
+      loggerOptions: this.loggerService.loggerOptions,
+    };
   }
 
   private initiateIntervalStatusLog(): void {
