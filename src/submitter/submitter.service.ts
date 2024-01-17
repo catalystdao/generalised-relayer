@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { join } from 'path';
 import { Worker } from 'worker_threads';
-import { ConfigService } from 'src/config/config.service';
+import { ChainConfig, ConfigService } from 'src/config/config.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { LoggerOptions } from 'pino';
 
 const RETRY_INTERVAL_DEFAULT = 2000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
@@ -11,20 +12,35 @@ const MAX_PENDING_TRANSACTIONS = 1000;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
 const TRANSACTION_TIMEOUT_DEFAULT = 10 * 60000;
 
-export interface SubmitterWorkerConfig {
+interface GlobalSubmitterConfig {
+  enabled: boolean;
+  newOrdersDelay: number;
   retryInterval: number;
   processingInterval: number;
   maxTries: number;
-  enabled?: boolean;
-  gasLimitBuffer: Record<string, number>;
-  newOrdersDelay: number;
   maxPendingTransactions: number;
   transactionTimeout: number;
+  gasLimitBuffer: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
+}
+
+export interface SubmitterWorkerData {
+  chainId: string;
+  rpc: string;
+  relayerPrivateKey: string;
+  incentivesAddresses: Map<string, string>;
+  newOrdersDelay: number;
+  retryInterval: number;
+  processingInterval: number;
+  maxTries: number;
+  maxPendingTransactions: number;
+  transactionTimeout: number;
+  gasLimitBuffer: Record<string, number>;
   maxFeePerGas: number | undefined;
   maxPriorityFeeAdjustmentFactor: number | undefined;
   maxAllowedPriorityFeePerGas: number | undefined;
   gasPriceAdjustmentFactor: number | undefined;
   maxAllowedGasPrice: number | undefined;
+  loggerOptions: LoggerOptions;
 }
 
 @Injectable()
@@ -39,66 +55,24 @@ export class SubmitterService {
   async onModuleInit(): Promise<void> {
     this.loggerService.info(`Starting the submitter on all chains...`);
 
-    const defaultWorkerConfig: SubmitterWorkerConfig =
-      this.loadDefaultWorkerConfig();
+    const globalSubmitterConfig = this.loadGlobalSubmitterConfig();
 
     // check if the submitter has been disabled.
-    if (!defaultWorkerConfig.enabled) {
-      this.loggerService.info(`Submittor has been disabled. Ending init early`);
+    if (!globalSubmitterConfig.enabled) {
+      this.loggerService.info(`Submitter has been disabled. Ending init early`);
       return;
     }
 
     // Initialize the submitter states
     for (const [, chainConfig] of this.configService.chainsConfig) {
-      const incentivesAddresses = new Map<string, string>();
-      this.configService.ambsConfig.forEach((amb) =>
-        incentivesAddresses.set(
-          amb.name,
-          amb.getIncentivesAddress(chainConfig.chainId),
-        ),
+      // Load the worker chain override config or set the defaults if missing
+      const workerData = this.loadWorkerConfig(
+        chainConfig,
+        globalSubmitterConfig,
       );
 
-      // Load the worker chain override config or set the defaults if missing
-      const workerConfig: SubmitterWorkerConfig = {
-        retryInterval:
-          chainConfig.submitter.retryInterval ??
-          defaultWorkerConfig.retryInterval,
-        processingInterval:
-          chainConfig.submitter.processingInterval ??
-          defaultWorkerConfig.processingInterval,
-        maxTries:
-          chainConfig.submitter.maxTries ?? defaultWorkerConfig.maxTries,
-        gasLimitBuffer: this.getChainGasLimitBufferConfig(
-          defaultWorkerConfig.gasLimitBuffer,
-          chainConfig.submitter['gasLimitBuffer'] ?? {},
-        ),
-        newOrdersDelay:
-          chainConfig.submitter.newOrdersDelay ??
-          defaultWorkerConfig.newOrdersDelay,
-        maxPendingTransactions:
-          chainConfig.submitter.maxPendingTransactions ??
-          defaultWorkerConfig.maxPendingTransactions,
-        transactionTimeout:
-          chainConfig.submitter.transactionTimeout ??
-          defaultWorkerConfig.transactionTimeout,
-        maxFeePerGas: chainConfig.submitter.maxFeePerGas,
-        maxPriorityFeeAdjustmentFactor:
-          chainConfig.submitter.maxPriorityFeeAdjustmentFactor,
-        maxAllowedPriorityFeePerGas:
-          chainConfig.submitter.maxAllowedPriorityFeePerGas,
-        gasPriceAdjustmentFactor:
-          chainConfig.submitter.gasPriceAdjustmentFactor,
-        maxAllowedGasPrice: chainConfig.submitter.maxAllowedGasPrice,
-      };
-
       const worker = new Worker(join(__dirname, 'submitter.worker.js'), {
-        workerData: {
-          chainConfig,
-          workerConfig,
-          relayerPrivateKey: this.configService.relayerConfig.privateKey,
-          incentivesAddresses,
-          loggerOptions: this.loggerService.loggerOptions,
-        },
+        workerData,
       });
 
       worker.on('error', (error) =>
@@ -118,78 +92,100 @@ export class SubmitterService {
     }
   }
 
-  private loadDefaultWorkerConfig(): SubmitterWorkerConfig {
+  private loadGlobalSubmitterConfig(): GlobalSubmitterConfig {
     const submitterConfig = this.configService.relayerConfig.submitter;
-
-    if (submitterConfig['retryInterval'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: retryInterval' configuration set. Defaulting to ${RETRY_INTERVAL_DEFAULT}`,
-      );
-    }
-    const retryInterval =
-      submitterConfig['retryInterval'] ?? RETRY_INTERVAL_DEFAULT;
 
     const enabled = submitterConfig['enabled'] ?? true;
 
-    if (submitterConfig['processingInterval'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: processingInterval' configuration set. Defaulting to ${PROCESSING_INTERVAL_DEFAULT}`,
-      );
-    }
-    const processingInterval =
-      submitterConfig['processingInterval'] ?? PROCESSING_INTERVAL_DEFAULT;
-
-    if (submitterConfig['maxTries'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: maxTries' configuration set. Defaulting to ${MAX_TRIES_DEFAULT}`,
-      );
-    }
-    const maxTries = submitterConfig['maxTries'] ?? MAX_TRIES_DEFAULT;
-
-    if (submitterConfig['newOrdersDelay'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: newOrdersDelay' configuration set. Defaulting to ${NEW_ORDERS_DELAY_DEFAULT}`,
-      );
-    }
     const newOrdersDelay =
-      submitterConfig['newOrdersDelay'] ?? NEW_ORDERS_DELAY_DEFAULT;
-
-    if (submitterConfig['maxPendingTransactions'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: maxPendingTransactions' configuration set. Defaulting to ${MAX_PENDING_TRANSACTIONS}`,
-      );
-    }
+      submitterConfig.newOrdersDelay ?? NEW_ORDERS_DELAY_DEFAULT;
+    const retryInterval =
+      submitterConfig.retryInterval ?? RETRY_INTERVAL_DEFAULT;
+    const processingInterval =
+      submitterConfig.processingInterval ?? PROCESSING_INTERVAL_DEFAULT;
+    const maxTries = submitterConfig.maxTries ?? MAX_TRIES_DEFAULT;
     const maxPendingTransactions =
-      submitterConfig['maxPendingTransactions'] ?? MAX_PENDING_TRANSACTIONS;
-
-    if (submitterConfig['transactionTimeout'] == undefined) {
-      this.loggerService.warn(
-        `No 'submitter: transactionTimeout' configuration set. Defaulting to ${TRANSACTION_TIMEOUT_DEFAULT}`,
-      );
-    }
+      submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
     const transactionTimeout =
-      submitterConfig['transactionTimeout'] ?? TRANSACTION_TIMEOUT_DEFAULT;
+      submitterConfig.transactionTimeout ?? TRANSACTION_TIMEOUT_DEFAULT;
 
-    const gasLimitBuffer = submitterConfig['gasLimitBuffer'] ?? {};
+    const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
     if (!('default' in gasLimitBuffer)) {
       gasLimitBuffer['default'] = 0;
     }
 
     return {
+      enabled,
+      newOrdersDelay,
       retryInterval,
       processingInterval,
       maxTries,
-      enabled,
-      gasLimitBuffer,
       maxPendingTransactions,
-      newOrdersDelay,
       transactionTimeout,
-      // Never load default gas fee configuration
-      maxFeePerGas: undefined,
-      maxPriorityFeeAdjustmentFactor: undefined,
-      maxAllowedPriorityFeePerGas: undefined,
-      maxAllowedGasPrice: undefined,
-      gasPriceAdjustmentFactor: undefined,
+      gasLimitBuffer,
+    };
+  }
+
+  private loadWorkerConfig(
+    chainConfig: ChainConfig,
+    globalConfig: GlobalSubmitterConfig,
+  ): SubmitterWorkerData {
+    const chainId = chainConfig.chainId;
+    const rpc = chainConfig.rpc;
+    const relayerPrivateKey = this.configService.relayerConfig.privateKey;
+
+    const incentivesAddresses = new Map<string, string>();
+    this.configService.ambsConfig.forEach((amb) =>
+      incentivesAddresses.set(
+        amb.name,
+        amb.getIncentivesAddress(chainConfig.chainId),
+      ),
+    );
+
+    return {
+      chainId,
+      rpc,
+      relayerPrivateKey,
+      incentivesAddresses,
+
+      newOrdersDelay:
+        chainConfig.submitter.newOrdersDelay ?? globalConfig.newOrdersDelay,
+
+      retryInterval:
+        chainConfig.submitter.retryInterval ?? globalConfig.retryInterval,
+
+      processingInterval:
+        chainConfig.submitter.processingInterval ??
+        globalConfig.processingInterval,
+
+      maxTries: chainConfig.submitter.maxTries ?? globalConfig.maxTries,
+
+      maxPendingTransactions:
+        chainConfig.submitter.maxPendingTransactions ??
+        globalConfig.maxPendingTransactions,
+
+      transactionTimeout:
+        chainConfig.submitter.transactionTimeout ??
+        globalConfig.transactionTimeout,
+
+      gasLimitBuffer: this.getChainGasLimitBufferConfig(
+        globalConfig.gasLimitBuffer,
+        chainConfig.submitter.gasLimitBuffer ?? {},
+      ),
+
+      maxFeePerGas: chainConfig.submitter.maxFeePerGas,
+
+      maxPriorityFeeAdjustmentFactor:
+        chainConfig.submitter.maxPriorityFeeAdjustmentFactor,
+
+      maxAllowedPriorityFeePerGas:
+        chainConfig.submitter.maxAllowedPriorityFeePerGas,
+
+      gasPriceAdjustmentFactor: chainConfig.submitter.gasPriceAdjustmentFactor,
+
+      maxAllowedGasPrice: chainConfig.submitter.maxAllowedGasPrice,
+
+      loggerOptions: this.loggerService.loggerOptions,
     };
   }
 

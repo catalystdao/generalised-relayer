@@ -2,7 +2,6 @@ import { BigNumber, BytesLike, Wallet } from 'ethers';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
-import { ChainConfig } from 'src/config/config.service';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/IncentivizedMessageEscrow__factory';
 import { workerData } from 'worker_threads';
@@ -12,6 +11,7 @@ import { EvalOrder, GasFeeConfig, NewOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
+import { SubmitterWorkerData } from './submitter.service';
 
 const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
 
@@ -19,44 +19,39 @@ class SubmitterWorker {
   readonly store: Store;
   readonly logger: pino.Logger;
 
-  readonly chainConfig: ChainConfig;
+  readonly config: SubmitterWorkerData;
 
   readonly provider: StaticJsonRpcProvider;
   readonly signer: Wallet;
+
+  readonly chainId: string;
 
   readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
   readonly evalQueue: EvalQueue;
   readonly submitQueue: SubmitQueue;
 
-  readonly newOrdersDelay: number;
-  readonly processingInterval: number;
-  readonly maxPendingTransactions: number;
-
   constructor() {
-    this.chainConfig = workerData.chainConfig;
+    this.config = workerData as SubmitterWorkerData;
 
-    this.newOrdersDelay = workerData.workerConfig.newOrdersDelay ?? 0;
-    this.processingInterval = workerData.workerConfig.processingInterval;
-    this.maxPendingTransactions =
-      workerData.workerConfig.maxPendingTransactions ?? Infinity;
+    this.chainId = this.config.chainId;
 
-    this.store = new Store(this.chainConfig.chainId);
+    this.store = new Store(this.chainId);
     this.logger = this.initializeLogger(
-      this.chainConfig.chainId,
-      workerData.loggerOptions,
+      this.chainId,
+      this.config.loggerOptions,
     );
-    this.provider = new StaticJsonRpcProvider(this.chainConfig.rpc);
-    this.signer = new Wallet(workerData.relayerPrivateKey, this.provider);
+    this.provider = new StaticJsonRpcProvider(this.config.rpc);
+    this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
     [this.evalQueue, this.submitQueue] = this.initializeQueues(
-      workerData.workerConfig.retryInterval,
-      workerData.workerConfig.maxTries,
+      this.config.retryInterval,
+      this.config.maxTries,
       this.store,
-      this.loadIncentivesContracts(workerData.incentivesAddresses),
-      this.chainConfig.chainId,
-      workerData.workerConfig.gasLimitBuffer,
-      this.loadGasFeeConfig(),
-      workerData.workerConfig.transactionTimeout,
+      this.loadIncentivesContracts(this.config.incentivesAddresses),
+      this.config.chainId,
+      this.config.gasLimitBuffer,
+      this.loadGasFeeConfig(this.config),
+      this.config.transactionTimeout,
       this.signer,
       this.logger,
     );
@@ -147,14 +142,14 @@ class SubmitterWorker {
     return incentivesContracts;
   }
 
-  private loadGasFeeConfig(): GasFeeConfig {
+  private loadGasFeeConfig(config: SubmitterWorkerData): GasFeeConfig {
     const {
       gasPriceAdjustmentFactor,
       maxAllowedGasPrice,
       maxFeePerGas,
       maxPriorityFeeAdjustmentFactor,
       maxAllowedPriorityFeePerGas,
-    } = workerData.workerConfig;
+    } = config;
 
     if (
       gasPriceAdjustmentFactor != undefined &&
@@ -217,7 +212,7 @@ class SubmitterWorker {
       await this.evalQueue.processRetries();
       await this.submitQueue.processRetries();
 
-      await wait(this.processingInterval);
+      await wait(this.config.processingInterval);
     }
   }
 
@@ -225,10 +220,7 @@ class SubmitterWorker {
    * Subscribe to the Store to listen for relevant payloads to submit.
    */
   private listenForOrders(): void {
-    const listenToChannel = Store.getChannel(
-      'submit',
-      this.chainConfig.chainId,
-    );
+    const listenToChannel = Store.getChannel('submit', this.chainId);
     this.logger.info(`Listing for messages to submit on ${listenToChannel}`);
 
     this.store.on(listenToChannel, (message: AmbPayload) => {
@@ -266,7 +258,7 @@ class SubmitterWorker {
     } else {
       // Push into the evaluation queue
       this.newOrdersQueue.push({
-        processAt: Date.now() + this.newOrdersDelay,
+        processAt: Date.now() + this.config.newOrdersDelay,
         order: {
           amb,
           messageIdentifier,
@@ -307,7 +299,9 @@ class SubmitterWorker {
   private getSubmitterCapacity(): number {
     return Math.max(
       0,
-      this.maxPendingTransactions - this.evalQueue.size - this.submitQueue.size,
+      this.config.maxPendingTransactions -
+        this.evalQueue.size -
+        this.submitQueue.size,
     );
   }
 }
