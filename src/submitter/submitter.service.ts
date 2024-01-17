@@ -66,7 +66,7 @@ export class SubmitterService {
     // Initialize the submitter states
     for (const [, chainConfig] of this.configService.chainsConfig) {
       // Load the worker chain override config or set the defaults if missing
-      const workerData = this.loadWorkerConfig(
+      const workerData = this.loadWorkerData(
         chainConfig,
         globalSubmitterConfig,
       );
@@ -126,7 +126,7 @@ export class SubmitterService {
     };
   }
 
-  private loadWorkerConfig(
+  private loadWorkerData(
     chainConfig: ChainConfig,
     globalConfig: GlobalSubmitterConfig,
   ): SubmitterWorkerData {

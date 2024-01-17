@@ -10,7 +10,7 @@ export const DEFAULT_GETTER_INTERVAL = 5000;
 export const DEFAULT_GETTER_BLOCK_DELAY = 0;
 export const DEFAULT_GETTER_MAX_BLOCKS = null;
 
-interface DefaultGetterWorkerData {
+interface GlobalGetterConfig {
   blockDelay: number;
   interval: number;
   maxBlocks: number | null;
@@ -46,14 +46,11 @@ export class GetterController implements OnModuleInit {
   }
 
   private initializeWorkers(): void {
-    const defaultWorkerConfig = this.loadDefaultWorkerConfig();
+    const globalGetterConfig = this.loadGlobalGetterConfig();
 
     this.configService.chainsConfig.forEach((chainConfig) => {
       const chainId = chainConfig.chainId;
-      const workerData = this.loadWorkerConfig(
-        chainConfig,
-        defaultWorkerConfig,
-      );
+      const workerData = this.loadWorkerData(chainConfig, globalGetterConfig);
 
       const worker = new Worker(join(__dirname, 'getter.service.js'), {
         workerData,
@@ -76,7 +73,7 @@ export class GetterController implements OnModuleInit {
     });
   }
 
-  private loadDefaultWorkerConfig(): DefaultGetterWorkerData {
+  private loadGlobalGetterConfig(): GlobalGetterConfig {
     const relayerConfig = this.configService.relayerConfig;
     const globalGetterConfig = relayerConfig.getter;
 
@@ -91,9 +88,9 @@ export class GetterController implements OnModuleInit {
     };
   }
 
-  private loadWorkerConfig(
+  private loadWorkerData(
     chainConfig: ChainConfig,
-    defaultConfig: DefaultGetterWorkerData,
+    defaultConfig: GlobalGetterConfig,
   ): GetterWorkerData {
     const chainId = chainConfig.chainId;
 
