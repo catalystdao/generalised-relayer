@@ -39,7 +39,7 @@ export interface GetterConfig extends GetterGlobalConfig {}
 
 export interface SubmitterGlobalConfig {
   enabled?: boolean;
-  newOrdersDelay: number;
+  newOrdersDelay?: number;
   retryInterval?: number;
   processingInterval?: number;
   maxTries?: number;
