@@ -7,7 +7,7 @@ export interface RelayerConfig {
   port: number;
   privateKey: string;
   logLevel?: string;
-  blockDelay?: string;
+  blockDelay?: number;
   getter: GetterGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
