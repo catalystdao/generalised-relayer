@@ -8,9 +8,9 @@ export interface RelayerConfig {
   privateKey: string;
   logLevel?: string;
   blockDelay?: string;
-  getter: Record<string, any>;
-  submitter: Record<string, any>;
-  persister: Record<string, any>;
+  getter: GetterGlobalConfig;
+  submitter: SubmitterGlobalConfig;
+  persister: PersisterConfig;
 }
 
 export interface ChainConfig {
@@ -20,8 +20,8 @@ export interface ChainConfig {
   startingBlock?: number;
   stoppingBlock?: number;
   blockDelay?: number;
-  getter: Record<string, any>;
-  submitter: Record<string, any>;
+  getter: GetterConfig;
+  submitter: SubmitterConfig;
 }
 
 export interface AMBConfig {
@@ -29,6 +29,39 @@ export interface AMBConfig {
   globalProperties: Record<string, any>;
   getIncentivesAddress: (chainId: string) => string;
 }
+
+export interface GetterGlobalConfig {
+  interval?: number;
+  maxBlocks?: number;
+}
+
+export interface GetterConfig extends GetterGlobalConfig {}
+
+export interface SubmitterGlobalConfig {
+  enabled?: boolean;
+  newOrdersDelay: number;
+  retryInterval?: number;
+  processingInterval?: number;
+  maxTries?: number;
+  maxPendingTransactions?: number;
+  transactionTimeout?: number;
+  gasLimitBuffer?: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
+}
+
+export interface SubmitterConfig extends SubmitterGlobalConfig {
+  maxFeePerGas?: number;
+  maxPriorityFeeAdjustmentFactor?: number;
+  maxAllowedPriorityFeePerGas?: number;
+  gasPriceAdjustmentFactor?: number;
+  maxAllowedGasPrice?: number;
+}
+
+export interface PersisterConfig {
+  enabled: boolean;
+  postgresString: string;
+}
+
+//TODO config schema verification should not be implemented manually.
 
 @Injectable()
 export class ConfigService {

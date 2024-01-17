@@ -7,6 +7,7 @@ relayer:
     maxBlocks: 1000
   submitter:
     enabled: true
+    newOrdersDelay: 1000
     retryInterval: 2000
     processingInterval: 100
     maxTries: 3
