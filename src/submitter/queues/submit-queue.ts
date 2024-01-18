@@ -1,23 +1,16 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
-import {
-  GasFeeConfig,
-  GasFeeOverrides,
-  SubmitOrder,
-  SubmitOrderResult,
-} from '../submitter.types';
-import { BigNumber, Wallet } from 'ethers';
+import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
+import { Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { FeeData } from '@ethersproject/providers';
 import { hexZeroPad } from 'ethers/lib/utils';
+import { TransactionHelper } from '../transaction-helpers';
 
 export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
   SubmitOrderResult
 > {
   private relayerAddress: string;
-  private transactionCount: number;
-  private feeData: FeeData | undefined;
 
   constructor(
     readonly retryInterval: number,
@@ -26,7 +19,7 @@ export class SubmitQueue extends ProcessingQueue<
       string,
       IncentivizedMessageEscrow
     >,
-    private readonly gasFeeConfig: GasFeeConfig,
+    private readonly transactionHelper: TransactionHelper,
     private readonly transactionTimeout: number,
     private readonly signer: Wallet,
     private readonly logger: pino.Logger,
@@ -36,9 +29,10 @@ export class SubmitQueue extends ProcessingQueue<
 
   async init(): Promise<void> {
     this.relayerAddress = hexZeroPad(await this.signer.getAddress(), 32);
+  }
 
-    await this.updateTransactionCount();
-    await this.updateFeeData();
+  protected async onProcessOrders(): Promise<void> {
+    await this.transactionHelper.updateFeeData();
   }
 
   protected async handleOrder(
@@ -66,10 +60,12 @@ export class SubmitQueue extends ProcessingQueue<
       order.message,
       this.relayerAddress,
       {
-        nonce: this.transactionCount,
-        ...this.getFeeDataForTransaction(),
+        nonce: this.transactionHelper.getTransactionCount(),
+        ...this.transactionHelper.getFeeDataForTransaction(),
       },
     );
+
+    this.transactionHelper.increaseTransactionCount();
 
     this.logger.info(
       { messageIdentifier: order.messageIdentifier, txHash: tx.hash },
@@ -119,7 +115,7 @@ export class SubmitQueue extends ProcessingQueue<
       error.code === 'REPLACEMENT_UNDERPRICED' ||
       error.error?.message.includes('invalid sequence')
     ) {
-      await this.updateTransactionCount();
+      await this.transactionHelper.updateTransactionCount();
     }
 
     return true;
@@ -151,102 +147,6 @@ export class SubmitQueue extends ProcessingQueue<
       }
     } else {
       this.logger.error(orderDescription, `Unsuccessful message processing.`);
-    }
-  }
-
-  // Helpers
-
-  /**
-   * Update the transaction count of the signer.
-   */
-  private async updateTransactionCount(): Promise<void> {
-    let i = 1;
-    while (true) {
-      try {
-        this.transactionCount =
-          await this.signer.getTransactionCount('pending'); //TODO 'pending' may not be supported
-        break;
-      } catch (error) {
-        // Continue trying indefinitely. If the transaction count is incorrect, no transaction will go through.
-        this.logger.error(`Failed to update nonce for chain (try ${i}).`);
-        await new Promise((r) => setTimeout(r, this.retryInterval));
-      }
-
-      i++;
-    }
-  }
-
-  private async updateFeeData(): Promise<void> {
-    try {
-      this.feeData = await this.signer.provider.getFeeData();
-    } catch {
-      // Continue with stale fee data.
-    }
-  }
-
-  private getFeeDataForTransaction(): GasFeeOverrides {
-    const queriedFeeData = this.feeData;
-    if (queriedFeeData == undefined) {
-      return {};
-    }
-
-    const queriedMaxPriorityFeePerGas = queriedFeeData.maxPriorityFeePerGas;
-    if (queriedMaxPriorityFeePerGas != null) {
-      // Set fee data for an EIP 1559 transactions
-      const maxFeePerGas = this.gasFeeConfig.maxFeePerGas;
-
-      // Adjust the 'maxPriorityFeePerGas' by the adjustment factor
-      let maxPriorityFeePerGas;
-      if (this.gasFeeConfig.maxPriorityFeeAdjustmentFactor != undefined) {
-        maxPriorityFeePerGas = BigNumber.from(
-          Math.floor(
-            queriedMaxPriorityFeePerGas.toNumber() *
-              this.gasFeeConfig.maxPriorityFeeAdjustmentFactor,
-          ),
-        );
-      }
-
-      // Apply the max allowed 'maxPriorityFeePerGas'
-      if (
-        maxPriorityFeePerGas != undefined &&
-        this.gasFeeConfig.maxAllowedPriorityFeePerGas != undefined &&
-        this.gasFeeConfig.maxAllowedPriorityFeePerGas.lt(maxPriorityFeePerGas)
-      ) {
-        maxPriorityFeePerGas = this.gasFeeConfig.maxAllowedPriorityFeePerGas;
-      }
-
-      return {
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-      };
-    } else {
-      // Set traditional gasPrice
-      const queriedGasPrice = queriedFeeData.gasPrice;
-      if (queriedGasPrice == null) return {};
-
-      // Adjust the 'gasPrice' by the adjustment factor
-      let gasPrice;
-      if (this.gasFeeConfig.gasPriceAdjustmentFactor != undefined) {
-        gasPrice = BigNumber.from(
-          Math.floor(
-            queriedGasPrice.toNumber() *
-              this.gasFeeConfig.gasPriceAdjustmentFactor,
-          ),
-        );
-      }
-
-      // Apply the max allowed 'gasPrice'
-      if (
-        gasPrice != undefined &&
-        this.gasFeeConfig.maxAllowedGasPrice != undefined &&
-        this.gasFeeConfig.maxAllowedGasPrice.lt(gasPrice)
-      ) {
-        gasPrice = this.gasFeeConfig.maxAllowedGasPrice;
-      }
-
-      return {
-        gasPrice,
-      };
     }
   }
 }

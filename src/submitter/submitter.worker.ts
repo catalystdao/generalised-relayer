@@ -12,6 +12,7 @@ import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
+import { TransactionHelper } from './transaction-helpers';
 
 const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
 
@@ -25,6 +26,8 @@ class SubmitterWorker {
   readonly signer: Wallet;
 
   readonly chainId: string;
+
+  readonly transactionHelper: TransactionHelper;
 
   readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
   readonly evalQueue: EvalQueue;
@@ -43,6 +46,13 @@ class SubmitterWorker {
     this.provider = new StaticJsonRpcProvider(this.config.rpc);
     this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
+    this.transactionHelper = new TransactionHelper(
+      this.config.retryInterval,
+      this.loadGasFeeConfig(this.config),
+      this.signer,
+      this.logger,
+    );
+
     [this.evalQueue, this.submitQueue] = this.initializeQueues(
       this.config.retryInterval,
       this.config.maxTries,
@@ -50,8 +60,8 @@ class SubmitterWorker {
       this.loadIncentivesContracts(this.config.incentivesAddresses),
       this.config.chainId,
       this.config.gasLimitBuffer,
-      this.loadGasFeeConfig(this.config),
       this.config.transactionTimeout,
+      this.transactionHelper,
       this.signer,
       this.logger,
     );
@@ -78,8 +88,8 @@ class SubmitterWorker {
     incentivesContracts: Map<string, IncentivizedMessageEscrow>,
     chainId: string,
     gasLimitBuffer: Record<string, number>,
-    gasFeeConfig: GasFeeConfig,
     transactionTimeout: number,
+    transactionHelper: TransactionHelper,
     signer: Wallet,
     logger: pino.Logger,
   ): [EvalQueue, SubmitQueue] {
@@ -97,7 +107,7 @@ class SubmitterWorker {
       retryInterval,
       maxTries,
       incentivesContracts,
-      gasFeeConfig,
+      transactionHelper,
       transactionTimeout,
       signer,
       logger,
@@ -191,6 +201,7 @@ class SubmitterWorker {
     this.logger.debug(`Relaying messages (relayer: ${this.signer.address})`);
 
     // Initialize the queues
+    await this.transactionHelper.init();
     await this.evalQueue.init();
     await this.submitQueue.init();
 
