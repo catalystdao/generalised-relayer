@@ -218,6 +218,8 @@ class SubmitterWorker {
       await this.submitQueue.addOrders(...newUnderwriteOrders);
       await this.submitQueue.processOrders();
 
+      this.submitQueue.getCompletedOrders(); // Flush completed orders from queue
+
       // If it is time for any of the reties in the queue to be moved
       // towards the action queues do that.
       await this.evalQueue.processRetries();
