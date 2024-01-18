@@ -9,6 +9,7 @@ import { workerData } from 'worker_threads';
 import { Store } from 'src/store/store.lib';
 import { AmbPayload } from 'src/store/types/store.types';
 import pino from 'pino';
+import { WormholeRelayerEngineWorkerData } from './wormhole';
 
 // TODO the following features must be implemented for the wormhole collector/engine:
 // - startingBlock
@@ -16,20 +17,22 @@ import pino from 'pino';
 // - blockDelay (is this desired?)
 
 const bootstrap = async () => {
+  const config = workerData as WormholeRelayerEngineWorkerData;
+
   const store = new Store(); // Read only stores can still publish messages.
-  const enviroment = workerData.isTestnet
+  const enviroment = config.isTestnet
     ? Environment.TESTNET
     : Environment.MAINNET;
-  const useDocker = workerData.useDocker;
-  const spyPort = workerData.spyPort;
+  const useDocker = config.useDocker;
+  const spyPort = config.spyPort;
 
-  const logger = pino(workerData.loggerOptions).child({
+  const logger = pino(config.loggerOptions).child({
     worker: 'collector-wormhole-engine',
   });
 
-  const wormholeChainConfig: Map<string, any> = workerData.wormholeChainConfig;
+  const wormholeChainConfig: Map<string, any> = config.wormholeChainConfig;
   const reverseWormholeChainConfig: Map<string, any> =
-    workerData.reverseWormholeChainConfig;
+    config.reverseWormholeChainConfig;
 
   if (wormholeChainConfig.size == 0) {
     throw Error(

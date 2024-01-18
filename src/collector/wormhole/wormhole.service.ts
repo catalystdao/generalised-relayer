@@ -1,11 +1,11 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino from 'pino';
-import { ChainConfig } from 'src/config/config.service';
 import { IWormhole__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
 import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
+import { WormholePacketSnifferWorkerData } from './wormhole';
 
 // TODO the following features must be implemented for the wormhole collector/engine:
 // - startingBlock
@@ -15,55 +15,52 @@ import { decodeWormholeMessage } from './wormhole.utils';
 // but it has not been done until the features are implemented on the 'wormhole-engine' service.
 
 const bootstrap = async () => {
-  const interval = workerData.interval;
-  const maxBlocks = workerData.maxBlocks;
-  const incentivesAddress = workerData.incentivesAddress;
-  const wormholeAddress = workerData.wormholeAddress;
-  const chainConfig: ChainConfig = workerData.chainConfig;
-  const store = new Store(chainConfig.chainId);
-  const provider = new StaticJsonRpcProvider(chainConfig.rpc);
+  const config = workerData as WormholePacketSnifferWorkerData;
+  const chainId = config.chainId;
 
-  const logger = pino(workerData.loggerOptions).child({
+  const store = new Store(chainId);
+  const provider = new StaticJsonRpcProvider(config.rpc);
+
+  const logger = pino(config.loggerOptions).child({
     worker: 'collector-wormhole',
-    chain: chainConfig.chainId,
+    chain: chainId,
   });
 
   logger.info(
-    `Wormhole worker started (collecting published wormhole messages for bridge ${wormholeAddress} on ${chainConfig.name})`,
+    `Wormhole worker started (collecting published wormhole messages for bridge ${config.wormholeAddress} on chain ${chainId})`,
   );
 
-  let startBlock =
-    chainConfig.startingBlock ?? (await provider.getBlockNumber());
-  await wait(interval);
+  let startBlock = config.startingBlock ?? (await provider.getBlockNumber());
+  await wait(config.interval);
 
-  const contract = IWormhole__factory.connect(wormholeAddress, provider);
+  const contract = IWormhole__factory.connect(config.wormholeAddress, provider);
   while (true) {
     let endBlock: number;
     try {
       endBlock = await provider.getBlockNumber();
     } catch (error) {
       logger.error(error, `Failed on wormhole.service endblock`);
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
     if (startBlock > endBlock || !endBlock) {
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
     const blocksToProcess = endBlock - startBlock;
-    if (blocksToProcess > maxBlocks) {
-      endBlock = startBlock + maxBlocks;
+    if (config.maxBlocks != null && blocksToProcess > config.maxBlocks) {
+      endBlock = startBlock + config.maxBlocks;
     }
 
     logger.info(
-      `Scanning wormhole messages from block ${startBlock} to ${endBlock} on ${chainConfig.name} Chain`,
+      `Scanning wormhole messages from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
     );
 
     try {
       const logs = await contract.queryFilter(
-        contract.filters.LogMessagePublished(incentivesAddress),
+        contract.filters.LogMessagePublished(config.incentivesAddress),
         startBlock,
         endBlock,
       );
@@ -75,7 +72,7 @@ const bootstrap = async () => {
         store.setAmb(
           {
             ...amb,
-            sourceChain: chainConfig.chainId,
+            sourceChain: chainId,
             recoveryContext: event.args.sequence.toString(),
           },
           event.transactionHash,
@@ -83,10 +80,10 @@ const bootstrap = async () => {
       }
 
       startBlock = endBlock + 1;
-      await wait(interval);
+      await wait(config.interval);
     } catch (error) {
       logger.error(error, `Failed on wormhole.service`);
-      await wait(interval);
+      await wait(config.interval);
     }
   }
 };
