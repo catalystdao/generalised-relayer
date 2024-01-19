@@ -72,20 +72,7 @@ export class SubmitQueue extends ProcessingQueue<
       `Submitted message.`,
     );
 
-    const timingOutTxPromise: Promise<SubmitOrderResult> = Promise.race([
-      tx.wait().then((receipt: any) => {
-        if (receipt == null) {
-          throw new Error('Submit tx TIMEOUT');
-        }
-        return { txHash: receipt.hash, ...order };
-      }),
-
-      new Promise<never>((_resolve, reject) =>
-        setTimeout(() => reject('Submit tx TIMEOUT'), this.transactionTimeout),
-      ),
-    ]);
-
-    return { result: timingOutTxPromise };
+    return { result: { tx, ...order } };
   }
 
   protected async handleFailedOrder(
@@ -113,7 +100,7 @@ export class SubmitQueue extends ProcessingQueue<
     if (
       error.code === 'NONCE_EXPIRED' ||
       error.code === 'REPLACEMENT_UNDERPRICED' ||
-      error.error?.message.includes('invalid sequence')
+      error.error?.message.includes('invalid sequence') //TODO is this dangerous?
     ) {
       await this.transactionHelper.updateTransactionCount();
     }
@@ -129,24 +116,24 @@ export class SubmitQueue extends ProcessingQueue<
   ): Promise<void> {
     const orderDescription = {
       messageIdentifier: order.messageIdentifier,
-      txHash: result?.txHash,
+      txHash: result?.tx.hash,
       try: retryCount + 1,
     };
 
     if (success) {
-      if (result?.gasLimit != 0) {
+      if (result != null) {
         this.logger.debug(
           orderDescription,
-          `Successful message processing: message submitted.`,
+          `Successful submit order: message submitted.`,
         );
       } else {
         this.logger.debug(
           orderDescription,
-          `Successful message processing: message not submitted.`,
+          `Successful submit order: message not submitted.`,
         );
       }
     } else {
-      this.logger.error(orderDescription, `Unsuccessful message processing.`);
+      this.logger.error(orderDescription, `Unsuccessful submit order.`);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { BigNumber, BytesLike, Wallet } from 'ethers';
+import { BigNumber, BytesLike, Wallet, constants } from 'ethers';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
@@ -7,12 +7,19 @@ import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/Ince
 import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { EvalOrder, GasFeeConfig, NewOrder } from './submitter.types';
+import {
+  EvalOrder,
+  GasFeeConfig,
+  NewOrder,
+  SubmitOrder,
+  SubmitOrderResult,
+} from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { TransactionHelper } from './transaction-helpers';
+import { ConfirmQueue } from './queues/confirm-queue';
 
 const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
 
@@ -32,6 +39,7 @@ class SubmitterWorker {
   readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
   readonly evalQueue: EvalQueue;
   readonly submitQueue: SubmitQueue;
+  readonly confirmQueue: ConfirmQueue;
 
   constructor() {
     this.config = workerData as SubmitterWorkerData;
@@ -53,18 +61,19 @@ class SubmitterWorker {
       this.logger,
     );
 
-    [this.evalQueue, this.submitQueue] = this.initializeQueues(
-      this.config.retryInterval,
-      this.config.maxTries,
-      this.store,
-      this.loadIncentivesContracts(this.config.incentivesAddresses),
-      this.config.chainId,
-      this.config.gasLimitBuffer,
-      this.config.transactionTimeout,
-      this.transactionHelper,
-      this.signer,
-      this.logger,
-    );
+    [this.evalQueue, this.submitQueue, this.confirmQueue] =
+      this.initializeQueues(
+        this.config.retryInterval,
+        this.config.maxTries,
+        this.store,
+        this.loadIncentivesContracts(this.config.incentivesAddresses),
+        this.config.chainId,
+        this.config.gasLimitBuffer,
+        this.config.transactionTimeout,
+        this.transactionHelper,
+        this.signer,
+        this.logger,
+      );
 
     this.initiateIntervalStatusLog();
   }
@@ -92,7 +101,7 @@ class SubmitterWorker {
     transactionHelper: TransactionHelper,
     signer: Wallet,
     logger: pino.Logger,
-  ): [EvalQueue, SubmitQueue] {
+  ): [EvalQueue, SubmitQueue, ConfirmQueue] {
     const evalQueue = new EvalQueue(
       retryInterval,
       maxTries,
@@ -103,6 +112,7 @@ class SubmitterWorker {
       signer,
       logger,
     );
+
     const submitQueue = new SubmitQueue(
       retryInterval,
       maxTries,
@@ -113,7 +123,18 @@ class SubmitterWorker {
       logger,
     );
 
-    return [evalQueue, submitQueue];
+    const confirmQueue = new ConfirmQueue(
+      retryInterval,
+      maxTries,
+      1, //TODO set 'confirmations' via config
+      incentivesContracts,
+      transactionHelper,
+      transactionTimeout,
+      signer,
+      logger,
+    );
+
+    return [evalQueue, submitQueue, confirmQueue];
   }
 
   /**
@@ -204,6 +225,7 @@ class SubmitterWorker {
     await this.transactionHelper.init();
     await this.evalQueue.init();
     await this.submitQueue.init();
+    await this.confirmQueue.init();
 
     // Start listener.
     this.listenForOrders();
@@ -214,18 +236,104 @@ class SubmitterWorker {
       await this.evalQueue.addOrders(...evalOrders);
       await this.evalQueue.processOrders();
 
-      const newUnderwriteOrders = this.evalQueue.getCompletedOrders();
-      await this.submitQueue.addOrders(...newUnderwriteOrders);
+      const [newSubmitOrders, ,] = this.evalQueue.getFinishedOrders();
+      await this.submitQueue.addOrders(...newSubmitOrders);
       await this.submitQueue.processOrders();
 
-      this.submitQueue.getCompletedOrders(); // Flush completed orders from queue
+      const [toConfirmSubmitOrders, ,] = this.submitQueue.getFinishedOrders();
+      await this.confirmQueue.addOrders(...toConfirmSubmitOrders);
+      await this.confirmQueue.processOrders();
 
-      // If it is time for any of the reties in the queue to be moved
-      // towards the action queues do that.
-      await this.evalQueue.processRetries();
-      await this.submitQueue.processRetries();
+      const [, unconfirmedSubmitOrders, rejectedSubmitOrders] =
+        this.confirmQueue.getFinishedOrders();
+
+      await this.handleUnconfirmedSubmitOrders(unconfirmedSubmitOrders);
+
+      await this.handleRejectedSubmitOrders(rejectedSubmitOrders);
 
       await wait(this.config.processingInterval);
+    }
+  }
+
+  private async handleUnconfirmedSubmitOrders(
+    unconfirmedSubmitOrders: SubmitOrderResult[],
+  ): Promise<void> {
+    for (const unconfirmedOrder of unconfirmedSubmitOrders) {
+      if (unconfirmedOrder.resubmit) {
+        const requeueOrder: SubmitOrder = {
+          amb: unconfirmedOrder.amb,
+          messageIdentifier: unconfirmedOrder.messageIdentifier,
+          message: unconfirmedOrder.message,
+          messageCtx: unconfirmedOrder.messageCtx,
+          gasLimit: unconfirmedOrder.gasLimit,
+          requeueCount: (unconfirmedOrder.requeueCount ?? 0) + 1,
+        };
+        await this.submitQueue.addOrders(requeueOrder);
+      }
+    }
+  }
+
+  private async handleRejectedSubmitOrders(
+    rejectedSubmitOrders: SubmitOrderResult[],
+  ): Promise<void> {
+    for (const rejectedOrder of rejectedSubmitOrders) {
+      const rejectedTxNonce = rejectedOrder.tx.nonce;
+      if (rejectedTxNonce == undefined) {
+        // This point should never be reached.
+        //TODO log warn?
+        continue;
+      }
+      this.cancelTransaction(rejectedTxNonce);
+    }
+  }
+
+  // This function does not return until the transaction of the given nonce is mined!
+  private async cancelTransaction(cancelTxNonce: number): Promise<void> {
+    for (let i = 0; i < this.config.maxTries; i++) {
+      this.transactionHelper.updateTransactionCount();
+
+      if (this.transactionHelper.getTransactionCount() > cancelTxNonce) {
+        return;
+      }
+
+      try {
+        const tx = await this.signer.sendTransaction({
+          nonce: cancelTxNonce,
+          to: constants.AddressZero,
+          data: '0x',
+          ...this.transactionHelper.getFeeDataForTransaction(), //TODO get max possible fee
+        });
+
+        this.provider.waitForTransaction(
+          tx.hash,
+          1, //TODO confirmations,
+          this.config.transactionTimeout,
+        );
+
+        // Transaction cancelled
+        return;
+      } catch {
+        // continue
+      }
+    }
+
+    while (true) {
+      this.logger.warn(
+        { nonce: cancelTxNonce },
+        `Submitter stalled. Waiting until pending transaction is resolved.`,
+      );
+
+      await wait(this.config.transactionTimeout);
+
+      this.transactionHelper.updateTransactionCount();
+
+      if (this.transactionHelper.getTransactionCount() > cancelTxNonce) {
+        this.logger.info(
+          { nonce: cancelTxNonce },
+          `Submitter resumed after stall recovery.`,
+        );
+        return;
+      }
     }
   }
 

@@ -1,3 +1,4 @@
+import { ContractTransaction } from 'ethers';
 import { BigNumber, BigNumberish, BytesLike } from 'ethers';
 
 export interface Order {
@@ -11,10 +12,13 @@ export interface EvalOrder extends Order {}
 
 export interface SubmitOrder extends Order {
   gasLimit: number | undefined;
+  requeueCount?: number;
 }
 
 export interface SubmitOrderResult extends SubmitOrder {
-  txHash: string;
+  tx: ContractTransaction;
+  replaceTx?: ContractTransaction;
+  resubmit?: boolean;
 }
 
 export interface NewOrder<OrderType> {
