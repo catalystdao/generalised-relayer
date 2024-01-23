@@ -30,6 +30,9 @@ relayer:
                                       # configuration property 'maxAllowedGasPrice' (if set).
     # maxAllowedGasPrice              # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
 
+    # priorityAdjustmentFactor        # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for 
+                                      # priority transactions.
+
   persister:
     enabled: false
     postgresString: "postgresql://username:password@location/database?sslmode=require"

@@ -54,6 +54,7 @@ export interface SubmitterConfig extends SubmitterGlobalConfig {
   maxAllowedPriorityFeePerGas?: number;
   gasPriceAdjustmentFactor?: number;
   maxAllowedGasPrice?: number;
+  priorityAdjustmentFactor?: number;
 }
 
 export interface PersisterConfig {

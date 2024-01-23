@@ -38,4 +38,5 @@ export interface GasFeeConfig {
   maxFeePerGas: BigNumber | undefined;
   maxPriorityFeeAdjustmentFactor: number | undefined;
   maxAllowedPriorityFeePerGas: BigNumber | undefined;
+  priorityAdjustmentFactor: number | undefined;
 }

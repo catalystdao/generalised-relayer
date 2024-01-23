@@ -173,6 +173,7 @@ class SubmitterWorker {
     return incentivesContracts;
   }
 
+  //TODO move config validation to TransactionHelper
   private loadGasFeeConfig(config: SubmitterWorkerData): GasFeeConfig {
     const {
       gasPriceAdjustmentFactor,
@@ -180,6 +181,7 @@ class SubmitterWorker {
       maxFeePerGas,
       maxPriorityFeeAdjustmentFactor,
       maxAllowedPriorityFeePerGas,
+      priorityAdjustmentFactor,
     } = config;
 
     if (
@@ -200,6 +202,16 @@ class SubmitterWorker {
       );
     }
 
+    if (
+      priorityAdjustmentFactor != undefined &&
+      (priorityAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR ||
+        priorityAdjustmentFactor < 1)
+    ) {
+      throw new Error(
+        `Failed to load gas fee configuration. 'priorityAdjustmentFactor' is larger than the allowed (${MAX_GAS_PRICE_ADJUSTMENT_FACTOR}) or less than 1.`,
+      );
+    }
+
     return {
       gasPriceAdjustmentFactor: gasPriceAdjustmentFactor,
       maxAllowedGasPrice:
@@ -213,6 +225,7 @@ class SubmitterWorker {
         maxAllowedPriorityFeePerGas != undefined
           ? BigNumber.from(maxAllowedPriorityFeePerGas)
           : undefined,
+      priorityAdjustmentFactor: priorityAdjustmentFactor,
     };
   }
 
@@ -306,9 +319,11 @@ class SubmitterWorker {
   // This function does not return until the transaction of the given nonce is mined!
   private async cancelTransaction(cancelTxNonce: number): Promise<void> {
     for (let i = 0; i < this.config.maxTries; i++) {
-      this.transactionHelper.updateTransactionCount();
+      // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
+      // helper takes into account the 'pending' transactions.
+      const latestNonce = await this.signer.getTransactionCount('latest');
 
-      if (this.transactionHelper.getTransactionCount() > cancelTxNonce) {
+      if (latestNonce > cancelTxNonce) {
         return;
       }
 
@@ -317,10 +332,10 @@ class SubmitterWorker {
           nonce: cancelTxNonce,
           to: constants.AddressZero,
           data: '0x',
-          ...this.transactionHelper.getFeeDataForTransaction(), //TODO get max possible fee
+          ...this.transactionHelper.getFeeDataForTransaction(true), //TODO get max possible fee
         });
 
-        this.provider.waitForTransaction(
+        await this.provider.waitForTransaction(
           tx.hash,
           1, //TODO confirmations,
           this.config.transactionTimeout,

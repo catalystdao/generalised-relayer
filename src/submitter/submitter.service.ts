@@ -40,6 +40,7 @@ export interface SubmitterWorkerData {
   maxAllowedPriorityFeePerGas: number | undefined;
   gasPriceAdjustmentFactor: number | undefined;
   maxAllowedGasPrice: number | undefined;
+  priorityAdjustmentFactor: number | undefined;
   loggerOptions: LoggerOptions;
 }
 
@@ -184,6 +185,8 @@ export class SubmitterService {
       gasPriceAdjustmentFactor: chainConfig.submitter.gasPriceAdjustmentFactor,
 
       maxAllowedGasPrice: chainConfig.submitter.maxAllowedGasPrice,
+
+      priorityAdjustmentFactor: chainConfig.submitter.priorityAdjustmentFactor,
 
       loggerOptions: this.loggerService.loggerOptions,
     };
