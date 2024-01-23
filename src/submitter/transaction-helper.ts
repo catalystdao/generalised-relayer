@@ -1,5 +1,5 @@
 import { FeeData } from '@ethersproject/providers';
-import { BigNumber, Wallet } from 'ethers';
+import { BigNumber, ContractTransaction, Wallet } from 'ethers';
 import { GasFeeConfig, GasFeeOverrides } from './submitter.types';
 import pino from 'pino';
 
@@ -223,5 +223,45 @@ export class TransactionHelper {
         gasPrice,
       };
     }
+  }
+
+  getIncreasedFeeDataForTransaction(
+    originalTx: ContractTransaction,
+  ): GasFeeOverrides {
+    const priorityFees = this.getFeeDataForTransaction(true);
+
+    return {
+      gasPrice: this.getLargestFee(originalTx.gasPrice, priorityFees.gasPrice),
+      maxFeePerGas: this.getLargestFee(
+        originalTx.maxFeePerGas,
+        priorityFees.maxFeePerGas,
+      ),
+      maxPriorityFeePerGas: this.getLargestFee(
+        originalTx.maxPriorityFeePerGas,
+        priorityFees.maxPriorityFeePerGas,
+      ),
+    };
+  }
+
+  // If 'previousFee' exists, return the largest of:
+  // - previousFee * priorityAdjustmentFactor
+  // - priorityFee
+  private getLargestFee(
+    previousFee: BigNumber | undefined,
+    priorityFee: BigNumber | undefined,
+  ): BigNumber | undefined {
+    if (previousFee != undefined) {
+      const increasedPreviousFee = previousFee
+        .mul(this.priorityAdjustmentFactor)
+        .div(DECIMAL_BASE_BIG_NUMBER);
+
+      if (priorityFee == undefined || increasedPreviousFee > priorityFee) {
+        return increasedPreviousFee;
+      } else {
+        return priorityFee;
+      }
+    }
+
+    return undefined;
   }
 }

@@ -1,5 +1,4 @@
-import { ContractTransaction } from 'ethers';
-import { BigNumberish, BytesLike } from 'ethers';
+import { BigNumber, ContractTransaction, BytesLike } from 'ethers';
 
 export interface Order {
   amb: string;
@@ -27,9 +26,9 @@ export interface NewOrder<OrderType> {
 }
 
 export interface GasFeeOverrides {
-  gasPrice?: BigNumberish;
-  maxFeePerGas?: BigNumberish;
-  maxPriorityFeePerGas?: BigNumberish;
+  gasPrice?: BigNumber;
+  maxFeePerGas?: BigNumber;
+  maxPriorityFeePerGas?: BigNumber;
 }
 
 export interface GasFeeConfig {

@@ -1,4 +1,4 @@
-import { BytesLike, Wallet, constants } from 'ethers';
+import { BytesLike, ContractTransaction, Wallet, constants } from 'ethers';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
@@ -259,18 +259,19 @@ class SubmitterWorker {
     rejectedSubmitOrders: SubmitOrderResult[],
   ): Promise<void> {
     for (const rejectedOrder of rejectedSubmitOrders) {
-      const rejectedTxNonce = rejectedOrder.tx.nonce;
-      if (rejectedTxNonce == undefined) {
-        // This point should never be reached.
-        //TODO log warn?
-        continue;
-      }
-      this.cancelTransaction(rejectedTxNonce);
+      await this.cancelTransaction(rejectedOrder.tx);
     }
   }
 
   // This function does not return until the transaction of the given nonce is mined!
-  private async cancelTransaction(cancelTxNonce: number): Promise<void> {
+  private async cancelTransaction(baseTx: ContractTransaction): Promise<void> {
+    const cancelTxNonce = baseTx.nonce;
+    if (cancelTxNonce == undefined) {
+      // This point should never be reached.
+      //TODO log warn?
+      return;
+    }
+
     for (let i = 0; i < this.config.maxTries; i++) {
       // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
       // helper takes into account the 'pending' transactions.
@@ -285,7 +286,7 @@ class SubmitterWorker {
           nonce: cancelTxNonce,
           to: constants.AddressZero,
           data: '0x',
-          ...this.transactionHelper.getFeeDataForTransaction(true), //TODO get max possible fee
+          ...this.transactionHelper.getIncreasedFeeDataForTransaction(baseTx),
         });
 
         await this.provider.waitForTransaction(

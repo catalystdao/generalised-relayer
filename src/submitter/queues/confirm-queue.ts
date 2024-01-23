@@ -1,6 +1,6 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
 import { SubmitOrderResult } from '../submitter.types';
-import { BigNumber, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
@@ -60,23 +60,8 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       const originalTx = order.tx;
       const contract = this.incentivesContracts.get(order.amb)!;
 
-      const newGasLimit = originalTx.gasLimit
-        ? BigNumber.from(originalTx.gasLimit)
-            .mul(BigNumber.from(11))
-            .div(BigNumber.from(10))
-        : undefined; //TODO set increase amount adjustable. Also, use update feeData values into account
-
-      const newMaxPriorityFeePerGas = originalTx.maxPriorityFeePerGas
-        ? BigNumber.from(originalTx.maxPriorityFeePerGas)
-            .mul(BigNumber.from(11))
-            .div(BigNumber.from(10))
-        : undefined; //TODO set increase amount adjustable. Also, use update feeData values into account
-
-      const newMaxFeePerGas = originalTx.maxFeePerGas
-        ? BigNumber.from(originalTx.maxFeePerGas)
-            .mul(BigNumber.from(11))
-            .div(BigNumber.from(10))
-        : undefined; //TODO set increase amount adjustable. Also, use update feeData values into account
+      const increasedFeeConfig =
+        this.transactionHelper.getIncreasedFeeDataForTransaction(originalTx);
 
       order.replaceTx = await contract.processPacket(
         order.messageCtx,
@@ -84,9 +69,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
         this.relayerAddress,
         {
           nonce: originalTx.nonce,
-          gasLimit: newGasLimit,
-          maxPriorityFeePerGas: newMaxPriorityFeePerGas,
-          maxFeePerGas: newMaxFeePerGas,
+          ...increasedFeeConfig,
         },
       );
     }
