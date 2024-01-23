@@ -1,5 +1,5 @@
 import { ContractTransaction } from 'ethers';
-import { BigNumber, BigNumberish, BytesLike } from 'ethers';
+import { BigNumberish, BytesLike } from 'ethers';
 
 export interface Order {
   amb: string;
@@ -34,9 +34,9 @@ export interface GasFeeOverrides {
 
 export interface GasFeeConfig {
   gasPriceAdjustmentFactor: number | undefined;
-  maxAllowedGasPrice: BigNumber | undefined;
-  maxFeePerGas: BigNumber | undefined;
+  maxAllowedGasPrice: number | undefined;
+  maxFeePerGas: number | undefined;
   maxPriorityFeeAdjustmentFactor: number | undefined;
-  maxAllowedPriorityFeePerGas: BigNumber | undefined;
+  maxAllowedPriorityFeePerGas: number | undefined;
   priorityAdjustmentFactor: number | undefined;
 }

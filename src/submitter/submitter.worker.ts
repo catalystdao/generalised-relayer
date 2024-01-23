@@ -1,4 +1,4 @@
-import { BigNumber, BytesLike, Wallet, constants } from 'ethers';
+import { BytesLike, Wallet, constants } from 'ethers';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
@@ -20,8 +20,6 @@ import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { TransactionHelper } from './transaction-helpers';
 import { ConfirmQueue } from './queues/confirm-queue';
-
-const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
 
 class SubmitterWorker {
   readonly store: Store;
@@ -55,8 +53,8 @@ class SubmitterWorker {
     this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
     this.transactionHelper = new TransactionHelper(
+      this.getGasFeeConfig(this.config),
       this.config.retryInterval,
-      this.loadGasFeeConfig(this.config),
       this.signer,
       this.logger,
     );
@@ -173,59 +171,14 @@ class SubmitterWorker {
     return incentivesContracts;
   }
 
-  //TODO move config validation to TransactionHelper
-  private loadGasFeeConfig(config: SubmitterWorkerData): GasFeeConfig {
-    const {
-      gasPriceAdjustmentFactor,
-      maxAllowedGasPrice,
-      maxFeePerGas,
-      maxPriorityFeeAdjustmentFactor,
-      maxAllowedPriorityFeePerGas,
-      priorityAdjustmentFactor,
-    } = config;
-
-    if (
-      gasPriceAdjustmentFactor != undefined &&
-      gasPriceAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR
-    ) {
-      throw new Error(
-        `Failed to load gas fee configuration. 'gasPriceAdjustmentFactor' is larger than the allowed (${MAX_GAS_PRICE_ADJUSTMENT_FACTOR})`,
-      );
-    }
-
-    if (
-      maxPriorityFeeAdjustmentFactor != undefined &&
-      maxPriorityFeeAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR
-    ) {
-      throw new Error(
-        `Failed to load gas fee configuration. 'maxPriorityFeeAdjustmentFactor' is larger than the allowed (${MAX_GAS_PRICE_ADJUSTMENT_FACTOR})`,
-      );
-    }
-
-    if (
-      priorityAdjustmentFactor != undefined &&
-      (priorityAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR ||
-        priorityAdjustmentFactor < 1)
-    ) {
-      throw new Error(
-        `Failed to load gas fee configuration. 'priorityAdjustmentFactor' is larger than the allowed (${MAX_GAS_PRICE_ADJUSTMENT_FACTOR}) or less than 1.`,
-      );
-    }
-
+  private getGasFeeConfig(config: SubmitterWorkerData): GasFeeConfig {
     return {
-      gasPriceAdjustmentFactor: gasPriceAdjustmentFactor,
-      maxAllowedGasPrice:
-        maxAllowedGasPrice != undefined
-          ? BigNumber.from(maxAllowedGasPrice)
-          : undefined,
-      maxFeePerGas:
-        maxFeePerGas != undefined ? BigNumber.from(maxFeePerGas) : undefined,
-      maxPriorityFeeAdjustmentFactor: maxPriorityFeeAdjustmentFactor,
-      maxAllowedPriorityFeePerGas:
-        maxAllowedPriorityFeePerGas != undefined
-          ? BigNumber.from(maxAllowedPriorityFeePerGas)
-          : undefined,
-      priorityAdjustmentFactor: priorityAdjustmentFactor,
+      gasPriceAdjustmentFactor: config.gasPriceAdjustmentFactor,
+      maxAllowedGasPrice: config.maxAllowedGasPrice,
+      maxFeePerGas: config.maxFeePerGas,
+      maxPriorityFeeAdjustmentFactor: config.maxPriorityFeeAdjustmentFactor,
+      maxAllowedPriorityFeePerGas: config.maxAllowedPriorityFeePerGas,
+      priorityAdjustmentFactor: config.priorityAdjustmentFactor,
     };
   }
 
