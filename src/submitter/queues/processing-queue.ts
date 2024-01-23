@@ -208,6 +208,7 @@ export abstract class ProcessingQueue<OrderType, ReturnType = OrderType> {
         order.retryCount,
       );
       this.rejectedOrders.push(order.order);
+      return;
     }
 
     const retryOrder = await this.handleFailedOrder(
