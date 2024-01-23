@@ -12,7 +12,7 @@ relayer:
     processingInterval: 100
     maxTries: 3
     maxPendingTransactions: 50
-    transactionTimeout: 60000
+    confirmationTimeout: 60000
     gasLimitBuffer:
       default: 10000
       mock: 50000

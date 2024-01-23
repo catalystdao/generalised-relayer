@@ -67,7 +67,7 @@ class SubmitterWorker {
         this.loadIncentivesContracts(this.config.incentivesAddresses),
         this.config.chainId,
         this.config.gasLimitBuffer,
-        this.config.transactionTimeout,
+        this.config.confirmationTimeout,
         this.transactionHelper,
         this.signer,
         this.logger,
@@ -95,7 +95,7 @@ class SubmitterWorker {
     incentivesContracts: Map<string, IncentivizedMessageEscrow>,
     chainId: string,
     gasLimitBuffer: Record<string, number>,
-    transactionTimeout: number,
+    confirmationTimeout: number,
     transactionHelper: TransactionHelper,
     signer: Wallet,
     logger: pino.Logger,
@@ -116,7 +116,7 @@ class SubmitterWorker {
       maxTries,
       incentivesContracts,
       transactionHelper,
-      transactionTimeout,
+      confirmationTimeout,
       signer,
       logger,
     );
@@ -127,7 +127,7 @@ class SubmitterWorker {
       1, //TODO set 'confirmations' via config
       incentivesContracts,
       transactionHelper,
-      transactionTimeout,
+      confirmationTimeout,
       signer,
       logger,
     );
@@ -292,7 +292,7 @@ class SubmitterWorker {
         await this.provider.waitForTransaction(
           tx.hash,
           1, //TODO confirmations,
-          this.config.transactionTimeout,
+          this.config.confirmationTimeout,
         );
 
         // Transaction cancelled
@@ -308,7 +308,7 @@ class SubmitterWorker {
         `Submitter stalled. Waiting until pending transaction is resolved.`,
       );
 
-      await wait(this.config.transactionTimeout);
+      await wait(this.config.confirmationTimeout);
 
       this.transactionHelper.updateTransactionCount();
 

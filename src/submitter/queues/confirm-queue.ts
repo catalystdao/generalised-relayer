@@ -18,7 +18,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       IncentivizedMessageEscrow
     >,
     private readonly transactionHelper: TransactionHelper,
-    private readonly transactionTimeout: number,
+    private readonly confirmationTimeout: number,
     private readonly signer: Wallet,
     private readonly logger: pino.Logger,
   ) {
@@ -47,7 +47,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
         .waitForTransaction(
           order.tx.hash,
           this.confirmations,
-          this.transactionTimeout,
+          this.confirmationTimeout,
         )
         .then((_receipt) => null);
 
@@ -78,7 +78,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       .waitForTransaction(
         order.replaceTx!.hash,
         this.confirmations,
-        this.transactionTimeout,
+        this.confirmationTimeout,
       )
       .then((_receipt) => null);
 

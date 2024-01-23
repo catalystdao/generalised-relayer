@@ -20,7 +20,7 @@ export class SubmitQueue extends ProcessingQueue<
       IncentivizedMessageEscrow
     >,
     private readonly transactionHelper: TransactionHelper,
-    private readonly transactionTimeout: number,
+    private readonly confirmationTimeout: number,
     private readonly signer: Wallet,
     private readonly logger: pino.Logger,
   ) {

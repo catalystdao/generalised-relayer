@@ -10,7 +10,7 @@ const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 1000;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
-const TRANSACTION_TIMEOUT_DEFAULT = 10 * 60000;
+const CONFIRMATION_TIMEOUT_DEFAULT = 10 * 60000;
 
 interface GlobalSubmitterConfig {
   enabled: boolean;
@@ -19,7 +19,7 @@ interface GlobalSubmitterConfig {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
-  transactionTimeout: number;
+  confirmationTimeout: number;
   gasLimitBuffer: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
 }
 
@@ -33,7 +33,7 @@ export interface SubmitterWorkerData {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
-  transactionTimeout: number;
+  confirmationTimeout: number;
   gasLimitBuffer: Record<string, number>;
   maxFeePerGas: number | undefined;
   maxPriorityFeeAdjustmentFactor: number | undefined;
@@ -107,8 +107,8 @@ export class SubmitterService {
     const maxTries = submitterConfig.maxTries ?? MAX_TRIES_DEFAULT;
     const maxPendingTransactions =
       submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
-    const transactionTimeout =
-      submitterConfig.transactionTimeout ?? TRANSACTION_TIMEOUT_DEFAULT;
+    const confirmationTimeout =
+      submitterConfig.confirmationTimeout ?? CONFIRMATION_TIMEOUT_DEFAULT;
 
     const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
     if (!('default' in gasLimitBuffer)) {
@@ -122,7 +122,7 @@ export class SubmitterService {
       processingInterval,
       maxTries,
       maxPendingTransactions,
-      transactionTimeout,
+      confirmationTimeout,
       gasLimitBuffer,
     };
   }
@@ -165,9 +165,9 @@ export class SubmitterService {
         chainConfig.submitter.maxPendingTransactions ??
         globalConfig.maxPendingTransactions,
 
-      transactionTimeout:
-        chainConfig.submitter.transactionTimeout ??
-        globalConfig.transactionTimeout,
+      confirmationTimeout:
+        chainConfig.submitter.confirmationTimeout ??
+        globalConfig.confirmationTimeout,
 
       gasLimitBuffer: this.getChainGasLimitBufferConfig(
         globalConfig.gasLimitBuffer,
