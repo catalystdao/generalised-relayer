@@ -260,13 +260,29 @@ class SubmitterWorker {
   ): Promise<void> {
     for (const unconfirmedOrder of unconfirmedSubmitOrders) {
       if (unconfirmedOrder.resubmit) {
+        const requeueCount = unconfirmedOrder.requeueCount ?? 0;
+        if (requeueCount >= this.config.maxTries - 1) {
+          const orderDescription = {
+            originalTxHash: unconfirmedOrder.tx.hash,
+            replaceTxHash: unconfirmedOrder.replaceTx?.hash,
+            resubmit: unconfirmedOrder.resubmit,
+            requeueCount: requeueCount,
+          };
+
+          this.logger.warn(
+            orderDescription,
+            `Transaction confirmation failure. Maximum number of requeues reached. Dropping message.`,
+          );
+          continue;
+        }
+
         const requeueOrder: SubmitOrder = {
           amb: unconfirmedOrder.amb,
           messageIdentifier: unconfirmedOrder.messageIdentifier,
           message: unconfirmedOrder.message,
           messageCtx: unconfirmedOrder.messageCtx,
           gasLimit: unconfirmedOrder.gasLimit,
-          requeueCount: (unconfirmedOrder.requeueCount ?? 0) + 1,
+          requeueCount: requeueCount + 1,
         };
         await this.submitQueue.addOrders(requeueOrder);
       }
