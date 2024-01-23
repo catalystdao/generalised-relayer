@@ -18,7 +18,7 @@ import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
-import { TransactionHelper } from './transaction-helpers';
+import { TransactionHelper } from './transaction-helper';
 import { ConfirmQueue } from './queues/confirm-queue';
 
 class SubmitterWorker {

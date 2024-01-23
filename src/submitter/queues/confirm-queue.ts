@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
-import { TransactionHelper } from '../transaction-helpers';
+import { TransactionHelper } from '../transaction-helper';
 
 export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
   private relayerAddress: string;

@@ -4,7 +4,7 @@ import { Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
-import { TransactionHelper } from '../transaction-helpers';
+import { TransactionHelper } from '../transaction-helper';
 
 export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
