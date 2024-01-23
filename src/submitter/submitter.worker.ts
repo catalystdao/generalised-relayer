@@ -422,7 +422,8 @@ class SubmitterWorker {
       0,
       this.config.maxPendingTransactions -
         this.evalQueue.size -
-        this.submitQueue.size,
+        this.submitQueue.size -
+        this.confirmQueue.size,
     );
   }
 }
