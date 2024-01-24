@@ -68,6 +68,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
         order.message,
         this.relayerAddress,
         {
+          gasLimit: originalTx.gasLimit,
           nonce: originalTx.nonce,
           ...increasedFeeConfig,
         },
