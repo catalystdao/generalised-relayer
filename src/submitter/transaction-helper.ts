@@ -230,16 +230,34 @@ export class TransactionHelper {
   ): GasFeeOverrides {
     const priorityFees = this.getFeeDataForTransaction(true);
 
+    const gasPrice = this.getLargestFee(
+      originalTx.gasPrice,
+      priorityFees.gasPrice,
+    );
+    const maxFeePerGas = this.getLargestFee(
+      originalTx.maxFeePerGas,
+      priorityFees.maxFeePerGas,
+    );
+    const maxPriorityFeePerGas = this.getLargestFee(
+      originalTx.maxPriorityFeePerGas,
+      priorityFees.maxPriorityFeePerGas,
+    );
+
+    if (
+      gasPrice == undefined &&
+      maxFeePerGas == undefined &&
+      maxPriorityFeePerGas == undefined
+    ) {
+      this.logger.warn(
+        { tx: originalTx.hash },
+        `Failed to compute increased fee data for tx. All fee values returned 'undefined'.`,
+      );
+    }
+
     return {
-      gasPrice: this.getLargestFee(originalTx.gasPrice, priorityFees.gasPrice),
-      maxFeePerGas: this.getLargestFee(
-        originalTx.maxFeePerGas,
-        priorityFees.maxFeePerGas,
-      ),
-      maxPriorityFeePerGas: this.getLargestFee(
-        originalTx.maxPriorityFeePerGas,
-        priorityFees.maxPriorityFeePerGas,
-      ),
+      gasPrice,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
     };
   }
 
