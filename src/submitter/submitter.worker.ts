@@ -39,6 +39,8 @@ class SubmitterWorker {
   readonly submitQueue: SubmitQueue;
   readonly confirmQueue: ConfirmQueue;
 
+  private isStalled = false;
+
   constructor() {
     this.config = workerData as SubmitterWorkerData;
 
@@ -149,6 +151,9 @@ class SubmitterWorker {
         evalRetryQueue: this.evalQueue.retryQueue.length,
         submitQueue: this.submitQueue.size,
         submitRetryQueue: this.submitQueue.retryQueue.length,
+        confirmQueue: this.confirmQueue.size,
+        confirmRetryQueue: this.confirmQueue.retryQueue.length,
+        isStalled: this.isStalled,
       };
       this.logger.info(status, 'Submitter status.');
     };
@@ -302,6 +307,7 @@ class SubmitterWorker {
       }
     }
 
+    this.isStalled = true;
     while (true) {
       this.logger.warn(
         { nonce: cancelTxNonce },
@@ -319,6 +325,7 @@ class SubmitterWorker {
           { nonce: cancelTxNonce },
           `Submitter resumed after stall recovery.`,
         );
+        this.isStalled = false;
         return;
       }
     }
