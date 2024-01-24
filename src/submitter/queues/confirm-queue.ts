@@ -75,15 +75,30 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       );
     }
 
-    const transactionReceipt = this.signer.provider
-      .waitForTransaction(
-        order.replaceTx!.hash,
-        this.confirmations,
-        this.confirmationTimeout,
-      )
-      .then((_receipt) => null);
+    // Wait for either the original or the replace transaction to fulfill
+    const originalTxReceipt = this.signer.provider.waitForTransaction(
+      order.tx.hash,
+      this.confirmations,
+      this.confirmationTimeout,
+    );
+    const replaceTxReceipt = this.signer.provider.waitForTransaction(
+      order.replaceTx!.hash,
+      this.confirmations,
+      this.confirmationTimeout,
+    );
 
-    return { result: transactionReceipt };
+    const confirmationPromise = Promise.any([
+      originalTxReceipt,
+      replaceTxReceipt,
+    ]).then(
+      () => null,
+      (aggregateError) => {
+        // If both the original/replace tx promises reject, throw the error of the replace tx.
+        throw aggregateError.errors?.[1];
+      },
+    );
+
+    return { result: confirmationPromise };
   }
 
   protected async handleFailedOrder(
