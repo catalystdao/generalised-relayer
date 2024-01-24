@@ -10,6 +10,7 @@ const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 1000;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
+const CONFIRMATIONS_DEFAULT = 1;
 const CONFIRMATION_TIMEOUT_DEFAULT = 10 * 60000;
 
 interface GlobalSubmitterConfig {
@@ -19,6 +20,7 @@ interface GlobalSubmitterConfig {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
+  confirmations: number;
   confirmationTimeout: number;
   gasLimitBuffer: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
 }
@@ -33,6 +35,7 @@ export interface SubmitterWorkerData {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
+  confirmations: number;
   confirmationTimeout: number;
   gasLimitBuffer: Record<string, number>;
   maxFeePerGas: number | undefined;
@@ -107,6 +110,8 @@ export class SubmitterService {
     const maxTries = submitterConfig.maxTries ?? MAX_TRIES_DEFAULT;
     const maxPendingTransactions =
       submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
+    const confirmations =
+      submitterConfig.confirmations ?? CONFIRMATIONS_DEFAULT;
     const confirmationTimeout =
       submitterConfig.confirmationTimeout ?? CONFIRMATION_TIMEOUT_DEFAULT;
 
@@ -122,6 +127,7 @@ export class SubmitterService {
       processingInterval,
       maxTries,
       maxPendingTransactions,
+      confirmations,
       confirmationTimeout,
       gasLimitBuffer,
     };
@@ -164,6 +170,9 @@ export class SubmitterService {
       maxPendingTransactions:
         chainConfig.submitter.maxPendingTransactions ??
         globalConfig.maxPendingTransactions,
+
+      confirmations:
+        chainConfig.submitter.confirmations ?? globalConfig.confirmations,
 
       confirmationTimeout:
         chainConfig.submitter.confirmationTimeout ??

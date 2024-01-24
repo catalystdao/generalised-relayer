@@ -69,6 +69,7 @@ class SubmitterWorker {
         this.loadIncentivesContracts(this.config.incentivesAddresses),
         this.config.chainId,
         this.config.gasLimitBuffer,
+        this.config.confirmations,
         this.config.confirmationTimeout,
         this.transactionHelper,
         this.signer,
@@ -97,6 +98,7 @@ class SubmitterWorker {
     incentivesContracts: Map<string, IncentivizedMessageEscrow>,
     chainId: string,
     gasLimitBuffer: Record<string, number>,
+    confirmations: number,
     confirmationTimeout: number,
     transactionHelper: TransactionHelper,
     signer: Wallet,
@@ -126,7 +128,7 @@ class SubmitterWorker {
     const confirmQueue = new ConfirmQueue(
       retryInterval,
       maxTries,
-      1, //TODO set 'confirmations' via config
+      confirmations,
       incentivesContracts,
       transactionHelper,
       confirmationTimeout,
@@ -296,7 +298,7 @@ class SubmitterWorker {
 
         await this.provider.waitForTransaction(
           tx.hash,
-          1, //TODO confirmations,
+          this.config.confirmations,
           this.config.confirmationTimeout,
         );
 

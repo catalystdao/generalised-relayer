@@ -44,6 +44,7 @@ export interface SubmitterGlobalConfig {
   processingInterval?: number;
   maxTries?: number;
   maxPendingTransactions?: number;
+  confirmations?: number;
   confirmationTimeout?: number;
   gasLimitBuffer?: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
 }
