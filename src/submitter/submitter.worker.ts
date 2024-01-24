@@ -310,9 +310,11 @@ class SubmitterWorker {
 
       await wait(this.config.confirmationTimeout);
 
-      this.transactionHelper.updateTransactionCount();
+      // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
+      // helper takes into account the 'pending' transactions.
+      const latestNonce = await this.signer.getTransactionCount('latest');
 
-      if (this.transactionHelper.getTransactionCount() > cancelTxNonce) {
+      if (latestNonce > cancelTxNonce) {
         this.logger.info(
           { nonce: cancelTxNonce },
           `Submitter resumed after stall recovery.`,
