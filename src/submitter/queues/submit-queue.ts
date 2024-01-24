@@ -61,6 +61,7 @@ export class SubmitQueue extends ProcessingQueue<
       this.relayerAddress,
       {
         nonce: this.transactionHelper.getTransactionCount(),
+        gasLimit: order.gasLimit,
         ...this.transactionHelper.getFeeDataForTransaction(),
       },
     );
