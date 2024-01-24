@@ -153,14 +153,17 @@ export class Store {
     );
   }
 
-  on(channel: string, callback: (payload: { [key: string]: any }) => void) {
+  async on(
+    channel: string,
+    callback: (payload: { [key: string]: any }) => void,
+  ) {
     const redisSubscriptions = this.getOrOpenSubscription();
     // Subscribe to the channel so that we get messages.
     const channelWithprefix = Store.combineString(
       Store.relayerStorePrefix,
       channel,
     );
-    redisSubscriptions.subscribe(channelWithprefix);
+    await redisSubscriptions.subscribe(channelWithprefix);
     // Set the callback when we receive messages function.
     redisSubscriptions.on('message', (redis_channel, redis_message) => {
       if (redis_channel === channelWithprefix)

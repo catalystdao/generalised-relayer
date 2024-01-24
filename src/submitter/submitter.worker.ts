@@ -199,7 +199,7 @@ class SubmitterWorker {
     await this.confirmQueue.init();
 
     // Start listener.
-    this.listenForOrders();
+    await this.listenForOrders();
 
     while (true) {
       const evalOrders = await this.processNewOrdersQueue();
@@ -334,12 +334,12 @@ class SubmitterWorker {
   /**
    * Subscribe to the Store to listen for relevant payloads to submit.
    */
-  private listenForOrders(): void {
+  private async listenForOrders(): Promise<void> {
     const listenToChannel = Store.getChannel('submit', this.chainId);
     this.logger.info(`Listing for messages to submit on ${listenToChannel}`);
 
-    this.store.on(listenToChannel, (message: AmbPayload) => {
-      this.addSubmitOrder(
+    await this.store.on(listenToChannel, (message: AmbPayload) => {
+      void this.addSubmitOrder(
         message.amb,
         message.messageIdentifier,
         message.message,
@@ -363,7 +363,7 @@ class SubmitterWorker {
     );
     if (priority) {
       // Push directly into the submit queue
-      this.submitQueue.addOrders({
+      await this.submitQueue.addOrders({
         amb,
         messageIdentifier,
         message,
@@ -422,4 +422,4 @@ class SubmitterWorker {
   }
 }
 
-new SubmitterWorker().run();
+void new SubmitterWorker().run();

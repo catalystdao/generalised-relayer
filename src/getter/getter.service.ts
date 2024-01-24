@@ -324,4 +324,4 @@ const handleBountyIncreasedEvent = async (
   });
 };
 
-bootstrap();
+void bootstrap();
