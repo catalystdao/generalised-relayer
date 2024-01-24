@@ -185,7 +185,7 @@ export abstract class ProcessingQueue<OrderType, ReturnType = OrderType> {
     order: ProcessOrder<OrderType>,
     result: ReturnType | null,
   ): Promise<void> {
-    await this.onOrderCompletion(order.order, true, null, order.retryCount);
+    await this.onOrderCompletion(order.order, true, result, order.retryCount);
 
     if (result != null) {
       this.completedOrders.push(result);
