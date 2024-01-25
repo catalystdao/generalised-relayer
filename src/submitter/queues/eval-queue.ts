@@ -65,7 +65,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       return false; // Do not retry eval
     }
 
-    this.logger.warn(errorDescription, `Error on underwrite eval.`);
+    this.logger.warn(errorDescription, `Error on order eval.`);
 
     return true;
   }
