@@ -68,11 +68,6 @@ export class SubmitQueue extends ProcessingQueue<
 
     this.transactionHelper.increaseTransactionCount();
 
-    this.logger.info(
-      { messageIdentifier: order.messageIdentifier, txHash: tx.hash },
-      `Submitted message.`,
-    );
-
     return { result: { tx, ...order } };
   }
 
