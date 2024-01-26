@@ -1,4 +1,4 @@
-import { FeeData } from '@ethersproject/providers';
+import { BaseProvider, FeeData } from '@ethersproject/providers';
 import { BigNumber, ContractTransaction, Wallet } from 'ethers';
 import { GasFeeConfig, GasFeeOverrides } from './submitter.types';
 import pino from 'pino';
@@ -27,7 +27,8 @@ export class TransactionHelper {
   constructor(
     gasFeeConfig: GasFeeConfig,
     private readonly retryInterval: number,
-    private readonly signer: Wallet,
+    private readonly provider: BaseProvider,
+    private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
     this.loadGasFeeConfig(gasFeeConfig);
@@ -121,7 +122,7 @@ export class TransactionHelper {
     while (true) {
       try {
         this.transactionCount =
-          await this.signer.getTransactionCount('pending'); //TODO 'pending' may not be supported
+          await this.wallet.getTransactionCount('pending'); //TODO 'pending' may not be supported
         break;
       } catch (error) {
         // Continue trying indefinitely. If the transaction count is incorrect, no transaction will go through.
@@ -143,7 +144,7 @@ export class TransactionHelper {
 
   async updateFeeData(): Promise<void> {
     try {
-      this.feeData = await this.signer.provider.getFeeData();
+      this.feeData = await this.provider.getFeeData();
     } catch {
       // Continue with stale fee data.
     }

@@ -57,6 +57,7 @@ class SubmitterWorker {
     this.transactionHelper = new TransactionHelper(
       this.getGasFeeConfig(this.config),
       this.config.retryInterval,
+      this.provider,
       this.signer,
       this.logger,
     );
