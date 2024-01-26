@@ -122,6 +122,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     const errorDescription = {
       messageIdentifier: order.messageIdentifier,
       error,
+      requeueCount: order.requeueCount,
       try: retryCount + 1,
     };
 
@@ -174,6 +175,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     const errorDescription = {
       messageIdentifier: order.messageIdentifier,
       error,
+      requeueCount: order.requeueCount,
       try: retryCount + 1,
     };
 
