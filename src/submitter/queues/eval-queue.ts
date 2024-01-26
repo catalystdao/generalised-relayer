@@ -9,7 +9,7 @@ import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
-  private relayerAddress: string;
+  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -21,14 +21,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     >,
     private readonly chainId: string,
     private readonly gasLimitBuffer: Record<string, number>,
-    private readonly signer: Wallet,
+    private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-  }
-
-  async init(): Promise<void> {
-    this.relayerAddress = hexZeroPad(await this.signer.getAddress(), 32);
+    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
   }
 
   protected async handleOrder(

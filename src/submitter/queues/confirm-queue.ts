@@ -8,7 +8,7 @@ import { TransactionHelper } from '../transaction-helper';
 import { BaseProvider } from '@ethersproject/providers';
 
 export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
-  private relayerAddress: string;
+  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,

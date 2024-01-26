@@ -10,7 +10,7 @@ export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
   SubmitOrderResult
 > {
-  private relayerAddress: string;
+  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -21,14 +21,11 @@ export class SubmitQueue extends ProcessingQueue<
     >,
     private readonly transactionHelper: TransactionHelper,
     private readonly confirmationTimeout: number,
-    private readonly signer: Wallet,
+    private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-  }
-
-  async init(): Promise<void> {
-    this.relayerAddress = hexZeroPad(await this.signer.getAddress(), 32);
+    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
   }
 
   protected async onProcessOrders(): Promise<void> {
