@@ -148,7 +148,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     if (
       error.code === 'NONCE_EXPIRED' ||
       error.code === 'REPLACEMENT_UNDERPRICED' ||
-      error.error?.message.includes('invalid sequence') //TODO is this dangerous?
+      error.error?.message.includes('invalid sequence') //TODO is this dangerous? (any contract may include that error)
     ) {
       this.logger.info(
         errorDescription,
@@ -211,7 +211,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     // that case, the order will error on the submitter.
     if (
       error.code === 'NONCE_EXPIRED' ||
-      error.error?.message.includes('invalid sequence') //TODO is this dangerous?
+      error.error?.message.includes('invalid sequence') //TODO is this dangerous? (any contract may include that error)
     ) {
       this.logger.info(
         errorDescription,
