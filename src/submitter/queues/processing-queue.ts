@@ -1,4 +1,3 @@
-//TODO replace this file with the following package once made public https://github.com/catalystdao/ProcessingQueue
 export interface ProcessOrder<T> {
   order: T;
   retryCount: number;
