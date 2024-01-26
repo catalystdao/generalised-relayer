@@ -5,6 +5,7 @@ import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
 import { TransactionHelper } from '../transaction-helper';
+import { BaseProvider } from '@ethersproject/providers';
 
 export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
   private relayerAddress: string;
@@ -19,7 +20,8 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     >,
     private readonly transactionHelper: TransactionHelper,
     private readonly confirmationTimeout: number,
-    private readonly signer: Wallet,
+    private readonly provider: BaseProvider,
+    private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
     super(
@@ -27,10 +29,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       maxTries,
       1, // Confirm transactions one at a time
     );
-  }
-
-  async init(): Promise<void> {
-    this.relayerAddress = hexZeroPad(await this.signer.getAddress(), 32);
+    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
   }
 
   protected async onOrderInit(order: SubmitOrderResult): Promise<void> {
@@ -43,7 +42,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
   ): Promise<HandleOrderResult<null> | null> {
     // If it's the first time the order is processed, just wait for it
     if (retryCount == 0) {
-      const transactionReceipt = this.signer.provider
+      const transactionReceipt = this.provider
         .waitForTransaction(
           order.tx.hash,
           this.confirmations,
@@ -76,12 +75,12 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     }
 
     // Wait for either the original or the replace transaction to fulfill
-    const originalTxReceipt = this.signer.provider.waitForTransaction(
+    const originalTxReceipt = this.provider.waitForTransaction(
       order.tx.hash,
       this.confirmations,
       this.confirmationTimeout,
     );
-    const replaceTxReceipt = this.signer.provider.waitForTransaction(
+    const replaceTxReceipt = this.provider.waitForTransaction(
       order.replaceTx!.hash,
       this.confirmations,
       this.confirmationTimeout,

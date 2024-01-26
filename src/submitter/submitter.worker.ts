@@ -1,5 +1,5 @@
 import { BytesLike, ContractTransaction, Wallet, constants } from 'ethers';
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
+import { BaseProvider, StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { IncentivizedMessageEscrow } from 'src/contracts';
@@ -73,6 +73,7 @@ class SubmitterWorker {
         this.config.confirmations,
         this.config.confirmationTimeout,
         this.transactionHelper,
+        this.provider,
         this.signer,
         this.logger,
       );
@@ -102,6 +103,7 @@ class SubmitterWorker {
     confirmations: number,
     confirmationTimeout: number,
     transactionHelper: TransactionHelper,
+    provider: BaseProvider,
     signer: Wallet,
     logger: pino.Logger,
   ): [EvalQueue, SubmitQueue, ConfirmQueue] {
@@ -133,6 +135,7 @@ class SubmitterWorker {
       incentivesContracts,
       transactionHelper,
       confirmationTimeout,
+      provider,
       signer,
       logger,
     );
