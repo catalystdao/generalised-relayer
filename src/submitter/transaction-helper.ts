@@ -124,7 +124,10 @@ export class TransactionHelper {
   }
 
   private loadBalanceConfig(config: BalanceConfig): void {
-    this.lowBalanceWarning = BigNumber.from(config.lowBalanceWarning);
+    this.lowBalanceWarning =
+      config.lowBalanceWarning == undefined
+        ? undefined
+        : BigNumber.from(config.lowBalanceWarning);
     this.balanceUpdateInterval = config.balanceUpdateInterval;
   }
 
