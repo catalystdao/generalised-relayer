@@ -169,7 +169,7 @@ export class TransactionHelper {
     this.transactionsSinceLastBalanceUpdate++;
 
     const newWalletBalance = this.walletBalance.sub(amount);
-    if (newWalletBalance < BigNumber.from(0)) {
+    if (newWalletBalance.lt(BigNumber.from(0))) {
       this.walletBalance = BigNumber.from(0);
     } else {
       this.walletBalance = newWalletBalance;
@@ -178,7 +178,7 @@ export class TransactionHelper {
     if (
       this.lowBalanceWarning != undefined &&
       !this.isBalanceLow && // Only trigger update if the current saved state is 'balance not low' (i.e. crossing the boundary)
-      this.walletBalance < this.lowBalanceWarning
+      this.walletBalance.lt(this.lowBalanceWarning)
     ) {
       await this.updateWalletBalance();
     }
@@ -219,7 +219,7 @@ export class TransactionHelper {
     this.transactionsSinceLastBalanceUpdate = 0;
 
     if (this.lowBalanceWarning != undefined) {
-      const isBalanceLow = this.walletBalance < this.lowBalanceWarning;
+      const isBalanceLow = this.walletBalance.lt(this.lowBalanceWarning);
       if (isBalanceLow != this.isBalanceLow) {
         this.isBalanceLow = isBalanceLow;
         const balanceInfo = {
