@@ -15,7 +15,7 @@ import { PersisterModule } from './store/persister/persister.module';
     EvaluatorModule,
     CollectorModule,
     SubmitterModule,
-    PersisterModule
+    PersisterModule,
   ],
 })
 export class AppModule {}

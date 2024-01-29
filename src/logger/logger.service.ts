@@ -20,7 +20,7 @@ export class LoggerService {
     return {
       level: logLevel ?? 'info',
       base: { pid: process.pid }, // Remove default 'hostname' key from logs
-      redact: ['privateKey', '[*].privateKey']
+      redact: ['privateKey', '[*].privateKey'],
     };
   }
 

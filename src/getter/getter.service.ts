@@ -116,7 +116,10 @@ const bootstrap = async () => {
       );
 
       for (const log of logs) {
-        const parsedLog = {...incentivesContractInterface.parseLog(log), transactionHash: log.transactionHash};
+        const parsedLog = {
+          ...incentivesContractInterface.parseLog(log),
+          transactionHash: log.transactionHash,
+        };
 
         if (parsedLog == null) {
           logger.error(
@@ -234,7 +237,7 @@ const queryAllBountyEvents = async (
  */
 const handleBountyPlacedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & {transactionHash: string},
+  event: LogDescription & { transactionHash: string },
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -247,7 +250,7 @@ const handleBountyPlacedEvent = async (
     messageIdentifier,
     incentive,
     incentivesAddress,
-    transactionHash: event.transactionHash
+    transactionHash: event.transactionHash,
   });
 };
 
@@ -260,7 +263,7 @@ const handleBountyPlacedEvent = async (
  */
 const handleBountyClaimedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & {transactionHash: string},
+  event: LogDescription & { transactionHash: string },
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -284,7 +287,7 @@ const handleBountyClaimedEvent = async (
  */
 const handleMessageDeliveredEvent = async (
   incentivesAddress: string,
-  event: LogDescription & {transactionHash: string},
+  event: LogDescription & { transactionHash: string },
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -292,7 +295,11 @@ const handleMessageDeliveredEvent = async (
 
   logger.info(`MessageDelivered ${messageIdentifier}`);
 
-  await store.registerMessageDelivered({ messageIdentifier, incentivesAddress, transactionHash: event.transactionHash });
+  await store.registerMessageDelivered({
+    messageIdentifier,
+    incentivesAddress,
+    transactionHash: event.transactionHash,
+  });
 };
 
 //TODO doc
@@ -304,7 +311,7 @@ const handleMessageDeliveredEvent = async (
  */
 const handleBountyIncreasedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & {transactionHash: string},
+  event: LogDescription & { transactionHash: string },
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -320,7 +327,7 @@ const handleBountyIncreasedEvent = async (
     newDeliveryGasPrice,
     newAckGasPrice,
     incentivesAddress,
-    transactionHash: event.transactionHash
+    transactionHash: event.transactionHash,
   });
 };
 
