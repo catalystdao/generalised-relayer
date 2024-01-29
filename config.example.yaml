@@ -20,6 +20,7 @@ relayer:
 
     # Balance properties
     # lowBalanceWarning               # Balance below which a 'low balance' warning is emitted.
+                                      # ! Specified in WEI as a string
     # balanceUpdateInterval           # Number of transactions after which to update the balance from the rpc. 
 
     # Gas properties
