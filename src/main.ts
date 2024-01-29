@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { LoggerService } from './logger/logger.service';
 
-async function logLoadedOptions(
+function logLoadedOptions(
   configService: ConfigService,
   loggerService: LoggerService,
 ) {
@@ -32,4 +32,4 @@ async function bootstrap() {
 
   await app.listen(configService.relayerConfig.port);
 }
-bootstrap();
+void bootstrap();

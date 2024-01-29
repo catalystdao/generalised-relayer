@@ -69,7 +69,7 @@ const bootstrap = async () => {
         const payload = event.args.payload;
         const amb = decodeWormholeMessage(payload);
         logger.info(`Collected message ${amb.messageIdentifier}`);
-        store.setAmb(
+        await store.setAmb(
           {
             ...amb,
             sourceChain: chainId,
@@ -88,4 +88,4 @@ const bootstrap = async () => {
   }
 };
 
-bootstrap();
+void bootstrap();

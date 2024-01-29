@@ -40,7 +40,7 @@ export class PersisterService {
       },
     });
 
-    this.setSubscriptions(worker);
+    await this.setSubscriptions(worker);
 
     this.worker = worker;
   }
@@ -65,7 +65,7 @@ export class PersisterService {
             },
           });
 
-          this.setSubscriptions(newWorker);
+          void this.setSubscriptions(newWorker);
           this.worker = newWorker;
         });
       }

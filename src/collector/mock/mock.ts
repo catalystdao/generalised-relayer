@@ -92,7 +92,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
 
   const workers: Record<string, Worker | null> = {};
 
-  configService.chainsConfig.forEach(async (chainConfig) => {
+  configService.chainsConfig.forEach((chainConfig) => {
     const workerData = loadWorkerData(
       configService,
       loggerService,

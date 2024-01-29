@@ -41,7 +41,7 @@ class PersisterWorker {
     this.client = new Client({
       connectionString: this.postgresConnectionString,
     });
-    this.client.connect();
+    void this.client.connect(); //TODO this promise shouldn't be in the constructor, as it cannot be awaited here
     this.db = drizzle(this.client);
 
     // Connect to redis.
@@ -62,7 +62,7 @@ class PersisterWorker {
     this.logger.info(`Migrations finished.`);
 
     // Start listener
-    this.listen();
+    await this.listen();
     await migrationPromise;
 
     // SCAN!
@@ -87,7 +87,7 @@ class PersisterWorker {
       const parsedQueue: StoreUpdate[] = JSON.parse(queue);
       const returnElement = parsedQueue.shift();
 
-      this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
+      await this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
 
       return returnElement;
     }
@@ -128,8 +128,8 @@ class PersisterWorker {
 
     // Listen for key updates.
     this.logger.info(`Persister listening on on ${'key'}`);
-    this.store.on('key', (message: StoreUpdate) => {
-      this.queuePush(message);
+    await this.store.on('key', (message: StoreUpdate) => {
+      void this.queuePush(message);
     });
     // Listen for proofs. Notice that proofs aren't submitted so we need to listen seperately.
     // We need to iter over each key seperately.
@@ -344,4 +344,4 @@ class PersisterWorker {
   }
 }
 
-new PersisterWorker().run();
+void new PersisterWorker().run();

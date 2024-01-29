@@ -102,7 +102,7 @@ const bootstrap = async () => {
     await store.submitProof(destinationChain, ambPayload);
   });
 
-  app.listen();
+  await app.listen();
 };
 
-bootstrap();
+void bootstrap();
