@@ -12,6 +12,7 @@ const MAX_PENDING_TRANSACTIONS = 1000;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
 const CONFIRMATIONS_DEFAULT = 1;
 const CONFIRMATION_TIMEOUT_DEFAULT = 10 * 60000;
+const BALANCE_UPDATE_INTERVAL_DEFAULT = 50;
 
 interface GlobalSubmitterConfig {
   enabled: boolean;
@@ -22,6 +23,8 @@ interface GlobalSubmitterConfig {
   maxPendingTransactions: number;
   confirmations: number;
   confirmationTimeout: number;
+  lowBalanceWarning: number | undefined;
+  balanceUpdateInterval: number;
   gasLimitBuffer: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
 }
 
@@ -44,6 +47,8 @@ export interface SubmitterWorkerData {
   gasPriceAdjustmentFactor: number | undefined;
   maxAllowedGasPrice: number | undefined;
   priorityAdjustmentFactor: number | undefined;
+  lowBalanceWarning: number | undefined;
+  balanceUpdateInterval: number;
   loggerOptions: LoggerOptions;
 }
 
@@ -114,6 +119,9 @@ export class SubmitterService {
       submitterConfig.confirmations ?? CONFIRMATIONS_DEFAULT;
     const confirmationTimeout =
       submitterConfig.confirmationTimeout ?? CONFIRMATION_TIMEOUT_DEFAULT;
+    const lowBalanceWarning = submitterConfig.lowBalanceWarning;
+    const balanceUpdateInterval =
+      submitterConfig.balanceUpdateInterval ?? BALANCE_UPDATE_INTERVAL_DEFAULT;
 
     const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
     if (!('default' in gasLimitBuffer)) {
@@ -129,6 +137,8 @@ export class SubmitterService {
       maxPendingTransactions,
       confirmations,
       confirmationTimeout,
+      lowBalanceWarning,
+      balanceUpdateInterval,
       gasLimitBuffer,
     };
   }
@@ -196,6 +206,14 @@ export class SubmitterService {
       maxAllowedGasPrice: chainConfig.submitter.maxAllowedGasPrice,
 
       priorityAdjustmentFactor: chainConfig.submitter.priorityAdjustmentFactor,
+
+      lowBalanceWarning:
+        chainConfig.submitter.lowBalanceWarning ??
+        globalConfig.lowBalanceWarning,
+
+      balanceUpdateInterval:
+        chainConfig.submitter.balanceUpdateInterval ??
+        globalConfig.balanceUpdateInterval,
 
       loggerOptions: this.loggerService.loggerOptions,
     };

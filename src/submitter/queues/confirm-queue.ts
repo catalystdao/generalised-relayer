@@ -1,13 +1,16 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
 import { SubmitOrderResult } from '../submitter.types';
-import { Wallet } from 'ethers';
+import { BigNumber, Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
 import { TransactionHelper } from '../transaction-helper';
-import { BaseProvider } from '@ethersproject/providers';
+import { BaseProvider, TransactionReceipt } from '@ethersproject/providers';
 
-export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
+export class ConfirmQueue extends ProcessingQueue<
+  SubmitOrderResult,
+  TransactionReceipt
+> {
   readonly relayerAddress: string;
 
   constructor(
@@ -39,16 +42,14 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
   protected async handleOrder(
     order: SubmitOrderResult,
     retryCount: number,
-  ): Promise<HandleOrderResult<null> | null> {
+  ): Promise<HandleOrderResult<TransactionReceipt> | null> {
     // If it's the first time the order is processed, just wait for it
     if (retryCount == 0) {
-      const transactionReceipt = this.provider
-        .waitForTransaction(
-          order.tx.hash,
-          this.confirmations,
-          this.confirmationTimeout,
-        )
-        .then((_receipt) => null);
+      const transactionReceipt = this.provider.waitForTransaction(
+        order.tx.hash,
+        this.confirmations,
+        this.confirmationTimeout,
+      );
 
       return { result: transactionReceipt };
     }
@@ -62,7 +63,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
       const increasedFeeConfig =
         this.transactionHelper.getIncreasedFeeDataForTransaction(originalTx);
 
-      order.replaceTx = await contract.processPacket(
+      const tx = await contract.processPacket(
         order.messageCtx,
         order.message,
         this.relayerAddress,
@@ -71,6 +72,19 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
           nonce: originalTx.nonce,
           ...increasedFeeConfig,
         },
+      );
+      order.replaceTx = tx;
+
+      await this.transactionHelper.registerBalanceUse(
+        tx.gasLimit
+          .mul(tx.maxFeePerGas ?? tx.gasPrice ?? BigNumber.from(0))
+          .sub(
+            originalTx.gasLimit.mul(
+              originalTx.maxFeePerGas ??
+                originalTx.gasPrice ??
+                BigNumber.from(0),
+            ),
+          ),
       );
     }
 
@@ -89,13 +103,10 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     const confirmationPromise = Promise.any([
       originalTxReceipt,
       replaceTxReceipt,
-    ]).then(
-      () => null,
-      (aggregateError) => {
-        // If both the original/replace tx promises reject, throw the error of the replace tx.
-        throw aggregateError.errors?.[1];
-      },
-    );
+    ]).catch((aggregateError) => {
+      // If both the original/replace tx promises reject, throw the error of the replace tx.
+      throw aggregateError.errors?.[1];
+    });
 
     return { result: confirmationPromise };
   }
@@ -193,7 +204,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
         errorDescription,
         `Error on repriced transaction confirmation: REPLACEMENT_UNDERPRICED. Keep waiting until tx is rejected.`,
       );
-      return true; // Do not retry order confirmation
+      return true;
     }
 
     // If tx errors with 'CALL_EXCEPTION', drop the order
@@ -231,7 +242,7 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
   protected async onOrderCompletion(
     order: SubmitOrderResult,
     success: boolean,
-    result: null,
+    result: TransactionReceipt | null,
     retryCount: number,
   ): Promise<void> {
     const orderDescription = {
@@ -243,9 +254,32 @@ export class ConfirmQueue extends ProcessingQueue<SubmitOrderResult, null> {
     };
 
     if (success) {
+      if (result == null) {
+        this.logger.warn(
+          orderDescription,
+          `Transaction confirmed, but no transaction receipt returned.`,
+        );
+        return;
+      }
+
       this.logger.debug(orderDescription, `Transaction confirmed.`);
+
+      // Update the 'gas used' calculation
+      const tx = order.replaceTx ?? order.tx;
+      const gasProvided = tx.gasLimit.mul(
+        tx.maxFeePerGas ?? tx.gasPrice ?? BigNumber.from(0),
+      );
+      const gasUsed = result.gasUsed.mul(result.effectiveGasPrice);
+      await this.transactionHelper.registerBalanceRefund(
+        gasProvided.sub(gasUsed),
+      );
     } else {
       this.logger.error(orderDescription, `Transaction not confirmed.`);
+
+      // Due to how the ProcessingQueue is currently designed, no information regarding failed
+      // transactions is available at this hook. Therefore, we cannot calculate the gas used by the
+      // failed transaction. As a worst-case approximation, assume all the provided gas has been
+      // used (i.e. do not update the relayer's balance);
     }
   }
 }

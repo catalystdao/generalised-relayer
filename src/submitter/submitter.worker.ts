@@ -8,6 +8,7 @@ import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import {
+  BalanceConfig,
   EvalOrder,
   GasFeeConfig,
   NewOrder,
@@ -56,6 +57,7 @@ class SubmitterWorker {
 
     this.transactionHelper = new TransactionHelper(
       this.getGasFeeConfig(this.config),
+      this.getBalanceConfig(this.config),
       this.config.retryInterval,
       this.provider,
       this.signer,
@@ -193,6 +195,13 @@ class SubmitterWorker {
     };
   }
 
+  private getBalanceConfig(config: SubmitterWorkerData): BalanceConfig {
+    return {
+      lowBalanceWarning: config.lowBalanceWarning,
+      balanceUpdateInterval: config.balanceUpdateInterval,
+    };
+  }
+
   /***************  Main Logic Loop.  ***************/
 
   async run(): Promise<void> {
@@ -300,10 +309,14 @@ class SubmitterWorker {
           ...this.transactionHelper.getIncreasedFeeDataForTransaction(baseTx),
         });
 
-        await this.provider.waitForTransaction(
+        const receipt = await this.provider.waitForTransaction(
           tx.hash,
           this.config.confirmations,
           this.config.confirmationTimeout,
+        );
+
+        await this.transactionHelper.registerBalanceUse(
+          receipt.gasUsed.mul(receipt.effectiveGasPrice),
         );
 
         // Transaction cancelled

@@ -18,6 +18,11 @@ relayer:
       default: 10000
       mock: 50000
 
+    # Balance properties
+    # lowBalanceWarning               # Balance below which a 'low balance' warning is emitted.
+    # balanceUpdateInterval           # Number of transactions after which to update the balance from the rpc. 
+
+    # Gas properties
     # ! The following properties are here for illustrative purposes, but must always be applied
     # ! on a per-chain basis. Gas properties set at a global level are ignored.
     # maxFeePerGas                    # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)

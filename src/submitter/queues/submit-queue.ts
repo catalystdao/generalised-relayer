@@ -1,6 +1,6 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
 import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
-import { Wallet } from 'ethers';
+import { BigNumber, Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
@@ -30,6 +30,7 @@ export class SubmitQueue extends ProcessingQueue<
 
   protected async onProcessOrders(): Promise<void> {
     await this.transactionHelper.updateFeeData();
+    await this.transactionHelper.runBalanceCheck();
   }
 
   protected async handleOrder(
@@ -64,6 +65,9 @@ export class SubmitQueue extends ProcessingQueue<
     );
 
     this.transactionHelper.increaseTransactionCount();
+    await this.transactionHelper.registerBalanceUse(
+      tx.gasLimit.mul(tx.maxFeePerGas ?? tx.gasPrice ?? BigNumber.from(0)),
+    );
 
     return { result: { tx, ...order } };
   }

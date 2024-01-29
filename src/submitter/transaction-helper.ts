@@ -1,6 +1,10 @@
 import { BaseProvider, FeeData } from '@ethersproject/providers';
 import { BigNumber, ContractTransaction, Wallet } from 'ethers';
-import { GasFeeConfig, GasFeeOverrides } from './submitter.types';
+import {
+  BalanceConfig,
+  GasFeeConfig,
+  GasFeeOverrides,
+} from './submitter.types';
 import pino from 'pino';
 
 const DECIMAL_BASE = 10000;
@@ -24,14 +28,24 @@ export class TransactionHelper {
   private maxPriorityFeeAdjustmentFactor: BigNumber | undefined;
   private maxAllowedPriorityFeePerGas: BigNumber | undefined;
 
+  // Balance config
+  private walletBalance: BigNumber;
+  private transactionsSinceLastBalanceUpdate: number = 0;
+  private isBalanceLow: boolean = false;
+
+  private lowBalanceWarning: BigNumber | undefined;
+  private balanceUpdateInterval: number;
+
   constructor(
     gasFeeConfig: GasFeeConfig,
+    balanceConfig: BalanceConfig,
     private readonly retryInterval: number,
     private readonly provider: BaseProvider,
     private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
     this.loadGasFeeConfig(gasFeeConfig);
+    this.loadBalanceConfig(balanceConfig);
   }
 
   private loadGasFeeConfig(config: GasFeeConfig): void {
@@ -109,9 +123,15 @@ export class TransactionHelper {
     }
   }
 
+  private loadBalanceConfig(config: BalanceConfig): void {
+    this.lowBalanceWarning = BigNumber.from(config.lowBalanceWarning);
+    this.balanceUpdateInterval = config.balanceUpdateInterval;
+  }
+
   async init(): Promise<void> {
     await this.updateTransactionCount();
     await this.updateFeeData();
+    await this.updateWalletBalance();
   }
 
   /**
@@ -140,6 +160,74 @@ export class TransactionHelper {
 
   increaseTransactionCount(): void {
     this.transactionCount++;
+  }
+
+  async registerBalanceUse(amount: BigNumber): Promise<void> {
+    this.transactionsSinceLastBalanceUpdate++;
+
+    const newWalletBalance = this.walletBalance.sub(amount);
+    if (newWalletBalance < BigNumber.from(0)) {
+      this.walletBalance = BigNumber.from(0);
+    } else {
+      this.walletBalance = newWalletBalance;
+    }
+
+    if (
+      this.lowBalanceWarning != undefined &&
+      !this.isBalanceLow && // Only trigger update if the current saved state is 'balance not low' (i.e. crossing the boundary)
+      this.walletBalance < this.lowBalanceWarning
+    ) {
+      await this.updateWalletBalance();
+    }
+  }
+
+  async registerBalanceRefund(amount: BigNumber): Promise<void> {
+    this.walletBalance = this.walletBalance.add(amount);
+  }
+
+  async runBalanceCheck(): Promise<void> {
+    if (
+      this.isBalanceLow ||
+      this.transactionsSinceLastBalanceUpdate > this.balanceUpdateInterval
+    ) {
+      await this.updateWalletBalance();
+    }
+  }
+
+  async updateWalletBalance(): Promise<void> {
+    let i = 0;
+    let walletBalance;
+    while (true) {
+      try {
+        walletBalance = await this.wallet.getBalance('pending');
+        break;
+      } catch {
+        i++;
+        this.logger.warn(
+          { account: this.wallet.address, try: i },
+          'Failed to update account balance. Worker locked until successful update.',
+        );
+        await new Promise((r) => setTimeout(r, this.retryInterval));
+        // Continue trying
+      }
+    }
+
+    this.walletBalance = walletBalance;
+    this.transactionsSinceLastBalanceUpdate = 0;
+
+    if (this.lowBalanceWarning != undefined) {
+      const isBalanceLow = this.walletBalance < this.lowBalanceWarning;
+      if (isBalanceLow != this.isBalanceLow) {
+        this.isBalanceLow = isBalanceLow;
+        const balanceInfo = {
+          balance: this.walletBalance,
+          lowBalanceWarning: this.lowBalanceWarning,
+          account: this.wallet.address,
+        };
+        if (isBalanceLow) this.logger.warn(balanceInfo, 'Wallet balance low.');
+        else this.logger.info(balanceInfo, 'Wallet funded.');
+      }
+    }
   }
 
   async updateFeeData(): Promise<void> {
