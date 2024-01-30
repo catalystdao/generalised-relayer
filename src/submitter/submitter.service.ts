@@ -86,14 +86,15 @@ export class SubmitterService {
 
       worker.on('error', (error) =>
         this.loggerService.fatal(
-          error,
-          `Error on submitter worker (chain ${chainConfig.chainId}).`,
+          { error, chainId: chainConfig.chainId },
+          `Error on submitter worker.`,
         ),
       );
 
       worker.on('exit', (exitCode) =>
         this.loggerService.fatal(
-          `Submitter worker exited with code ${exitCode} (chain ${chainConfig.chainId}).`,
+          { exitCode, chainId: chainConfig.chainId },
+          `Submitter worker exited.`,
         ),
       );
 

@@ -96,8 +96,9 @@ const bootstrap = async () => {
       message: add0X(vaa.bytes.toString('hex')),
       messageCtx: '0x',
     };
-    logger.warn(
-      `Got wormhole vaa ${vaa.sequence}, emitting to ${destinationChain}`,
+    logger.info(
+      { sequence: vaa.sequence, destinationChain },
+      `Wormhole VAA found.`,
     );
     await store.submitProof(destinationChain, ambPayload);
   });

@@ -205,7 +205,7 @@ class SubmitterWorker {
   /***************  Main Logic Loop.  ***************/
 
   async run(): Promise<void> {
-    this.logger.debug(`Relaying messages (relayer: ${this.signer.address})`);
+    this.logger.debug({ relayer: this.signer.address }, `Relaying messages.`);
 
     // Initialize the queues
     await this.transactionHelper.init();
@@ -355,7 +355,10 @@ class SubmitterWorker {
    */
   private async listenForOrders(): Promise<void> {
     const listenToChannel = Store.getChannel('submit', this.chainId);
-    this.logger.info(`Listing for messages to submit on ${listenToChannel}`);
+    this.logger.info(
+      { channel: listenToChannel },
+      `Listing for messages to submit.`,
+    );
 
     await this.store.on(listenToChannel, (message: AmbPayload) => {
       void this.addSubmitOrder(
@@ -376,9 +379,8 @@ class SubmitterWorker {
     priority: boolean,
   ) {
     this.logger.debug(
-      `Submit order received ${messageIdentifier} ${
-        priority ? '(priority)' : ''
-      }`,
+      { messageIdentifier, priority },
+      `Submit order received.`,
     );
     if (priority) {
       // Push directly into the submit queue

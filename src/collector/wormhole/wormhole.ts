@@ -70,11 +70,11 @@ function loadRelayerEngineWorkerData(
         String(wormholeChainId),
         chainConfig.chainId,
       );
-      loggerService.warn(
+      loggerService.info(
         `'wormholeChainId' for chain ${chainConfig.chainId} is set to ${wormholeChainId}.`,
       );
     } else {
-      loggerService.warn(
+      loggerService.info(
         `No 'wormholeChainId' set for chain ${chainConfig.chainId}. Skipping chain (wormhole collector).`,
       );
     }
@@ -167,15 +167,14 @@ function initiateRelayerEngineWorker(
 
   worker.on('exit', (exitCode) => {
     workerRunning = false;
-    loggerService.info(`Wormhole engine worker exited with code ${exitCode}.`);
+    loggerService.info({ exitCode }, `Wormhole engine worker exited.`);
   });
 
   // Initiate status log interval
   const logStatus = () => {
     loggerService.info(
-      `Wormhole collector relayer engine workers status: ${
-        workerRunning ? 'running' : 'stopped'
-      }`,
+      { isRunning: workerRunning },
+      `Wormhole collector relayer engine workers status.`,
     );
   };
   setInterval(logStatus, STATUS_LOG_INTERVAL);
@@ -215,7 +214,8 @@ function initiatePacketSnifferWorkers(
       worker.on('exit', (exitCode) => {
         workers[chainConfig.chainId] = null;
         loggerService.info(
-          `Wormhole service worker exited with code ${exitCode}.`,
+          { exitCode, chainId: chainConfig.chainId },
+          `Wormhole service worker exited.`,
         );
       });
     }

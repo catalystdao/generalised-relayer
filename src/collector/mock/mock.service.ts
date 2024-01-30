@@ -52,7 +52,8 @@ const bootstrap = async () => {
   // It is good to give a warning that we are starting the collector service along with
   // some context regarding the execution.
   logger.info(
-    `Starting mock for contract ${config.incentivesAddress} on chain ${chainId}`,
+    { incentivesAddress: config.incentivesAddress },
+    `Starting mock service.`,
   );
 
   // Get an Ethers provider for us to collect bounties with.
@@ -85,7 +86,10 @@ const bootstrap = async () => {
     try {
       endBlock = (await provider.getBlockNumber()) - config.blockDelay;
     } catch (error) {
-      logger.error(error, `Failed to get current block for chain ${chainId}`);
+      logger.error(
+        error,
+        `Failed to get the current block on the 'mock' collector service.`,
+      );
       await wait(config.interval);
       continue;
     }
@@ -110,7 +114,11 @@ const bootstrap = async () => {
     }
 
     logger.info(
-      `Scanning mock messages from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
+      {
+        startBlock,
+        endBlock,
+      },
+      `Scanning mock messages.`,
     );
 
     let messageLogs;
@@ -123,8 +131,12 @@ const bootstrap = async () => {
       );
     } catch (error) {
       logger.error(
-        error,
-        `Failed to fetch logs from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
+        {
+          startBlock,
+          endBlock,
+          error,
+        },
+        `Failed to fetch logs.`,
       );
       await wait(config.interval);
       continue;
@@ -163,22 +175,24 @@ const bootstrap = async () => {
           };
 
           logger.info(
-            `Got mock message ${amb.messageIdentifier}, emitting to ${destinationChainId}`,
+            {
+              messageIdentifier: amb.messageIdentifier,
+              destinationChainId: destinationChainId,
+            },
+            `Mock message found.`,
           );
 
           // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
           await store.submitProof(destinationChainId, ambPayload);
         } catch (error) {
-          logger.error(error, `Failed to process mock message`);
+          logger.error(error, `Failed to process mock message.`);
           await wait(config.interval);
         }
       }
     }
 
     if (endBlock >= stopBlock) {
-      logger.info(
-        `Finished processing blocks (stopping at ${endBlock}). Exiting worker.`,
-      );
+      logger.info({ endBlock }, `Finished processing blocks. Exiting worker.`);
       break;
     }
 

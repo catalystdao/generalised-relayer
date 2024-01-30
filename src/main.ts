@@ -9,16 +9,19 @@ function logLoadedOptions(
 ) {
   // Log the loaded configuration
   loggerService.info(
-    { config: configService.relayerConfig },
-    `Loaded relayer configuration (${configService.nodeEnv})`,
+    {
+      mode: configService.nodeEnv,
+      config: configService.relayerConfig,
+    },
+    `Loaded relayer configuration.`,
   );
   loggerService.info(
     { config: Object.fromEntries(configService.chainsConfig.entries()) },
-    'Loaded chains configuration',
+    'Loaded chains configuration.',
   );
   loggerService.info(
     { config: Object.fromEntries(configService.ambsConfig.entries()) },
-    'Loaded AMBs configuration',
+    'Loaded AMBs configuration.',
   );
 }
 

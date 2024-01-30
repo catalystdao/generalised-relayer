@@ -119,7 +119,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       // Source to Destination
       if (bounty.status >= BountyStatus.MessageDelivered) {
         this.logger.debug(
-          `Bounty evaluation (source to destination) ${messageIdentifier}. Bounty already delivered.`,
+          { messageIdentifier },
+          `Bounty evaluation (source to destination). Bounty already delivered.`,
         );
         return 0; // Do not relay packet
       }
@@ -127,7 +128,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       // Destination to Source
       if (bounty.status >= BountyStatus.BountyClaimed) {
         this.logger.debug(
-          `Bounty evaluation (destination to source) ${messageIdentifier}. Bounty already acked.`,
+          { messageIdentifier },
+          `Bounty evaluation (destination to source). Bounty already acked.`,
         );
         return 0; // Do not relay packet
       }
@@ -147,9 +149,14 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       const gasLimit = bounty.maxGasDelivery + gasLimitBuffer;
 
       this.logger.debug(
-        `Bounty evaluation (source to destination) ${messageIdentifier}. Gas limit: ${gasLimit} (${
-          bounty.maxGasDelivery
-        } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
+        {
+          messageIdentifier,
+          gasLimit,
+          maxGasDelivery: bounty.maxGasDelivery,
+          gasLimitBuffer,
+          gasEstimation: gasEstimation.toString(),
+        },
+        `Bounty evaluation (source to destination).`,
       );
 
       if (BigNumber.from(gasLimit).lt(gasEstimation)) {
@@ -162,9 +169,14 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       const gasLimit = bounty.maxGasAck + gasLimitBuffer;
 
       this.logger.debug(
-        `Bounty evaluation (destination to source) ${messageIdentifier}. Gas limit: ${gasLimit} (${
-          bounty.maxGasAck
-        } + buffer ${gasLimitBuffer}). Gas estimation ${gasEstimation.toNumber()}`,
+        {
+          messageIdentifier,
+          gasLimit,
+          maxGasAck: bounty.maxGasAck,
+          gasLimitBuffer,
+          gasEstimation: gasEstimation.toString(),
+        },
+        `Bounty evaluation (destination to source).`,
       );
 
       if (BigNumber.from(gasLimit).lt(gasEstimation)) {

@@ -112,7 +112,8 @@ export default (moduleInterface: CollectorModuleInterface) => {
     worker.on('exit', (exitCode) => {
       workers[chainConfig.chainId] = null;
       loggerService.info(
-        `Mock collector service worker exited with code ${exitCode}.`,
+        { exitCode, chainId: chainConfig.chainId },
+        `Mock collector service worker exited.`,
       );
     });
   });

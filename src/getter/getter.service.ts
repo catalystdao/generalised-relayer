@@ -61,9 +61,10 @@ const bootstrap = async () => {
   ];
 
   logger.info(
-    `Getter worker started (collecting escrowed messages of address(es) ${config.incentivesAddresses.join(
-      ', ',
-    )} on chain ${chainId})`,
+    {
+      incentiveAddresses: config.incentivesAddresses,
+    },
+    `Getter worker started.`,
   );
 
   let startBlock =
@@ -79,7 +80,10 @@ const bootstrap = async () => {
     try {
       endBlock = (await provider.getBlockNumber()) - config.blockDelay;
     } catch (error) {
-      logger.error(error, `Failed on getter.service endblock`);
+      logger.error(
+        error,
+        `Failed to get the current block number on the getter.`,
+      );
       await wait(config.interval);
       continue;
     }
@@ -101,7 +105,11 @@ const bootstrap = async () => {
     }
 
     logger.info(
-      `Scanning bounties from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
+      {
+        startBlock,
+        endBlock,
+      },
+      `Scanning bounties.`,
     );
 
     try {
@@ -123,7 +131,8 @@ const bootstrap = async () => {
 
         if (parsedLog == null) {
           logger.error(
-            `Failed to parse GeneralisedIncentives contract event. Topics: ${log.topics}, data: ${log.data}`,
+            { topics: log.topics, data: log.data },
+            `Failed to parse GeneralisedIncentives contract event.`,
           );
           continue;
         }
@@ -167,14 +176,16 @@ const bootstrap = async () => {
 
           default:
             logger.warn(
-              `Event with unknown name/topic received: ${parsedLog.name}/${parsedLog.topic}`,
+              { name: parsedLog.name, topic: parsedLog.topic },
+              `Event with unknown name/topic received.`,
             );
         }
       }
 
       if (endBlock >= stopBlock) {
         logger.info(
-          `Finished processing blocks (stopping at ${endBlock}). Exiting worker.`,
+          { endBlock },
+          `Finished processing blocks. Exiting worker.`,
         );
         break;
       }
@@ -182,7 +193,7 @@ const bootstrap = async () => {
       startBlock = endBlock + 1;
       if (!isCatchingUp) await wait(config.interval);
     } catch (error) {
-      logger.error(error, `Failed on getter.service`);
+      logger.error(error, `Error on getter.service`);
       await wait(config.interval);
     }
   }
@@ -218,7 +229,8 @@ const queryAllBountyEvents = async (
       } catch (error) {
         i++;
         logger.warn(
-          `Failed to 'getLogs' for address ${address} from ${startBlock} to ${endBlock} (try ${i}).`,
+          { address, startBlock, endBlock, try: i },
+          `Failed to 'getLogs'.`,
         );
         await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));
       }
@@ -244,7 +256,7 @@ const handleBountyPlacedEvent = async (
   const messageIdentifier = event.args.messageIdentifier;
   const incentive = event.args.incentive;
 
-  logger.info(`BountyPlaced ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyPlaced event found.`);
 
   await store.registerBountyPlaced({
     messageIdentifier,
@@ -269,7 +281,7 @@ const handleBountyClaimedEvent = async (
 ) => {
   const messageIdentifier = event.args.uniqueIdentifier;
 
-  logger.info(`BountyClaimed ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyClaimed event found.`);
 
   await store.registerBountyClaimed({
     messageIdentifier,
@@ -293,7 +305,7 @@ const handleMessageDeliveredEvent = async (
 ) => {
   const messageIdentifier = event.args.messageIdentifier;
 
-  logger.info(`MessageDelivered ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `MessageDelivered event found.`);
 
   await store.registerMessageDelivered({
     messageIdentifier,
@@ -320,7 +332,7 @@ const handleBountyIncreasedEvent = async (
   const newDeliveryGasPrice = event.args.deliveryGasPriceIncrease;
   const newAckGasPrice = event.args.ackGasPriceIncrease;
 
-  logger.info(`BountyIncreased ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyIncreased event found.`);
 
   await store.registerBountyIncreased({
     messageIdentifier,

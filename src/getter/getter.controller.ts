@@ -59,15 +59,16 @@ export class GetterController implements OnModuleInit {
 
       worker.on('error', (error) =>
         this.loggerService.fatal(
-          error,
-          `Error on getter worker (chain ${chainConfig.chainId}).`,
+          { error, chainId: chainConfig.chainId },
+          `Error on getter worker.`,
         ),
       );
 
       worker.on('exit', (exitCode) => {
         this.workers[chainConfig.chainId] = null;
         this.loggerService.info(
-          `Getter worker exited with code ${exitCode} (chain ${chainConfig.chainId}).`,
+          { exitCode, chainId: chainConfig.chainId },
+          `Getter worker exited.`,
         );
       });
     });

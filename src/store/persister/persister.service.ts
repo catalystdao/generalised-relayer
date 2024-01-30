@@ -51,7 +51,7 @@ export class PersisterService {
     );
 
     worker.on('exit', (exitCode) => {
-      this.loggerService.fatal(`Persister exited with code ${exitCode}.`);
+      this.loggerService.fatal({ exitCode }, `Persister exited.`);
       // Sometimes the postgres connection is dropped, we need to recover from that case.
       if (exitCode === 1) {
         setTimeout(() => {

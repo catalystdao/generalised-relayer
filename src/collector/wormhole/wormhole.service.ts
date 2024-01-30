@@ -27,7 +27,8 @@ const bootstrap = async () => {
   });
 
   logger.info(
-    `Wormhole worker started (collecting published wormhole messages for bridge ${config.wormholeAddress} on chain ${chainId})`,
+    { wormholeAddress: config.wormholeAddress },
+    `Wormhole worker started.`,
   );
 
   let startBlock = config.startingBlock ?? (await provider.getBlockNumber());
@@ -39,7 +40,10 @@ const bootstrap = async () => {
     try {
       endBlock = await provider.getBlockNumber();
     } catch (error) {
-      logger.error(error, `Failed on wormhole.service endblock`);
+      logger.error(
+        error,
+        `Failed to get the current block number on the Wormhole collector service.`,
+      );
       await wait(config.interval);
       continue;
     }
@@ -55,7 +59,11 @@ const bootstrap = async () => {
     }
 
     logger.info(
-      `Scanning wormhole messages from block ${startBlock} to ${endBlock} on chain ${config.chainId}`,
+      {
+        startBlock,
+        endBlock,
+      },
+      `Scanning wormhole messages.`,
     );
 
     try {
@@ -68,7 +76,10 @@ const bootstrap = async () => {
       for (const event of logs) {
         const payload = event.args.payload;
         const amb = decodeWormholeMessage(payload);
-        logger.info(`Collected message ${amb.messageIdentifier}`);
+        logger.info(
+          { messageIdentifier: amb.messageIdentifier },
+          `Collected message.`,
+        );
         await store.setAmb(
           {
             ...amb,
@@ -82,7 +93,7 @@ const bootstrap = async () => {
       startBlock = endBlock + 1;
       await wait(config.interval);
     } catch (error) {
-      logger.error(error, `Failed on wormhole.service`);
+      logger.error(error, `Error on wormhole.service`);
       await wait(config.interval);
     }
   }
