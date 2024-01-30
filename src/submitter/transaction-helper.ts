@@ -149,7 +149,10 @@ export class TransactionHelper {
         break;
       } catch (error) {
         // Continue trying indefinitely. If the transaction count is incorrect, no transaction will go through.
-        this.logger.error({ try: i }, `Failed to update nonce.`);
+        this.logger.warn(
+          { try: i, address: this.wallet.address },
+          `Failed to update nonce.`,
+        );
         await new Promise((r) => setTimeout(r, this.retryInterval));
       }
 

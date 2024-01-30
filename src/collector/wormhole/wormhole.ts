@@ -208,7 +208,10 @@ function initiatePacketSnifferWorkers(
       workers[chainConfig.chainId] = worker;
 
       worker.on('error', (error) =>
-        loggerService.fatal(error, 'Error on Wormhole service worker.'),
+        loggerService.fatal(
+          { error, chainId: chainConfig.chainId },
+          'Error on Wormhole service worker.',
+        ),
       );
 
       worker.on('exit', (exitCode) => {

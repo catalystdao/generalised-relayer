@@ -11,17 +11,11 @@ function logLoadedOptions(
   loggerService.info(
     {
       mode: configService.nodeEnv,
-      config: configService.relayerConfig,
+      globalConfig: configService.relayerConfig,
+      chainsConfig: Object.fromEntries(configService.chainsConfig.entries()),
+      ambConfig: Object.fromEntries(configService.ambsConfig.entries()),
     },
-    `Loaded relayer configuration.`,
-  );
-  loggerService.info(
-    { config: Object.fromEntries(configService.chainsConfig.entries()) },
-    'Loaded chains configuration.',
-  );
-  loggerService.info(
-    { config: Object.fromEntries(configService.ambsConfig.entries()) },
-    'Loaded AMBs configuration.',
+    `Relayer initialized.`,
   );
 }
 
