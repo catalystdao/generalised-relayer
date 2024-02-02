@@ -109,7 +109,7 @@ The Submitter service gets packets that need relaying from Redis. For every pack
 
 To make the Submitter as resilitent as possible to RPC failures/connection errors, each evaluation, submission and confirmation step is tried up to `maxTries` times with a `retryInterval` delay between tries (these default to `3` and `2000` ms, but can be modified on the Relayer config).
 
-The Submitter additionally limits the maximum number of pending transactions (i.e. transactions that have been submitted but not mined), and will not accept any further relay orders once reached. If a submitted transactions fails to commit within the number of specified tries and timeout, the Submitter will attempt to cancel the transaction.
+The Submitter additionally limits the maximum number of transactions within the 'submission' pipeline (i.e. transactions that have been started to be processed and are not completed), and will not accept any further relay orders once reached. If a submitted transactions fails to commit within the number of specified tries and timeout, the Submitter will attempt to cancel the transaction.
 > ⚠️ If the Submitter fails to cancel a transaction, the Submitter pipeline will stall and no further orders will be processed until the stuck transaction is resolved.
 
 ## Further features
