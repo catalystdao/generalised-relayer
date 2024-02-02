@@ -1,27 +1,31 @@
+# Global Relayer configuration
 relayer:
-  privateKey: ""
+  privateKey: ""      # The privateKey of the account that will be submitting the packet relays
   logLevel: "info"
-  blockDelay: 5   # Delay with which to process blocks
+  blockDelay: 5       # Delay with which to process the chain blocks
+
   getter:
-    interval: 5000
-    maxBlocks: 1000
+    interval: 5000    # Interval at which to poll the chains RPCs for new events
+    maxBlocks: 1000   # Maximum number of blocks to query in a single call
+
   submitter:
     enabled: true
-    newOrdersDelay: 1000
-    retryInterval: 2000
-    processingInterval: 100
-    maxTries: 3
-    maxPendingTransactions: 50
-    confirmations: 1
-    confirmationTimeout: 60000
-    gasLimitBuffer:
+    newOrdersDelay: 1000        # Time to wait before processing new 'submission' orders
+    retryInterval: 2000         # Time to wait before retrying a failed transaction
+    processingInterval: 100     # Throttle for the Submitter main 'run' loop
+    maxTries: 3                 # Maximum tries for a transaction
+    maxPendingTransactions: 50  # Maximum number of transactions within the 
+    confirmations: 1            # Number of confirmations to deem that a transaction has been mined
+    confirmationTimeout: 60000  # Timeout for a transaction to confirm
+
+    # TODO the following config should only be specified on a per chain basis, not here.
+    gasLimitBuffer:             # Extra gasLimit buffer. Customizable per AMB.
       default: 10000
       mock: 50000
 
-    # Balance properties
-    # lowBalanceWarning               # Balance below which a 'low balance' warning is emitted.
-                                      # ! Specified in WEI as a string
-    # balanceUpdateInterval           # Number of transactions after which to update the balance from the rpc. 
+    lowBalanceWarning: "1000000000000000000"  # Balance below which a 'low balance' warning is emitted.
+                                              # ! Specified in WEI as a string
+    balanceUpdateInterval: 50   # Number of transactions after which to update the Relayer balance from the rpc. 
 
     # Gas properties
     # ! The following properties are here for illustrative purposes, but must always be applied
@@ -45,27 +49,42 @@ relayer:
     postgresString: "postgresql://username:password@location/database?sslmode=require"
 
 
+# Enabled AMBs
 ambs:
   - mock
   - polymer
 
+
+# Chain configuration
 chains:
 
   - chainId: 80001 
     name: "Mumbai"
     rpc: "https://polygon-mumbai-pokt.nodies.app"
+
+    # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
+    # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
+
+    # Overrides
+    getter:
+      interval: 3000
+    submitter:
+      retryInterval: 3000
+
+    # AMB configuration
     wormhole:
       wormholeChainId: 5
-    # startingBlock: 44349400
   
+
   - chainId: 11155111 
     name: "Sepolia"
     rpc: "https://eth-sepolia-public.unifra.io"
     wormhole:
       wormholeChainId: 10002
-    # startingBlock: 5014200
 
-mock: #TODO why are these not under 'ambs'?
+
+# AMB configuration
+mock:
   incentivesAddress: "0x0000006aA532b110f36f393887079b35F6C6979a"
   privateKey: ""
 
