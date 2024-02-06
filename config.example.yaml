@@ -18,31 +18,31 @@ global:
     confirmations: 1            # Number of confirmations to deem that a transaction has been mined
     confirmationTimeout: 60000  # Timeout for a transaction to confirm
 
-    # TODO the following config should only be specified on a per chain basis, not here.
+    lowBalanceWarning: "1000000000000000000"  # Balance below which a 'low balance' warning is emitted.
+    balanceUpdateInterval: 50   # Number of transactions after which to update the Relayer balance from the rpc. 
+
+    # Gas properties
     gasLimitBuffer:             # Extra gasLimit buffer. Customizable per AMB.
       default: 10000
       mock: 50000
 
-    lowBalanceWarning: "1000000000000000000"  # Balance below which a 'low balance' warning is emitted.
-                                              # ! Specified in WEI as a string
-    balanceUpdateInterval: 50   # Number of transactions after which to update the Relayer balance from the rpc. 
+    # EIP-1559 Transactions
+    maxFeePerGas: "200000000000"                 # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
 
-    # Gas properties
-    # ! The following properties are here for illustrative purposes, but must always be applied
-    # ! on a per-chain basis. Gas properties set at a global level are ignored.
-    # maxFeePerGas                    # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
-    # maxPriorityFeeAdjustmentFactor  # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'. 
-                                      # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
-                                      # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
-    # maxAllowedPriorityFeePerGas     # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
+    maxAllowedPriorityFeePerGas: "100000000000"  # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
+    maxPriorityFeeAdjustmentFactor: 1.05         # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'. 
+                                                 # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
+                                                 # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
 
-    # gasPriceAdjustmentFactor        # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
-                                      # value is set as the 'gasPrice' property of the transaction if it is smaller than the 
-                                      # configuration property 'maxAllowedGasPrice' (if set).
-    # maxAllowedGasPrice              # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
+    # Legacy Transactions
+    maxAllowedGasPrice: "200000000000"           # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
+    gasPriceAdjustmentFactor: 1.05               # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
+                                                 # value is set as the 'gasPrice' property of the transaction if it is smaller than the 
+                                                 # configuration property 'maxAllowedGasPrice' (if set).
 
-    # priorityAdjustmentFactor        # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for 
-                                      # priority transactions.
+    # All Transactions
+    priorityAdjustmentFactor: 1.2                # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for 
+                                                 # priority transactions.
 
   persister:
     enabled: false

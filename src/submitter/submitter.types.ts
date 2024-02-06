@@ -26,12 +26,12 @@ export interface GasFeeOverrides {
 }
 
 export interface GasFeeConfig {
-  gasPriceAdjustmentFactor: number | undefined;
-  maxAllowedGasPrice: number | undefined;
-  maxFeePerGas: number | undefined;
-  maxPriorityFeeAdjustmentFactor: number | undefined;
-  maxAllowedPriorityFeePerGas: number | undefined;
-  priorityAdjustmentFactor: number | undefined;
+  gasPriceAdjustmentFactor?: number;
+  maxAllowedGasPrice?: number | string;
+  maxFeePerGas?: number | string;
+  maxPriorityFeeAdjustmentFactor?: number;
+  maxAllowedPriorityFeePerGas?: number | string;
+  priorityAdjustmentFactor?: number;
 }
 
 export interface BalanceConfig {

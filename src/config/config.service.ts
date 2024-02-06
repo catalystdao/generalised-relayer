@@ -46,19 +46,19 @@ export interface SubmitterGlobalConfig {
   maxPendingTransactions?: number;
   confirmations?: number;
   confirmationTimeout?: number;
-  gasLimitBuffer?: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
   lowBalanceWarning?: number;
   balanceUpdateInterval?: number;
-}
 
-export interface SubmitterConfig extends SubmitterGlobalConfig {
-  maxFeePerGas?: number;
+  gasLimitBuffer?: Record<string, number> & { default?: number };
+  maxFeePerGas?: number | string;
+  maxAllowedPriorityFeePerGas?: number | string;
   maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedPriorityFeePerGas?: number;
+  maxAllowedGasPrice?: number | string;
   gasPriceAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number;
   priorityAdjustmentFactor?: number;
 }
+
+export interface SubmitterConfig extends SubmitterGlobalConfig {}
 
 export interface PersisterConfig {
   enabled: boolean;

@@ -25,7 +25,13 @@ interface GlobalSubmitterConfig {
   confirmationTimeout: number;
   lowBalanceWarning: number | undefined;
   balanceUpdateInterval: number;
-  gasLimitBuffer: Record<string, number> & { default?: number }; //TODO 'gasLimitBuffer' should only be applied on a per-chain basis (like the other gas-related config)
+  gasLimitBuffer: Record<string, number> & { default?: number };
+  maxFeePerGas?: number | string;
+  maxAllowedPriorityFeePerGas?: number | string;
+  maxPriorityFeeAdjustmentFactor?: number;
+  maxAllowedGasPrice?: number | string;
+  gasPriceAdjustmentFactor?: number;
+  priorityAdjustmentFactor?: number;
 }
 
 export interface SubmitterWorkerData {
@@ -41,14 +47,14 @@ export interface SubmitterWorkerData {
   confirmations: number;
   confirmationTimeout: number;
   gasLimitBuffer: Record<string, number>;
-  maxFeePerGas: number | undefined;
-  maxPriorityFeeAdjustmentFactor: number | undefined;
-  maxAllowedPriorityFeePerGas: number | undefined;
-  gasPriceAdjustmentFactor: number | undefined;
-  maxAllowedGasPrice: number | undefined;
-  priorityAdjustmentFactor: number | undefined;
   lowBalanceWarning: number | undefined;
   balanceUpdateInterval: number;
+  maxFeePerGas?: number | string;
+  maxAllowedPriorityFeePerGas?: number | string;
+  maxPriorityFeeAdjustmentFactor?: number;
+  maxAllowedGasPrice?: number | string;
+  gasPriceAdjustmentFactor?: number;
+  priorityAdjustmentFactor?: number;
   loggerOptions: LoggerOptions;
 }
 
@@ -128,6 +134,14 @@ export class SubmitterService {
     if (!('default' in gasLimitBuffer)) {
       gasLimitBuffer['default'] = 0;
     }
+    const maxFeePerGas = submitterConfig.maxFeePerGas;
+    const maxAllowedPriorityFeePerGas =
+      submitterConfig.maxAllowedPriorityFeePerGas;
+    const maxPriorityFeeAdjustmentFactor =
+      submitterConfig.maxPriorityFeeAdjustmentFactor;
+    const maxAllowedGasPrice = submitterConfig.maxAllowedGasPrice;
+    const gasPriceAdjustmentFactor = submitterConfig.gasPriceAdjustmentFactor;
+    const priorityAdjustmentFactor = submitterConfig.priorityAdjustmentFactor;
 
     return {
       enabled,
@@ -141,6 +155,12 @@ export class SubmitterService {
       lowBalanceWarning,
       balanceUpdateInterval,
       gasLimitBuffer,
+      maxFeePerGas,
+      maxAllowedPriorityFeePerGas,
+      maxPriorityFeeAdjustmentFactor,
+      maxAllowedGasPrice,
+      gasPriceAdjustmentFactor,
+      priorityAdjustmentFactor,
     };
   }
 
@@ -194,19 +214,28 @@ export class SubmitterService {
         chainConfig.submitter.gasLimitBuffer ?? {},
       ),
 
-      maxFeePerGas: chainConfig.submitter.maxFeePerGas,
+      maxFeePerGas:
+        chainConfig.submitter.maxFeePerGas ?? globalConfig.maxFeePerGas,
 
       maxPriorityFeeAdjustmentFactor:
-        chainConfig.submitter.maxPriorityFeeAdjustmentFactor,
+        chainConfig.submitter.maxPriorityFeeAdjustmentFactor ??
+        globalConfig.maxPriorityFeeAdjustmentFactor,
 
       maxAllowedPriorityFeePerGas:
-        chainConfig.submitter.maxAllowedPriorityFeePerGas,
+        chainConfig.submitter.maxAllowedPriorityFeePerGas ??
+        globalConfig.maxAllowedPriorityFeePerGas,
 
-      gasPriceAdjustmentFactor: chainConfig.submitter.gasPriceAdjustmentFactor,
+      gasPriceAdjustmentFactor:
+        chainConfig.submitter.gasPriceAdjustmentFactor ??
+        globalConfig.gasPriceAdjustmentFactor,
 
-      maxAllowedGasPrice: chainConfig.submitter.maxAllowedGasPrice,
+      maxAllowedGasPrice:
+        chainConfig.submitter.maxAllowedGasPrice ??
+        globalConfig.maxAllowedGasPrice,
 
-      priorityAdjustmentFactor: chainConfig.submitter.priorityAdjustmentFactor,
+      priorityAdjustmentFactor:
+        chainConfig.submitter.priorityAdjustmentFactor ??
+        globalConfig.priorityAdjustmentFactor,
 
       lowBalanceWarning:
         chainConfig.submitter.lowBalanceWarning ??
