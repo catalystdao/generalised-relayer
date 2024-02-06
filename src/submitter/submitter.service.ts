@@ -5,13 +5,13 @@ import { ChainConfig, ConfigService } from 'src/config/config.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
 
-const RETRY_INTERVAL_DEFAULT = 2000;
+const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
-const MAX_PENDING_TRANSACTIONS = 1000;
+const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
 const CONFIRMATIONS_DEFAULT = 1;
-const CONFIRMATION_TIMEOUT_DEFAULT = 10 * 60000;
+const CONFIRMATION_TIMEOUT_DEFAULT = 60000;
 const BALANCE_UPDATE_INTERVAL_DEFAULT = 50;
 
 interface GlobalSubmitterConfig {
