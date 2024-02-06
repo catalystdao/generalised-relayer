@@ -1,14 +1,15 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
-import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
-import { BigNumber, Wallet } from 'ethers';
+import { SubmitOrder } from '../submitter.types';
+import { Wallet } from 'ethers';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
 import { TransactionHelper } from '../transaction-helper';
+import { PendingTransaction } from './confirm-queue';
 
 export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
-  SubmitOrderResult
+  PendingTransaction<SubmitOrder>
 > {
   readonly relayerAddress: string;
 
@@ -36,12 +37,12 @@ export class SubmitQueue extends ProcessingQueue<
   protected async handleOrder(
     order: SubmitOrder,
     retryCount: number,
-  ): Promise<HandleOrderResult<SubmitOrderResult> | null> {
+  ): Promise<HandleOrderResult<PendingTransaction<SubmitOrder>> | null> {
     // Simulate the packet submission as a static call. Skip if it's the first submission try,
     // as in that case the packet 'evaluation' will have been executed shortly before.
     const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
 
-    if (retryCount > 0) {
+    if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {
       await contract.callStatic.processPacket(
         order.messageCtx,
         order.message,
@@ -65,11 +66,8 @@ export class SubmitQueue extends ProcessingQueue<
     );
 
     this.transactionHelper.increaseTransactionCount();
-    await this.transactionHelper.registerBalanceUse(
-      tx.gasLimit.mul(tx.maxFeePerGas ?? tx.gasPrice ?? BigNumber.from(0)),
-    );
 
-    return { result: { tx, ...order } };
+    return { result: { data: order, tx } };
   }
 
   protected async handleFailedOrder(
@@ -108,7 +106,7 @@ export class SubmitQueue extends ProcessingQueue<
   protected async onOrderCompletion(
     order: SubmitOrder,
     success: boolean,
-    result: SubmitOrderResult | null,
+    result: PendingTransaction<SubmitOrder> | null,
     retryCount: number,
   ): Promise<void> {
     const orderDescription = {

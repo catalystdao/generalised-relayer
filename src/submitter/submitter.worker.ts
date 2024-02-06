@@ -13,14 +13,17 @@ import {
   GasFeeConfig,
   NewOrder,
   SubmitOrder,
-  SubmitOrderResult,
 } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { TransactionHelper } from './transaction-helper';
-import { ConfirmQueue } from './queues/confirm-queue';
+import {
+  ConfirmQueue,
+  ConfirmedTransaction,
+  PendingTransaction,
+} from './queues/confirm-queue';
 
 class SubmitterWorker {
   readonly store: Store;
@@ -134,7 +137,6 @@ class SubmitterWorker {
       retryInterval,
       maxTries,
       confirmations,
-      incentivesContracts,
       transactionHelper,
       confirmationTimeout,
       provider,
@@ -230,28 +232,47 @@ class SubmitterWorker {
       await this.confirmQueue.addOrders(...toConfirmSubmitOrders);
       await this.confirmQueue.processOrders();
 
-      const [, unconfirmedSubmitOrders, rejectedSubmitOrders] =
-        this.confirmQueue.getFinishedOrders();
+      const [
+        confirmedSubmitOrders,
+        unconfirmedSubmitOrders,
+        rejectedSubmitOrders,
+      ] = this.confirmQueue.getFinishedOrders();
 
+      await this.handleConfirmedSubmitOrders(confirmedSubmitOrders);
       await this.handleUnconfirmedSubmitOrders(unconfirmedSubmitOrders);
-
       await this.handleRejectedSubmitOrders(rejectedSubmitOrders);
 
       await wait(this.config.processingInterval);
     }
   }
 
+  private async handleConfirmedSubmitOrders(
+    confirmedSubmitOrders: ConfirmedTransaction[],
+  ): Promise<void> {
+    for (const confirmedOrder of confirmedSubmitOrders) {
+      // Register the gas cost used
+      const txReceipt = confirmedOrder.txReceipt;
+      const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      await this.transactionHelper.registerBalanceUse(gasCost);
+    }
+  }
+
   private async handleUnconfirmedSubmitOrders(
-    unconfirmedSubmitOrders: SubmitOrderResult[],
+    unconfirmedSubmitOrders: PendingTransaction[],
   ): Promise<void> {
     for (const unconfirmedOrder of unconfirmedSubmitOrders) {
-      if (unconfirmedOrder.resubmit) {
-        const requeueCount = unconfirmedOrder.requeueCount ?? 0;
+      const submitOrder = unconfirmedOrder.data as SubmitOrder;
+      const resubmitOrder = this.processConfirmationError(unconfirmedOrder);
+
+      // Currently, the gas used by failed transactions is not taken into account for the
+      // relayer gas estimate.
+
+      if (resubmitOrder) {
+        const requeueCount = submitOrder.requeueCount ?? 0;
         if (requeueCount >= this.config.maxTries - 1) {
           const orderDescription = {
             originalTxHash: unconfirmedOrder.tx.hash,
             replaceTxHash: unconfirmedOrder.replaceTx?.hash,
-            resubmit: unconfirmedOrder.resubmit,
             requeueCount: requeueCount,
           };
 
@@ -263,11 +284,11 @@ class SubmitterWorker {
         }
 
         const requeueOrder: SubmitOrder = {
-          amb: unconfirmedOrder.amb,
-          messageIdentifier: unconfirmedOrder.messageIdentifier,
-          message: unconfirmedOrder.message,
-          messageCtx: unconfirmedOrder.messageCtx,
-          gasLimit: unconfirmedOrder.gasLimit,
+          amb: submitOrder.amb,
+          messageIdentifier: submitOrder.messageIdentifier,
+          message: submitOrder.message,
+          messageCtx: submitOrder.messageCtx,
+          gasLimit: submitOrder.gasLimit,
           requeueCount: requeueCount + 1,
         };
         await this.submitQueue.addOrders(requeueOrder);
@@ -275,8 +296,50 @@ class SubmitterWorker {
     }
   }
 
+  // Returns whether to resubmit the order
+  private processConfirmationError(
+    unconfirmedOrder: PendingTransaction,
+  ): boolean {
+    const error = unconfirmedOrder.confirmationError;
+    const submitOrder = unconfirmedOrder.data as SubmitOrder;
+
+    if (error == null) return false;
+
+    const errorDescription = {
+      messageIdentifier: submitOrder.messageIdentifier,
+      error,
+      requeueCount: submitOrder.requeueCount,
+    };
+
+    // If tx errors with 'CALL_EXCEPTION', drop the order
+    if (error.code === 'CALL_EXCEPTION') {
+      this.logger.info(
+        errorDescription,
+        `Error on transaction confirmation: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message.`,
+      );
+      return false; // Do not resubmit
+    }
+
+    // If tx errors because of an invalid nonce, requeue the order for submission
+    // NOTE: it is possible for this error to occur because of the original tx being accepted. In
+    // that case, the order will error on the submit queue when resubmission is attempted.
+    if (
+      error.code === 'NONCE_EXPIRED' ||
+      error.code === 'REPLACEMENT_UNDERPRICED' ||
+      error.error?.message.includes('invalid sequence') //TODO is this dangerous? (any contract may include that error)
+    ) {
+      this.logger.info(
+        errorDescription,
+        `Error on transaction confirmation: nonce error. Requeue order for submission if possible.`,
+      );
+      return true;
+    }
+
+    return false;
+  }
+
   private async handleRejectedSubmitOrders(
-    rejectedSubmitOrders: SubmitOrderResult[],
+    rejectedSubmitOrders: PendingTransaction[],
   ): Promise<void> {
     for (const rejectedOrder of rejectedSubmitOrders) {
       await this.cancelTransaction(rejectedOrder.tx);
