@@ -11,7 +11,7 @@ export class LoggerService {
 
   constructor(configService: ConfigService) {
     this.loggerOptions = this.loadLoggerOptions(
-      configService.relayerConfig.logLevel,
+      configService.globalConfig.logLevel,
     );
     this.logger = pino(this.loggerOptions);
   }

@@ -1,5 +1,5 @@
 # Global Relayer configuration
-relayer:
+global:
   privateKey: ""      # The privateKey of the account that will be submitting the packet relays
   logLevel: "info"
   blockDelay: 5       # Delay with which to process the chain blocks

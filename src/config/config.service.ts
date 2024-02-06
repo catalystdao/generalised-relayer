@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 
-export interface RelayerConfig {
+export interface GlobalConfig {
   port: number;
   privateKey: string;
   logLevel?: string;
@@ -73,7 +73,7 @@ export class ConfigService {
 
   readonly nodeEnv: string;
 
-  readonly relayerConfig: RelayerConfig;
+  readonly globalConfig: GlobalConfig;
   readonly chainsConfig: Map<string, ChainConfig>;
   readonly ambsConfig: Map<string, AMBConfig>;
 
@@ -83,7 +83,7 @@ export class ConfigService {
     this.loadEnvFile();
     this.rawConfig = this.loadConfigFile();
 
-    this.relayerConfig = this.loadRelayerConfig();
+    this.globalConfig = this.loadGlobalConfig();
     this.chainsConfig = this.loadChainsConfig();
     this.ambsConfig = this.loadAMBsConfig();
   }
@@ -120,32 +120,32 @@ export class ConfigService {
     return yaml.load(rawConfig) as Record<string, any>;
   }
 
-  private loadRelayerConfig(): RelayerConfig {
-    const rawRelayerConfig = this.rawConfig.relayer;
-    if (rawRelayerConfig == undefined) {
+  private loadGlobalConfig(): GlobalConfig {
+    const rawGlobalConfig = this.rawConfig.global;
+    if (rawGlobalConfig == undefined) {
       throw new Error(
-        "'relayer' configuration missing on the configuration file",
+        "'global' configuration missing on the configuration file",
       );
     }
 
     if (process.env.RELAYER_PORT == undefined) {
       throw new Error(
-        "Invalid relayer configuration: environment variable 'RELAYER_PORT' missing",
+        "Invalid configuration: environment variable 'RELAYER_PORT' missing",
       );
     }
 
-    if (rawRelayerConfig.privateKey == undefined) {
-      throw new Error("Invalid relayer configuration: 'privateKey' missing.");
+    if (rawGlobalConfig.privateKey == undefined) {
+      throw new Error("Invalid global configuration: 'privateKey' missing.");
     }
 
     return {
       port: parseInt(process.env.RELAYER_PORT),
-      privateKey: rawRelayerConfig.privateKey,
-      logLevel: rawRelayerConfig.logLevel,
-      blockDelay: rawRelayerConfig.blockDelay,
-      getter: rawRelayerConfig.getter ?? {},
-      submitter: rawRelayerConfig.submitter ?? {},
-      persister: rawRelayerConfig.persister ?? {},
+      privateKey: rawGlobalConfig.privateKey,
+      logLevel: rawGlobalConfig.logLevel,
+      blockDelay: rawGlobalConfig.blockDelay,
+      getter: rawGlobalConfig.getter ?? {},
+      submitter: rawGlobalConfig.submitter ?? {},
+      persister: rawGlobalConfig.persister ?? {},
     };
   }
 

@@ -11,7 +11,7 @@ function logLoadedOptions(
   loggerService.info(
     {
       mode: configService.nodeEnv,
-      globalConfig: configService.relayerConfig,
+      globalConfig: configService.globalConfig,
       chainsConfig: Object.fromEntries(configService.chainsConfig.entries()),
       ambConfig: Object.fromEntries(configService.ambsConfig.entries()),
     },
@@ -27,6 +27,6 @@ async function bootstrap() {
 
   logLoadedOptions(configService, loggerService);
 
-  await app.listen(configService.relayerConfig.port);
+  await app.listen(configService.globalConfig.port);
 }
 void bootstrap();

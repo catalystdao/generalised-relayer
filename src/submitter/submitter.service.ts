@@ -103,7 +103,7 @@ export class SubmitterService {
   }
 
   private loadGlobalSubmitterConfig(): GlobalSubmitterConfig {
-    const submitterConfig = this.configService.relayerConfig.submitter;
+    const submitterConfig = this.configService.globalConfig.submitter;
 
     const enabled = submitterConfig['enabled'] ?? true;
 
@@ -150,7 +150,7 @@ export class SubmitterService {
   ): SubmitterWorkerData {
     const chainId = chainConfig.chainId;
     const rpc = chainConfig.rpc;
-    const relayerPrivateKey = this.configService.relayerConfig.privateKey;
+    const relayerPrivateKey = this.configService.globalConfig.privateKey;
 
     const incentivesAddresses = new Map<string, string>();
     this.configService.ambsConfig.forEach((amb) =>

@@ -75,10 +75,10 @@ export class GetterController implements OnModuleInit {
   }
 
   private loadGlobalGetterConfig(): GlobalGetterConfig {
-    const relayerConfig = this.configService.relayerConfig;
-    const globalGetterConfig = relayerConfig.getter;
+    const globalConfig = this.configService.globalConfig;
+    const globalGetterConfig = globalConfig.getter;
 
-    const blockDelay = relayerConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
+    const blockDelay = globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
     const interval = globalGetterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
     const maxBlocks = globalGetterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 

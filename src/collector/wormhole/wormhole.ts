@@ -94,9 +94,9 @@ function loadGlobalPacketSnifferConfig(
   configService: ConfigService,
 ): WormholeGlobalPacketSnifferConfig {
   const blockDelay =
-    configService.relayerConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
+    configService.globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
 
-  const getterConfig = configService.relayerConfig.getter;
+  const getterConfig = configService.globalConfig.getter;
   const interval = getterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
   const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
