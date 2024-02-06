@@ -144,6 +144,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
     const gasLimitBuffer = this.getGasLimitBuffer(order.amb);
 
+    //TODO gas prices are not being considered at this point
     if (isDelivery) {
       // Source to Destination
       const gasLimit = bounty.maxGasDelivery + gasLimitBuffer;
