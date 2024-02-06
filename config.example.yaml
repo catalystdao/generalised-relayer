@@ -49,10 +49,19 @@ global:
     postgresString: "postgresql://username:password@location/database?sslmode=require"
 
 
-# Enabled AMBs
+# AMBs configuration
 ambs:
-  - mock
-  - polymer
+  - name: mock
+    enabled: true   # Defaults to 'true' if the key is missing
+    incentivesAddress: "0x0000006aA532b110f36f393887079b35F6C6979a"
+    privateKey: ""
+
+  - name: polymer
+    incentivesAddress: "0x0000000000000000000000000000000000000000"
+
+  - name: wormhole
+    incentivesAddress: "0x000000731594E9be29E6c45Ab477034939053d4E"
+    isTestnet: true
 
 
 # Chain configuration
@@ -81,16 +90,3 @@ chains:
     rpc: "https://eth-sepolia-public.unifra.io"
     wormhole:
       wormholeChainId: 10002
-
-
-# AMB configuration
-mock:
-  incentivesAddress: "0x0000006aA532b110f36f393887079b35F6C6979a"
-  privateKey: ""
-
-wormhole:
-  incentivesAddress: "0x000000731594E9be29E6c45Ab477034939053d4E"
-  isTestnet: true
-
-polymer:
-  incentivesAddress: "0x0000000000000000000000000000000000000000"

@@ -181,20 +181,17 @@ export class ConfigService {
     return chainConfig;
   }
 
-  //TODO refactor where the 'amb' config is set (do the same as with the underwriter)
   private loadAMBsConfig(): Map<string, AMBConfig> {
     const ambConfig = new Map<string, AMBConfig>();
 
-    for (const ambName of this.rawConfig.ambs) {
-      const rawAMBConfig = this.rawConfig[ambName];
-
-      if (rawAMBConfig == undefined) {
-        throw new Error(`No configuration set for amb '${ambName}'`);
+    for (const rawAMBConfig of this.rawConfig.ambs) {
+      const ambName = rawAMBConfig.name;
+      if (ambName == undefined) {
+        throw new Error(`Invalid AMB configuraiton: 'name' missing.`);
       }
-      if (rawAMBConfig.incentivesAddress == undefined) {
-        throw new Error(
-          `Invalid AMB configuration for AMB '${ambName}': 'incentivesAddress' missing.`,
-        );
+
+      if (rawAMBConfig.enabled == false) {
+        continue;
       }
 
       const globalProperties = rawAMBConfig;

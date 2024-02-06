@@ -32,11 +32,11 @@ The `.yaml` configuration file is divided into the following sections:
 - `global`: Defines the global relayer configuration.
     - The `privateKey` of the account that will submit the relay transactions on all chains must be defined at this point. 
     - Default configuration for the `getter` and `submitter` can also be specified at this point.
-- `ambs`: The AMBs that are enabled.
+- `ambs`: The AMBs configuration.
+    - Every AMB configuration must have at least the address of the Generalised Incentives contract that implements the AMB (`incentivesAddress`) at this point, or otherwise within the chain-specific AMB configuration (under `chains -> $ambName -> incentivesAddress`).
 - `chains`: Defines the configuration for each of the chains to be supported by the relayer.
     - This includes the `chainId` and the `rpc` to be used for the chain.
     - Each chain may override the global `getter` and `submitter` configurations (those defined under the `global` configuration), and `amb` configurations.
-- `$ambName`: AMB specific configuration can be specified under the name of the AMB. Every AMB configuration must have at least the address of the Generalised Incentives contract that implements the AMB (`incentivesAddress`) at this point, or otherwise within the chain-specific AMB configuration (under `chains -> $ambName -> incentivesAddress`).
 
 > ℹ️ For a full reference of the configuration file, see `config.example.yaml`.
 
