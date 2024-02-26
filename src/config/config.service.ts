@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
+import { getConfigValidator } from './config-schemas';
 
 export interface GlobalConfig {
   port: number;
@@ -117,25 +118,30 @@ export class ConfigService {
       );
     }
 
-    return yaml.load(rawConfig) as Record<string, any>;
+    const config = yaml.load(rawConfig) as Record<string, any>;
+
+    this.validateConfig(config);
+    return config;
+  }
+
+  private validateConfig(config: any): void {
+    const validator = getConfigValidator();
+    const isConfigValid = validator(config);
+
+    if (!isConfigValid) {
+      const error = validator.errors;
+      console.error('Config validation failed:', error);
+      throw new Error('Config validation failed.');
+    }
   }
 
   private loadGlobalConfig(): GlobalConfig {
     const rawGlobalConfig = this.rawConfig.global;
-    if (rawGlobalConfig == undefined) {
-      throw new Error(
-        "'global' configuration missing on the configuration file",
-      );
-    }
 
     if (process.env.RELAYER_PORT == undefined) {
       throw new Error(
         "Invalid configuration: environment variable 'RELAYER_PORT' missing",
       );
-    }
-
-    if (rawGlobalConfig.privateKey == undefined) {
-      throw new Error("Invalid global configuration: 'privateKey' missing.");
     }
 
     return {
@@ -153,19 +159,6 @@ export class ConfigService {
     const chainConfig = new Map<string, ChainConfig>();
 
     for (const rawChainConfig of this.rawConfig.chains) {
-      if (rawChainConfig.chainId == undefined) {
-        throw new Error(`Invalid chain configuration: 'chainId' missing.`);
-      }
-      if (rawChainConfig.name == undefined) {
-        throw new Error(
-          `Invalid chain configuration for chain '${rawChainConfig.chainId}': 'name' missing.`,
-        );
-      }
-      if (rawChainConfig.rpc == undefined) {
-        throw new Error(
-          `Invalid chain configuration for chain '${rawChainConfig.chainId}': 'rpc' missing.`,
-        );
-      }
       chainConfig.set(rawChainConfig.chainId, {
         chainId: rawChainConfig.chainId.toString(),
         name: rawChainConfig.name,
@@ -185,15 +178,11 @@ export class ConfigService {
     const ambConfig = new Map<string, AMBConfig>();
 
     for (const rawAMBConfig of this.rawConfig.ambs) {
-      const ambName = rawAMBConfig.name;
-      if (ambName == undefined) {
-        throw new Error(`Invalid AMB configuraiton: 'name' missing.`);
-      }
-
       if (rawAMBConfig.enabled == false) {
         continue;
       }
 
+      const ambName = rawAMBConfig.name;
       const globalProperties = rawAMBConfig;
 
       ambConfig.set(ambName, {
