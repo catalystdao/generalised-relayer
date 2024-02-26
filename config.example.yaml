@@ -71,6 +71,7 @@ chains:
     name: "Mumbai"
     rpc: "https://polygon-mumbai-pokt.nodies.app"
 
+    blockDelay: 2
     # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
     # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
 
