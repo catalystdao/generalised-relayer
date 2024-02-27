@@ -19,6 +19,13 @@ export type AmbPayload = {
   priority?: boolean;
 };
 
+export type PrioritiseMessage = {
+  messageIdentifier: string;
+  amb: string;
+  sourceChainId: string;
+  destinationChainId: string;
+};
+
 export type Bounty = {
   messageIdentifier: string;
   fromChainId: string;

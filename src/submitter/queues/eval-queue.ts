@@ -160,7 +160,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (source to destination).`,
       );
 
-      if (BigNumber.from(gasLimit).lt(gasEstimation)) {
+      if (!order.priority && BigNumber.from(gasLimit).lt(gasEstimation)) {
         return 0; // Do not relay packet
       }
 
@@ -180,7 +180,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (destination to source).`,
       );
 
-      if (BigNumber.from(gasLimit).lt(gasEstimation)) {
+      if (!order.priority && BigNumber.from(gasLimit).lt(gasEstimation)) {
         return 0; // Do not relay packet
       }
 

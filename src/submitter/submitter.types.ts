@@ -7,7 +7,9 @@ export interface Order {
   messageCtx: BytesLike;
 }
 
-export interface EvalOrder extends Order {}
+export interface EvalOrder extends Order {
+  priority: boolean;
+}
 
 export interface SubmitOrder extends Order {
   gasLimit: number | undefined;

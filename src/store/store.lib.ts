@@ -7,6 +7,7 @@ import {
   AmbPayload,
   Bounty,
   BountyJson,
+  PrioritiseMessage,
 } from 'src/store/types/store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
@@ -69,6 +70,7 @@ export class Store {
   static readonly relayerStorePrefix: string = 'relayer';
   static readonly bountyMidfix: string = 'bounty';
   static readonly ambMidfix: string = 'amb';
+  static readonly ambPayloadMidfix: string = 'ambPayload';
   static readonly hashAmbMapMidfix: string = 'hashAmbMap';
   static readonly proofMidfix: string = 'proof';
   static readonly wordConnecter: string = ':';
@@ -428,6 +430,24 @@ export class Store {
     return amb;
   }
 
+  async getAmbPayload(
+    chainId: string,
+    messageIdentifier: string,
+  ): Promise<AmbPayload | null> {
+    const query: string | null = await this.redis.get(
+      Store.combineString(
+        Store.relayerStorePrefix,
+        Store.ambPayloadMidfix,
+        chainId,
+        messageIdentifier,
+      ),
+    );
+    const amb: AmbPayload | null =
+      query === null ? undefined : JSON.parse(query);
+
+    return amb;
+  }
+
   async getAMBsByTxHash(
     chainId: string,
     txHash: string,
@@ -472,6 +492,19 @@ export class Store {
     );
   }
 
+  async setAmbPayload(amb: AmbPayload): Promise<void> {
+    const chainId = this.chainId;
+    if (chainId === null)
+      throw new Error('ChainId is not set: This connection is readonly');
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.ambPayloadMidfix,
+      chainId,
+      amb.messageIdentifier,
+    );
+    await this.set(key, JSON.stringify(amb));
+  }
+
   async registerAmbTxHash(
     chainId: string,
     messageIdentifier: string,
@@ -501,6 +534,24 @@ export class Store {
   async submitProof(destinationChain: string, ambPayload: AmbPayload) {
     const emitToChannel = Store.getChannel('submit', destinationChain);
 
+    await this.setAmbPayload(ambPayload);
     await this.postMessage(emitToChannel, ambPayload);
+  }
+
+  async prioritiseMessage(
+    sourceChainId: string,
+    destinationChainId: string,
+    messageIdentifier: string,
+    amb: string,
+  ): Promise<void> {
+    const emitToChannel = Store.getChannel('prioritise', destinationChainId);
+    const data: PrioritiseMessage = {
+      sourceChainId,
+      destinationChainId,
+      messageIdentifier,
+      amb,
+    };
+
+    await this.postMessage(emitToChannel, data);
   }
 }

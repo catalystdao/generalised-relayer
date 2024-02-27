@@ -5,7 +5,7 @@ import { Store } from 'src/store/store.lib';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/IncentivizedMessageEscrow__factory';
 import { workerData } from 'worker_threads';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AmbPayload, PrioritiseMessage } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import {
   BalanceConfig,
@@ -418,8 +418,9 @@ class SubmitterWorker {
    */
   private async listenForOrders(): Promise<void> {
     const listenToChannel = Store.getChannel('submit', this.chainId);
+    const prioritiseChannel = Store.getChannel('prioritise', this.chainId);
     this.logger.info(
-      { channel: listenToChannel },
+      { globalChannel: listenToChannel, prioritiseChannel: prioritiseChannel },
       `Listing for messages to submit.`,
     );
 
@@ -431,6 +432,27 @@ class SubmitterWorker {
         message.messageCtx ?? '',
         !!message.priority, // eval priority => undefined = false.
       );
+    });
+
+    await this.store.on(prioritiseChannel, (message: PrioritiseMessage) => {
+      void this.store
+        .getAmbPayload(message.sourceChainId, message.messageIdentifier)
+        .then((ambPayload) => {
+          if (ambPayload == null) {
+            this.logger.warn(
+              message,
+              'No AMB payload found for the prioritisation request.',
+            );
+          } else {
+            void this.addSubmitOrder(
+              ambPayload.amb,
+              ambPayload.messageIdentifier,
+              ambPayload.message,
+              ambPayload.messageCtx ?? '',
+              true,
+            );
+          }
+        });
     });
   }
 
@@ -447,12 +469,12 @@ class SubmitterWorker {
     );
     if (priority) {
       // Push directly into the submit queue
-      await this.submitQueue.addOrders({
+      await this.evalQueue.addOrders({
         amb,
         messageIdentifier,
         message,
         messageCtx,
-        gasLimit: undefined, //TODO, allow this to be set? (Some chains might fail with 'undefined')
+        priority: true,
       });
     } else {
       // Push into the evaluation queue
@@ -463,6 +485,7 @@ class SubmitterWorker {
           messageIdentifier,
           message,
           messageCtx,
+          priority: false,
         },
       });
     }
