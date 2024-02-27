@@ -19,6 +19,12 @@ export type AmbPayload = {
   priority?: boolean;
 };
 
+export enum EvaluationStatus {
+  None,
+  Invalid,
+  Valid,
+}
+
 export type PrioritiseMessage = {
   messageIdentifier: string;
   amb: string;
@@ -36,6 +42,10 @@ export type Bounty = {
   priceOfDeliveryGas: BigNumber;
   priceOfAckGas: BigNumber;
   targetDelta: BigNumber;
+  evaluationStatus: {
+    delivery: EvaluationStatus;
+    ack: EvaluationStatus;
+  };
   status: BountyStatus;
   address: string;
   finalised?: boolean;
@@ -54,6 +64,10 @@ export type BountyJson = {
   priceOfDeliveryGas?: string;
   priceOfAckGas?: string;
   targetDelta?: string;
+  evaluationStatus: {
+    delivery: EvaluationStatus;
+    ack: EvaluationStatus;
+  };
   status: BountyStatus;
   address?: string;
   finalised?: boolean;

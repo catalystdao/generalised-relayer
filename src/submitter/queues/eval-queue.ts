@@ -3,7 +3,7 @@ import { EvalOrder, SubmitOrder } from '../submitter.types';
 import { BigNumber, Wallet } from 'ethers';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
-import { Bounty } from 'src/store/types/store.types';
+import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { hexZeroPad } from 'ethers/lib/utils';
@@ -113,7 +113,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       );
     }
 
-    // Check if the bounty has already been submitted
+    // Check if the bounty has already been submitted/is in process of being submitted
     const isDelivery = bounty.fromChainId != this.chainId;
     if (isDelivery) {
       // Source to Destination
@@ -124,12 +124,26 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         );
         return 0; // Do not relay packet
       }
+      if (bounty.evaluationStatus.delivery == EvaluationStatus.Valid) {
+        this.logger.debug(
+          { messageIdentifier },
+          `Bounty evaluation (source to destination). Bounty delivery already in process.`,
+        );
+        return 0; // Do not relay packet
+      }
     } else {
       // Destination to Source
       if (bounty.status >= BountyStatus.BountyClaimed) {
         this.logger.debug(
           { messageIdentifier },
           `Bounty evaluation (destination to source). Bounty already acked.`,
+        );
+        return 0; // Do not relay packet
+      }
+      if (bounty.evaluationStatus.ack == EvaluationStatus.Valid) {
+        this.logger.debug(
+          { messageIdentifier },
+          `Bounty evaluation (destination to source). Bounty delivery already in process.`,
         );
         return 0; // Do not relay packet
       }
@@ -160,11 +174,17 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (source to destination).`,
       );
 
-      if (!order.priority && BigNumber.from(gasLimit).lt(gasEstimation)) {
-        return 0; // Do not relay packet
-      }
+      const relayDelivery =
+        order.priority || BigNumber.from(gasLimit).gte(gasEstimation);
 
-      return gasLimit;
+      await this.store.registerEvaluationStatus({
+        messageIdentifier: order.messageIdentifier,
+        deliveryEvaluationStatus: relayDelivery
+          ? EvaluationStatus.Valid
+          : EvaluationStatus.Invalid,
+      });
+
+      return relayDelivery ? gasLimit : 0;
     } else {
       // Destination to Source
       const gasLimit = bounty.maxGasAck + gasLimitBuffer;
@@ -180,11 +200,17 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (destination to source).`,
       );
 
-      if (!order.priority && BigNumber.from(gasLimit).lt(gasEstimation)) {
-        return 0; // Do not relay packet
-      }
+      const relayAck =
+        order.priority || BigNumber.from(gasLimit).gte(gasEstimation);
 
-      return gasLimit;
+      await this.store.registerEvaluationStatus({
+        messageIdentifier: order.messageIdentifier,
+        ackEvaluationStatus: relayAck
+          ? EvaluationStatus.Valid
+          : EvaluationStatus.Invalid,
+      });
+
+      return relayAck ? gasLimit : 0;
     }
 
     return 0; // Do not relay packet
