@@ -66,8 +66,6 @@ export interface PersisterConfig {
   postgresString: string;
 }
 
-//TODO config schema verification should not be implemented manually.
-
 @Injectable()
 export class ConfigService {
   private readonly rawConfig: Record<string, any>;
