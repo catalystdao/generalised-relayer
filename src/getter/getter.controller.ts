@@ -2,7 +2,8 @@ import { Controller, OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 // import { bountyToDTO } from 'src/common/utils';
 import { Worker } from 'worker_threads';
-import { ChainConfig, ConfigService } from 'src/config/config.service';
+import { ConfigService } from 'src/config/config.service';
+import { ChainConfig } from 'src/config/config.types';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
 

@@ -7,7 +7,8 @@ import {
   DEFAULT_GETTER_MAX_BLOCKS,
 } from 'src/getter/getter.controller';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { ChainConfig, ConfigService } from 'src/config/config.service';
+import { ConfigService } from 'src/config/config.service';
+import { ChainConfig } from 'src/config/config.types';
 import { LoggerOptions } from 'pino';
 
 interface GlobalMockConfig {

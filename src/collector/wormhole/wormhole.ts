@@ -1,11 +1,8 @@
 import { join } from 'path';
 import { Worker } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';
-import {
-  ConfigService,
-  AMBConfig,
-  ChainConfig,
-} from 'src/config/config.service';
+import { ConfigService } from 'src/config/config.service';
+import { AMBConfig, ChainConfig } from 'src/config/config.types';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import {
   DEFAULT_GETTER_BLOCK_DELAY,
