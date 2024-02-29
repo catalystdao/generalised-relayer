@@ -356,15 +356,15 @@ class SubmitterWorker {
     }
 
     for (let i = 0; i < this.config.maxTries; i++) {
-      // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
-      // helper takes into account the 'pending' transactions.
-      const latestNonce = await this.signer.getTransactionCount('latest');
-
-      if (latestNonce > cancelTxNonce) {
-        return;
-      }
-
       try {
+        // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
+        // helper takes into account the 'pending' transactions.
+        const latestNonce = await this.signer.getTransactionCount('latest');
+
+        if (latestNonce > cancelTxNonce) {
+          return;
+        }
+
         await this.transactionHelper.updateFeeData();
 
         const tx = await this.signer.sendTransaction({
