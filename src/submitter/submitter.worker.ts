@@ -365,6 +365,8 @@ class SubmitterWorker {
       }
 
       try {
+        await this.transactionHelper.updateFeeData();
+
         const tx = await this.signer.sendTransaction({
           nonce: cancelTxNonce,
           to: constants.AddressZero,

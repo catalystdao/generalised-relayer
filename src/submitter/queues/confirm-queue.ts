@@ -77,6 +77,8 @@ export class ConfirmQueue extends ProcessingQueue<
       // Reprice the order
       const originalTx = order.tx;
 
+      await this.transactionHelper.updateFeeData();
+
       const increasedFeeConfig =
         this.transactionHelper.getIncreasedFeeDataForTransaction(originalTx);
 
