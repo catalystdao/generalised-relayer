@@ -107,6 +107,10 @@ export class SubmitterService {
 
       this.workers.set(chainConfig.chainId, worker);
     }
+
+    // Add a small delay to wait for the workers to be initialized
+    //TODO the following should not be delay-based.
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   private loadGlobalSubmitterConfig(): GlobalSubmitterConfig {
