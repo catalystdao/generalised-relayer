@@ -24,6 +24,7 @@ import {
   ConfirmedTransaction,
   PendingTransaction,
 } from './queues/confirm-queue';
+import { addTransactionTimeout } from './utils';
 
 class SubmitterWorker {
   readonly store: Store;
@@ -374,9 +375,8 @@ class SubmitterWorker {
           ...this.transactionHelper.getIncreasedFeeDataForTransaction(baseTx),
         });
 
-        const receipt = await this.provider.waitForTransaction(
-          tx.hash,
-          this.config.confirmations,
+        const receipt = await addTransactionTimeout(
+          tx.wait(this.config.confirmations),
           this.config.confirmationTimeout,
         );
 

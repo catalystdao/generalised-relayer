@@ -7,6 +7,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers';
+import { addTransactionTimeout } from '../utils';
 
 export interface PendingTransaction<T = any> {
   data: T;
@@ -57,17 +58,14 @@ export class ConfirmQueue extends ProcessingQueue<
   ): Promise<HandleOrderResult<ConfirmedTransaction> | null> {
     // If it's the first time the order is processed, just wait for it
     if (retryCount == 0) {
-      const transactionReceipt = this.provider
-        .waitForTransaction(
-          order.tx.hash,
-          this.confirmations,
-          this.confirmationTimeout,
-        )
-        .then((receipt) => ({
-          data: order.data,
-          tx: order.tx,
-          txReceipt: receipt,
-        }));
+      const transactionReceipt = addTransactionTimeout(
+        order.tx.wait(this.confirmations),
+        this.confirmationTimeout,
+      ).then((receipt) => ({
+        data: order.data,
+        tx: order.tx,
+        txReceipt: receipt,
+      }));
 
       return { result: transactionReceipt };
     }
@@ -94,20 +92,14 @@ export class ConfirmQueue extends ProcessingQueue<
     }
 
     // Wait for either the original or the replace transaction to fulfill
-    const originalTxReceipt = this.provider
-      .waitForTransaction(
-        order.tx.hash,
-        this.confirmations,
-        this.confirmationTimeout,
-      )
-      .then((txReceipt) => ({ tx: order.tx, txReceipt }));
-    const replaceTxReceipt = this.provider
-      .waitForTransaction(
-        order.replaceTx!.hash,
-        this.confirmations,
-        this.confirmationTimeout,
-      )
-      .then((txReceipt) => ({ tx: order.replaceTx!, txReceipt }));
+    const originalTxReceipt = addTransactionTimeout(
+      order.tx.wait(this.confirmations),
+      this.confirmationTimeout,
+    ).then((txReceipt) => ({ tx: order.tx, txReceipt }));
+    const replaceTxReceipt = addTransactionTimeout(
+      order.replaceTx!.wait(this.confirmations),
+      this.confirmationTimeout,
+    ).then((txReceipt) => ({ tx: order.replaceTx!, txReceipt }));
 
     const confirmationPromise = Promise.any([
       originalTxReceipt,
