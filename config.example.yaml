@@ -99,6 +99,7 @@ chains:
     blockDelay: 5
     getter:
       interval: 2000
+      maxBlocks: 5000
     wormhole:
       wormholeChainId: 10003
       incentivesAddress: '0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28'
