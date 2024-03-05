@@ -70,7 +70,7 @@ function loadWorkerData(
   ) as string;
 
   const polymerAddress = configService.getAMBConfig(
-    'wormhole',
+    'polymer',
     'bridgeAddress',
     chainConfig.chainId,
   ) as string | undefined;
