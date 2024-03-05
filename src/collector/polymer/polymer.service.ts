@@ -1,11 +1,10 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { ethers } from 'ethers';
-import { keccak256 } from 'ethers/lib/utils';
 import pino from 'pino';
-import { convertHexToDecimal, wait } from 'src/common/utils';
+import { wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
+import { AmbMessage } from 'src/store/types/store.types';
 import { workerData } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
 
@@ -51,7 +50,6 @@ const bootstrap = async () => {
     config.polymerAddress,
     provider,
   );
-  const bytes32Address = ethers.utils.hexZeroPad(config.incentivesAddress, 32);
 
   // In case this worker crashes (say bad RPC), the worker will be restarted.
   // If the error is indeed from the RPC, it is better to wait a bit before calling the RPC again.

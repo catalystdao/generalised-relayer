@@ -1,15 +1,15 @@
 import { join } from 'path';
-import { Worker } from 'worker_threads';
-import { CollectorModuleInterface } from '../collector.controller';
+import { LoggerOptions } from 'pino';
+import { ConfigService } from 'src/config/config.service';
+import { ChainConfig } from 'src/config/config.types';
 import {
   DEFAULT_GETTER_BLOCK_DELAY,
   DEFAULT_GETTER_INTERVAL,
   DEFAULT_GETTER_MAX_BLOCKS,
 } from 'src/getter/getter.controller';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { ConfigService } from 'src/config/config.service';
-import { ChainConfig } from 'src/config/config.types';
-import { LoggerOptions } from 'pino';
+import { Worker } from 'worker_threads';
+import { CollectorModuleInterface } from '../collector.controller';
 
 interface GlobalPolymerConfig {
   blockDelay: number;
