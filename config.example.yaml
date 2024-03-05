@@ -113,11 +113,11 @@ chains:
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
     polymer:
       incentivesAddress: '0x62e27C0bD89D7AC599Df8765cDEe0183A34A9929'
-      bridgeAddress: '0x34a0e37cCCEdaC70EC1807e5a1f6A4a91D4AE0Ce'
+      bridgeAddress: '0x58f1863F75c9Db1c7266dC3d7b43832b58f35e83'
 
   - chainId: 84532
     name: 'Base Sepolia'
     rpc: 'https://rpc.notadegen.com/base/sepolia'
     polymer:
       incentivesAddress: '0x147d414F1964c94c4Ac7422aC148aBddb4BEdC82'
-      bridgeAddress: '0x50E32e236bfE4d514f786C9bC80061637dd5AF98'
+      bridgeAddress: '0xfC1d3E02e00e0077628e8Cc9edb6812F95Db05dC'
