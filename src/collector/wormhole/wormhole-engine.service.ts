@@ -19,7 +19,11 @@ import { WormholeRelayerEngineWorkerData } from './wormhole';
 const bootstrap = async () => {
   const config = workerData as WormholeRelayerEngineWorkerData;
 
-  const store = new Store(); // Read only stores can still publish messages.
+  const stores: Map<string, Store> = new Map(); // ! NOTE: The keys are the wormhole-specific chain ids
+  for (const [chainId, wormholeConfig] of config.wormholeChainConfig) {
+    stores.set(wormholeConfig.wormholeChainId, new Store(chainId));
+  }
+
   const enviroment = config.isTestnet
     ? Environment.TESTNET
     : Environment.MAINNET;
@@ -100,7 +104,18 @@ const bootstrap = async () => {
       { sequence: vaa.sequence, destinationChain },
       `Wormhole VAA found.`,
     );
-    await store.submitProof(destinationChain, ambPayload);
+
+    const store = stores.get(String(vaa.emitterChain));
+    if (store != undefined) {
+      await store.submitProof(destinationChain, ambPayload);
+    } else {
+      logger.warn(
+        {
+          wormholeVAAEmitterChain: vaa.emitterChain,
+        },
+        `No 'Store' found for the Wormhole VAA emitter chain id.`,
+      );
+    }
   });
 
   await app.listen();
