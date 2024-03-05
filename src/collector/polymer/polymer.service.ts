@@ -130,13 +130,16 @@ const bootstrap = async () => {
         try {
           const destinationChain: string = messageEvent.args.sourceChannelId;
 
+          const polymerOffset = 384;
+          const packet = messageEvent.args.packet.startsWith("0x") ? messageEvent.args.packet.slice(2) : messageEvent.args.packet;
+
           // Derive the message identifier
           const amb: AmbMessage = {
-            messageIdentifier: '0x' + messageEvent.args.packet.slice(1, 33),
+            messageIdentifier: '0x' + packet.slice(1 * 2 + polymerOffset, 33 * 2 + polymerOffset),
             amb: 'polymer',
             sourceChain: chainId,
             destinationChain,
-            payload: messageEvent.args.packet,
+            payload: packet.slice(polymerOffset),
           };
 
           // Set the collect message  on-chain. This is not the proof but the raw message.
