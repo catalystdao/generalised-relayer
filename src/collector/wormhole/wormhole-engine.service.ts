@@ -19,7 +19,7 @@ import { WormholeRelayerEngineWorkerData } from './wormhole';
 const bootstrap = async () => {
   const config = workerData as WormholeRelayerEngineWorkerData;
 
-  const stores: Map<string, Store> = new Map(); // ! NOTE: The keys are the wormhole-specific chain ids
+  const stores: Map<number, Store> = new Map(); // ! NOTE: The keys are the wormhole-specific chain ids
   for (const [chainId, wormholeConfig] of config.wormholeChainConfig) {
     stores.set(wormholeConfig.wormholeChainId, new Store(chainId));
   }
@@ -105,7 +105,7 @@ const bootstrap = async () => {
       `Wormhole VAA found.`,
     );
 
-    const store = stores.get(String(vaa.emitterChain));
+    const store = stores.get(vaa.emitterChain);
     if (store != undefined) {
       await store.submitProof(destinationChain, ambPayload);
     } else {
