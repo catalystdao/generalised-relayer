@@ -11,7 +11,7 @@ export class LoggerService {
 
   constructor(configService: ConfigService) {
     this.loggerOptions = this.loadLoggerOptions(
-      configService.relayerConfig.logLevel,
+      configService.globalConfig.logLevel,
     );
     this.logger = pino(this.loggerOptions);
   }
@@ -20,7 +20,13 @@ export class LoggerService {
     return {
       level: logLevel ?? 'info',
       base: { pid: process.pid }, // Remove default 'hostname' key from logs
-      redact: ['privateKey', '[*].privateKey']
+      redact: [
+        'privateKey',
+        '*.privateKey',
+        '*.*.privateKey',
+        '*.*.*.privateKey',
+        '*.*.*.*.privateKey',
+      ],
     };
   }
 

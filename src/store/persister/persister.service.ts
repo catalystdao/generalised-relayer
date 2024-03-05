@@ -17,7 +17,7 @@ export class PersisterService {
 
   async onModuleInit(): Promise<void> {
     // Do we need to start persister?
-    const startPersister = this.configService.relayerConfig.persister.enabled;
+    const startPersister = this.configService.globalConfig.persister.enabled;
     this.loggerService.info(
       `Persister is ${startPersister ? 'enabled' : 'disabled'}`,
     );
@@ -34,13 +34,13 @@ export class PersisterService {
     const worker = new Worker(join(__dirname, 'persister.worker.js'), {
       workerData: {
         postgresConnectionString:
-          this.configService.relayerConfig.persister.postgresString,
+          this.configService.globalConfig.persister.postgresString,
         chains: chains,
         loggerOptions: this.loggerService.loggerOptions,
       },
     });
 
-    this.setSubscriptions(worker);
+    await this.setSubscriptions(worker);
 
     this.worker = worker;
   }
@@ -51,7 +51,7 @@ export class PersisterService {
     );
 
     worker.on('exit', (exitCode) => {
-      this.loggerService.fatal(`Persister exited with code ${exitCode}.`);
+      this.loggerService.fatal({ exitCode }, `Persister exited.`);
       // Sometimes the postgres connection is dropped, we need to recover from that case.
       if (exitCode === 1) {
         setTimeout(() => {
@@ -59,13 +59,13 @@ export class PersisterService {
           const newWorker = new Worker(join(__dirname, 'persister.worker.js'), {
             workerData: {
               postgresConnectionString:
-                this.configService.relayerConfig.persister.postgresString,
+                this.configService.globalConfig.persister.postgresString,
               chains: this.chains,
               loggerOptions: this.loggerService.loggerOptions,
             },
           });
 
-          this.setSubscriptions(newWorker);
+          void this.setSubscriptions(newWorker);
           this.worker = newWorker;
         });
       }

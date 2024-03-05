@@ -2,33 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
-
-export interface RelayerConfig {
-  port: number;
-  privateKey: string;
-  logLevel?: string;
-  blockDelay?: string;
-  getter: Record<string, any>;
-  submitter: Record<string, any>;
-  persister: Record<string, any>;
-}
-
-export interface ChainConfig {
-  chainId: string;
-  name: string;
-  rpc: string;
-  startingBlock?: number;
-  stoppingBlock?: number;
-  blockDelay?: number;
-  getter: Record<string, any>;
-  submitter: Record<string, any>;
-}
-
-export interface AMBConfig {
-  name: string;
-  globalProperties: Record<string, any>;
-  getIncentivesAddress: (chainId: string) => string;
-}
+import { getConfigValidator } from './config-schemas';
+import { GlobalConfig, ChainConfig, AMBConfig } from './config.types';
 
 @Injectable()
 export class ConfigService {
@@ -36,7 +11,7 @@ export class ConfigService {
 
   readonly nodeEnv: string;
 
-  readonly relayerConfig: RelayerConfig;
+  readonly globalConfig: GlobalConfig;
   readonly chainsConfig: Map<string, ChainConfig>;
   readonly ambsConfig: Map<string, AMBConfig>;
 
@@ -46,7 +21,7 @@ export class ConfigService {
     this.loadEnvFile();
     this.rawConfig = this.loadConfigFile();
 
-    this.relayerConfig = this.loadRelayerConfig();
+    this.globalConfig = this.loadGlobalConfig();
     this.chainsConfig = this.loadChainsConfig();
     this.ambsConfig = this.loadAMBsConfig();
   }
@@ -80,35 +55,40 @@ export class ConfigService {
       );
     }
 
-    return yaml.load(rawConfig) as Record<string, any>;
+    const config = yaml.load(rawConfig) as Record<string, any>;
+
+    this.validateConfig(config);
+    return config;
   }
 
-  private loadRelayerConfig(): RelayerConfig {
-    const rawRelayerConfig = this.rawConfig.relayer;
-    if (rawRelayerConfig == undefined) {
-      throw new Error(
-        "'relayer' configuration missing on the configuration file",
-      );
+  private validateConfig(config: any): void {
+    const validator = getConfigValidator();
+    const isConfigValid = validator(config);
+
+    if (!isConfigValid) {
+      const error = validator.errors;
+      console.error('Config validation failed:', error);
+      throw new Error('Config validation failed.');
     }
+  }
+
+  private loadGlobalConfig(): GlobalConfig {
+    const rawGlobalConfig = this.rawConfig.global;
 
     if (process.env.RELAYER_PORT == undefined) {
       throw new Error(
-        "Invalid relayer configuration: environment variable 'RELAYER_PORT' missing",
+        "Invalid configuration: environment variable 'RELAYER_PORT' missing",
       );
-    }
-
-    if (rawRelayerConfig.privateKey == undefined) {
-      throw new Error("Invalid relayer configuration: 'privateKey' missing.");
     }
 
     return {
       port: parseInt(process.env.RELAYER_PORT),
-      privateKey: rawRelayerConfig.privateKey,
-      logLevel: rawRelayerConfig.logLevel,
-      blockDelay: rawRelayerConfig.blockDelay,
-      getter: rawRelayerConfig.getter ?? {},
-      submitter: rawRelayerConfig.submitter ?? {},
-      persister: rawRelayerConfig.persister ?? {},
+      privateKey: rawGlobalConfig.privateKey,
+      logLevel: rawGlobalConfig.logLevel,
+      blockDelay: rawGlobalConfig.blockDelay,
+      getter: rawGlobalConfig.getter ?? {},
+      submitter: rawGlobalConfig.submitter ?? {},
+      persister: rawGlobalConfig.persister ?? {},
     };
   }
 
@@ -116,19 +96,6 @@ export class ConfigService {
     const chainConfig = new Map<string, ChainConfig>();
 
     for (const rawChainConfig of this.rawConfig.chains) {
-      if (rawChainConfig.chainId == undefined) {
-        throw new Error(`Invalid chain configuration: 'chainId' missing.`);
-      }
-      if (rawChainConfig.name == undefined) {
-        throw new Error(
-          `Invalid chain configuration for chain '${rawChainConfig.chainId}': 'name' missing.`,
-        );
-      }
-      if (rawChainConfig.rpc == undefined) {
-        throw new Error(
-          `Invalid chain configuration for chain '${rawChainConfig.chainId}': 'rpc' missing.`,
-        );
-      }
       chainConfig.set(rawChainConfig.chainId, {
         chainId: rawChainConfig.chainId.toString(),
         name: rawChainConfig.name,
@@ -144,22 +111,15 @@ export class ConfigService {
     return chainConfig;
   }
 
-  //TODO refactor where the 'amb' config is set (do the same as with the underwriter)
   private loadAMBsConfig(): Map<string, AMBConfig> {
     const ambConfig = new Map<string, AMBConfig>();
 
-    for (const ambName of this.rawConfig.ambs) {
-      const rawAMBConfig = this.rawConfig[ambName];
-
-      if (rawAMBConfig == undefined) {
-        throw new Error(`No configuration set for amb '${ambName}'`);
-      }
-      if (rawAMBConfig.incentivesAddress == undefined) {
-        throw new Error(
-          `Invalid AMB configuration for AMB '${ambName}': 'incentivesAddress' missing.`,
-        );
+    for (const rawAMBConfig of this.rawConfig.ambs) {
+      if (rawAMBConfig.enabled == false) {
+        continue;
       }
 
+      const ambName = rawAMBConfig.name;
       const globalProperties = rawAMBConfig;
 
       ambConfig.set(ambName, {

@@ -44,6 +44,7 @@ export class CollectorController implements OnModuleInit {
    * Gets a the amb metadata
    * @returns cdata and destination chain
    */
+  //TODO set a more descriptive endpoint name.
   @Get('getAMBs')
   async getAMBs(@Query() query: any): Promise<any | undefined> {
     const chainId = query.chainId;

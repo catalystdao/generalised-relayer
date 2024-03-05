@@ -9,6 +9,7 @@ import { workerData } from 'worker_threads';
 import { Store } from 'src/store/store.lib';
 import { AmbPayload } from 'src/store/types/store.types';
 import pino from 'pino';
+import { WormholeRelayerEngineWorkerData } from './wormhole';
 
 // TODO the following features must be implemented for the wormhole collector/engine:
 // - startingBlock
@@ -16,20 +17,26 @@ import pino from 'pino';
 // - blockDelay (is this desired?)
 
 const bootstrap = async () => {
-  const store = new Store(); // Read only stores can still publish messages.
-  const enviroment = workerData.isTestnet
+  const config = workerData as WormholeRelayerEngineWorkerData;
+
+  const stores: Map<number, Store> = new Map(); // ! NOTE: The keys are the wormhole-specific chain ids
+  for (const [chainId, wormholeConfig] of config.wormholeChainConfig) {
+    stores.set(wormholeConfig.wormholeChainId, new Store(chainId));
+  }
+
+  const enviroment = config.isTestnet
     ? Environment.TESTNET
     : Environment.MAINNET;
-  const useDocker = workerData.useDocker;
-  const spyPort = workerData.spyPort;
+  const useDocker = config.useDocker;
+  const spyPort = config.spyPort;
 
-  const logger = pino(workerData.loggerOptions).child({
+  const logger = pino(config.loggerOptions).child({
     worker: 'collector-wormhole-engine',
   });
 
-  const wormholeChainConfig: Map<string, any> = workerData.wormholeChainConfig;
+  const wormholeChainConfig: Map<string, any> = config.wormholeChainConfig;
   const reverseWormholeChainConfig: Map<string, any> =
-    workerData.reverseWormholeChainConfig;
+    config.reverseWormholeChainConfig;
 
   if (wormholeChainConfig.size == 0) {
     throw Error(
@@ -93,13 +100,25 @@ const bootstrap = async () => {
       message: add0X(vaa.bytes.toString('hex')),
       messageCtx: '0x',
     };
-    logger.warn(
-      `Got wormhole vaa ${vaa.sequence}, emitting to ${destinationChain}`,
+    logger.info(
+      { sequence: vaa.sequence, destinationChain },
+      `Wormhole VAA found.`,
     );
-    await store.submitProof(destinationChain, ambPayload);
+
+    const store = stores.get(vaa.emitterChain);
+    if (store != undefined) {
+      await store.submitProof(destinationChain, ambPayload);
+    } else {
+      logger.warn(
+        {
+          wormholeVAAEmitterChain: vaa.emitterChain,
+        },
+        `No 'Store' found for the Wormhole VAA emitter chain id.`,
+      );
+    }
   });
 
-  app.listen();
+  await app.listen();
 };
 
-bootstrap();
+void bootstrap();

@@ -13,7 +13,7 @@ export class EvaluatorService {
    * @param address
    * @returns The bounty mutation with the evaluation parameters
    */
-  async evaluateBounty(bounty: Bounty, address: string): Promise<Bounty> {
+  async evaluateBounty(bounty: Bounty, _address: string): Promise<Bounty> {
     this.logger.info(
       `Checking gas price for bounty ${bounty.messageIdentifier}`,
     );

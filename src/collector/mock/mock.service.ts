@@ -3,7 +3,6 @@ import { Wallet, ethers } from 'ethers';
 import { keccak256 } from 'ethers/lib/utils';
 import pino from 'pino';
 import { convertHexToDecimal, wait } from 'src/common/utils';
-import { ChainConfig } from 'src/config/config.service';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { AmbPayload } from 'src/store/types/store.types';
@@ -13,6 +12,7 @@ import {
   encodeMessage,
   encodeSignature,
 } from './mock.utils';
+import { MockWorkerData } from './mock';
 
 /**
  * Example AMB implementation which uses a simple signed message to validate transactions.
@@ -20,7 +20,8 @@ import {
  * @dev You can also provide additional data here for your AMB. For example,
  * Mock gets the additional parameter: workerData.mockPrivateKey. Simply set it in the coonfig.
  * For future relayers, please update config.example.yaml with any values they might find useful.
- * @param workerData.chainConfig The associated config for the chain which the worker runs on.
+ * @param workerData.chainId The id of the chain the worker runs for.
+ * @param workerData.rpc The RPC to use for the chain.
  * @param workerData.incentivesAddress The address of the Generalised Incentive implementation for the AMB.
  * @param workerData.interval Interval of when to scan a bounty
  * @param workerData.maxBlocks Max number of blocks to scan at a time
@@ -29,16 +30,13 @@ import {
  */
 const bootstrap = async () => {
   // Load all of the config into transparent variables.
-  const chainConfig: ChainConfig = workerData.chainConfig;
-  const incentivesAddress = workerData.incentivesAddress;
-  const interval = workerData.interval;
-  const maxBlocks = workerData.maxBlocks;
-  const blockDelay = workerData.blockDelay ?? 0;
+  const config: MockWorkerData = workerData as MockWorkerData;
+  const chainId = config.chainId;
 
   // Get a connection to the redis store.
   // We have wrapped the redis store into a lib to make it easier to standardise
   // communication between the various components.
-  const store = new Store(chainConfig.chainId);
+  const store = new Store(chainId);
 
   // Start a logger. The provided logger options should be used.
   // For the worker name, use the AMB's name and include the service.
@@ -46,57 +44,59 @@ const bootstrap = async () => {
   // then use collector-<AMB> as the bounty worker and collector-<OTHER JOBS>-<AMB>
   // for the other job(s).
   // In our case, Mock only needs one which is appropiately named 'collector-mock'.
-  const logger = pino(workerData.loggerOptions).child({
+  const logger = pino(config.loggerOptions).child({
     worker: 'collector-mock',
-    chain: chainConfig.chainId,
+    chain: chainId,
   });
 
   // It is good to give a warning that we are starting the collector service along with
   // some context regarding the execution.
   logger.info(
-    `Starting mock for contract ${incentivesAddress} on ${chainConfig.name}`,
+    { incentivesAddress: config.incentivesAddress },
+    `Starting mock service.`,
   );
 
   // Get an Ethers provider for us to collect bounties with.
-  const provider = new StaticJsonRpcProvider(chainConfig.rpc);
+  const provider = new StaticJsonRpcProvider(config.rpc);
 
   // Create a signing key using the provided AMB config:
-  const signingKey = new Wallet(
-    workerData.mockPrivateKey,
-    provider,
-  )._signingKey();
+  const signingKey = new Wallet(config.privateKey, provider)._signingKey();
 
   // Set the contract which we will receive messages through.
   const contract = IncentivizedMockEscrow__factory.connect(
-    incentivesAddress,
+    config.incentivesAddress,
     provider,
   );
-  const bytes32Address = ethers.utils.hexZeroPad(incentivesAddress, 32);
+  const bytes32Address = ethers.utils.hexZeroPad(config.incentivesAddress, 32);
 
   // In case this worker crashes (say bad RPC), the worker will be restarted.
   // If the error is indeed from the RPC, it is better to wait a bit before calling the RPC again.
-  await wait(interval);
+  await wait(config.interval);
 
   let startBlock =
-    chainConfig.startingBlock ?? (await provider.getBlockNumber()) - blockDelay;
+    config.startingBlock ??
+    (await provider.getBlockNumber()) - config.blockDelay;
 
   // The stopping block is used if the relayer is only running for a fixed amount of time.
-  const stopBlock = chainConfig.stoppingBlock ?? Infinity;
+  const stopBlock = config.stoppingBlock ?? Infinity;
 
   // Main worker loop.
   while (true) {
     let endBlock: number;
     try {
-      endBlock = (await provider.getBlockNumber()) - blockDelay;
+      endBlock = (await provider.getBlockNumber()) - config.blockDelay;
     } catch (error) {
-      logger.error(error, `Failed to get current block, ${chainConfig.name}`);
-      await wait(interval);
+      logger.error(
+        error,
+        `Failed to get the current block on the 'mock' collector service.`,
+      );
+      await wait(config.interval);
       continue;
     }
 
     // If there has been no new block, wait.
     if (startBlock > endBlock || !endBlock) {
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
@@ -108,13 +108,17 @@ const bootstrap = async () => {
     // If the relayer was started in the pass, we can skip some parts of the logic for faster catching up.
     let isCatchingUp = false;
     const blocksToProcess = endBlock - startBlock;
-    if (blocksToProcess > maxBlocks) {
-      endBlock = startBlock + maxBlocks;
+    if (config.maxBlocks != null && blocksToProcess > config.maxBlocks) {
+      endBlock = startBlock + config.maxBlocks;
       isCatchingUp = true;
     }
 
     logger.info(
-      `Scanning mock messages from block ${startBlock} to ${endBlock} on ${chainConfig.name}`,
+      {
+        startBlock,
+        endBlock,
+      },
+      `Scanning mock messages.`,
     );
 
     let messageLogs;
@@ -127,10 +131,14 @@ const bootstrap = async () => {
       );
     } catch (error) {
       logger.error(
-        error,
-        `Failed to fetch logs from block ${startBlock} to ${endBlock} on ${chainConfig.name}`,
+        {
+          startBlock,
+          endBlock,
+          error,
+        },
+        `Failed to fetch logs.`,
       );
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
@@ -145,7 +153,7 @@ const bootstrap = async () => {
 
           // Set the collect message  on-chain. This is not the proof but the raw message.
           // It can be used by plugins to facilitate other jobs.
-          store.setAmb(amb, messageEvent.transactionHash);
+          await store.setAmb(amb, messageEvent.transactionHash);
 
           // Set destination address for the bounty.
           store.registerDestinationAddress({
@@ -173,31 +181,33 @@ const bootstrap = async () => {
           };
 
           logger.info(
-            `Got mock message ${amb.messageIdentifier}, emitting to ${destinationChainId}`,
+            {
+              messageIdentifier: amb.messageIdentifier,
+              destinationChainId: destinationChainId,
+            },
+            `Mock message found.`,
           );
 
           // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
           await store.submitProof(destinationChainId, ambPayload);
         } catch (error) {
-          logger.error(error, `Failed to process mock message`);
-          await wait(interval);
+          logger.error(error, `Failed to process mock message.`);
+          await wait(config.interval);
         }
       }
     }
 
     if (endBlock >= stopBlock) {
-      logger.info(
-        `Finished processing blocks (stopping at ${endBlock}). Exiting worker.`,
-      );
+      logger.info({ endBlock }, `Finished processing blocks. Exiting worker.`);
       break;
     }
 
     startBlock = endBlock + 1;
-    if (!isCatchingUp) await wait(interval);
+    if (!isCatchingUp) await wait(config.interval);
   }
 
   // Cleanup worker
   await store.quit();
 };
 
-bootstrap();
+void bootstrap();

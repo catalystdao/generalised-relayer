@@ -7,6 +7,8 @@ import {
   AmbPayload,
   Bounty,
   BountyJson,
+  EvaluationStatus,
+  PrioritiseMessage,
 } from 'src/store/types/store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
@@ -69,6 +71,7 @@ export class Store {
   static readonly relayerStorePrefix: string = 'relayer';
   static readonly bountyMidfix: string = 'bounty';
   static readonly ambMidfix: string = 'amb';
+  static readonly ambPayloadMidfix: string = 'ambPayload';
   static readonly hashAmbMapMidfix: string = 'hashAmbMap';
   static readonly proofMidfix: string = 'proof';
   static readonly wordConnecter: string = ':';
@@ -153,14 +156,17 @@ export class Store {
     );
   }
 
-  on(channel: string, callback: (payload: { [key: string]: any }) => void) {
+  async on(
+    channel: string,
+    callback: (payload: { [key: string]: any }) => void,
+  ) {
     const redisSubscriptions = this.getOrOpenSubscription();
     // Subscribe to the channel so that we get messages.
     const channelWithprefix = Store.combineString(
       Store.relayerStorePrefix,
       channel,
     );
-    redisSubscriptions.subscribe(channelWithprefix);
+    await redisSubscriptions.subscribe(channelWithprefix);
     // Set the callback when we receive messages function.
     redisSubscriptions.on('message', (redis_channel, redis_message) => {
       if (redis_channel === channelWithprefix)
@@ -223,6 +229,10 @@ export class Store {
       priceOfDeliveryGas: incentive.priceOfDeliveryGas,
       priceOfAckGas: incentive.priceOfAckGas,
       targetDelta: incentive.targetDelta,
+      evaluationStatus: {
+        delivery: EvaluationStatus.None,
+        ack: EvaluationStatus.None,
+      },
       status: BountyStatus.BountyPlaced,
       sourceAddress: event.incentivesAddress,
       finalised: false,
@@ -330,6 +340,41 @@ export class Store {
       toChainId: this.chainId,
     };
     await this.set(key, JSON.stringify(bounty));
+  }
+
+  /**
+   * Updates an existing bounty entry with an updated 'evaluationStatus'.
+   */
+  async registerEvaluationStatus(event: {
+    messageIdentifier: string;
+    deliveryEvaluationStatus?: EvaluationStatus;
+    ackEvaluationStatus?: EvaluationStatus;
+  }) {
+    const chainId = this.chainId;
+    if (chainId === null)
+      throw new Error('ChainId is not set: This connection is readonly');
+    const messageIdentifier = event.messageIdentifier;
+
+    // Lets get the bounty.
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.bountyMidfix,
+      messageIdentifier,
+    );
+    const existingValue = await this.redis.get(key);
+    if (!existingValue) {
+      throw new Error(
+        "Unable to save the bounty 'evaluation status': bounty not found.",
+      );
+    }
+    const bountyAsRead: BountyJson = JSON.parse(existingValue);
+    if (event.deliveryEvaluationStatus) {
+      bountyAsRead.evaluationStatus.delivery = event.deliveryEvaluationStatus;
+    }
+    if (event.ackEvaluationStatus) {
+      bountyAsRead.evaluationStatus.ack = event.ackEvaluationStatus;
+    }
+    await this.set(key, JSON.stringify(bountyAsRead));
   }
 
   /**
@@ -461,6 +506,24 @@ export class Store {
     return amb;
   }
 
+  async getAmbPayload(
+    chainId: string,
+    messageIdentifier: string,
+  ): Promise<AmbPayload | null> {
+    const query: string | null = await this.redis.get(
+      Store.combineString(
+        Store.relayerStorePrefix,
+        Store.ambPayloadMidfix,
+        chainId,
+        messageIdentifier,
+      ),
+    );
+    const amb: AmbPayload | null =
+      query === null ? undefined : JSON.parse(query);
+
+    return amb;
+  }
+
   async getAMBsByTxHash(
     chainId: string,
     txHash: string,
@@ -505,6 +568,19 @@ export class Store {
     );
   }
 
+  async setAmbPayload(amb: AmbPayload): Promise<void> {
+    const chainId = this.chainId;
+    if (chainId === null)
+      throw new Error('ChainId is not set: This connection is readonly');
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.ambPayloadMidfix,
+      chainId,
+      amb.messageIdentifier,
+    );
+    await this.set(key, JSON.stringify(amb));
+  }
+
   async registerAmbTxHash(
     chainId: string,
     messageIdentifier: string,
@@ -534,6 +610,24 @@ export class Store {
   async submitProof(destinationChain: string, ambPayload: AmbPayload) {
     const emitToChannel = Store.getChannel('submit', destinationChain);
 
+    await this.setAmbPayload(ambPayload);
     await this.postMessage(emitToChannel, ambPayload);
+  }
+
+  async prioritiseMessage(
+    sourceChainId: string,
+    destinationChainId: string,
+    messageIdentifier: string,
+    amb: string,
+  ): Promise<void> {
+    const emitToChannel = Store.getChannel('prioritise', destinationChainId);
+    const data: PrioritiseMessage = {
+      sourceChainId,
+      destinationChainId,
+      messageIdentifier,
+      amb,
+    };
+
+    await this.postMessage(emitToChannel, data);
   }
 }

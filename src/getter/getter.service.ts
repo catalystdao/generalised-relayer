@@ -1,7 +1,6 @@
 import { wait } from 'src/common/utils';
 import pino from 'pino';
 import { workerData } from 'worker_threads';
-import { ChainConfig } from 'src/config/config.service';
 import { utils } from 'ethers';
 import { FormatTypes, LogDescription } from '@ethersproject/abi';
 import {
@@ -11,6 +10,7 @@ import {
 } from '@ethersproject/providers';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
+import { GetterWorkerData } from './getter.controller';
 
 const GET_LOGS_RETRY_INTERVAL = 2000;
 
@@ -20,19 +20,17 @@ const GET_LOGS_RETRY_INTERVAL = 2000;
  * @param workerData.interval Interval of when to scan a bounty
  */
 const bootstrap = async () => {
-  const interval = workerData.interval;
-  const maxBlocks = workerData.maxBlocks;
-  const chainConfig: ChainConfig = workerData.chainConfig;
-  const store = new Store(chainConfig.chainId);
-  const incentivesAddresses: string[] = workerData.incentivesAddresses;
-  const blockDelay = workerData.blockDelay ?? 0;
+  const config = workerData as GetterWorkerData;
+
+  const chainId = config.chainId;
+  const store = new Store(chainId);
 
   const logger = pino(workerData.loggerOptions).child({
     worker: 'getter',
-    chain: chainConfig.chainId,
+    chain: chainId,
   });
 
-  const provider = new StaticJsonRpcProvider(chainConfig.rpc);
+  const provider = new StaticJsonRpcProvider(config.rpc);
 
   const incentivesContractInterface =
     IMessageEscrowEvents__factory.createInterface();
@@ -63,30 +61,35 @@ const bootstrap = async () => {
   ];
 
   logger.info(
-    `Getter worker started (collecting escrowed messages of address(es) ${incentivesAddresses.join(
-      ', ',
-    )} on ${chainConfig.name})`,
+    {
+      incentiveAddresses: config.incentivesAddresses,
+    },
+    `Getter worker started.`,
   );
 
   let startBlock =
-    chainConfig.startingBlock ?? (await provider.getBlockNumber()) - blockDelay;
+    config.startingBlock ??
+    (await provider.getBlockNumber()) - config.blockDelay;
 
-  const stopBlock = chainConfig.stoppingBlock ?? Infinity;
+  const stopBlock = config.stoppingBlock ?? Infinity;
 
-  await wait(interval);
+  await wait(config.interval);
 
   while (true) {
     let endBlock: number;
     try {
-      endBlock = (await provider.getBlockNumber()) - blockDelay;
+      endBlock = (await provider.getBlockNumber()) - config.blockDelay;
     } catch (error) {
-      logger.error(error, `Failed on getter.service endblock`);
-      await wait(interval);
+      logger.error(
+        error,
+        `Failed to get the current block number on the getter.`,
+      );
+      await wait(config.interval);
       continue;
     }
 
     if (startBlock > endBlock || !endBlock) {
-      await wait(interval);
+      await wait(config.interval);
       continue;
     }
 
@@ -96,20 +99,24 @@ const bootstrap = async () => {
 
     let isCatchingUp = false;
     const blocksToProcess = endBlock - startBlock;
-    if (blocksToProcess > maxBlocks) {
-      endBlock = startBlock + maxBlocks;
+    if (config.maxBlocks != null && blocksToProcess > config.maxBlocks) {
+      endBlock = startBlock + config.maxBlocks;
       isCatchingUp = true;
     }
 
     logger.info(
-      `Scanning bounties from block ${startBlock} to ${endBlock} on ${chainConfig.name} Chain`,
+      {
+        startBlock,
+        endBlock,
+      },
+      `Scanning bounties.`,
     );
 
     try {
       //Query all bounty events
       const logs = await queryAllBountyEvents(
         provider,
-        incentivesAddresses,
+        config.incentivesAddresses,
         topics,
         startBlock,
         endBlock,
@@ -124,7 +131,8 @@ const bootstrap = async () => {
 
         if (parsedLog == null) {
           logger.error(
-            `Failed to parse GeneralisedIncentives contract event. Topics: ${log.topics}, data: ${log.data}`,
+            { topics: log.topics, data: log.data },
+            `Failed to parse GeneralisedIncentives contract event.`,
           );
           continue;
         }
@@ -168,23 +176,25 @@ const bootstrap = async () => {
 
           default:
             logger.warn(
-              `Event with unknown name/topic received: ${parsedLog.name}/${parsedLog.topic}`,
+              { name: parsedLog.name, topic: parsedLog.topic },
+              `Event with unknown name/topic received.`,
             );
         }
       }
 
       if (endBlock >= stopBlock) {
         logger.info(
-          `Finished processing blocks (stopping at ${endBlock}). Exiting worker.`,
+          { endBlock },
+          `Finished processing blocks. Exiting worker.`,
         );
         break;
       }
 
       startBlock = endBlock + 1;
-      if (!isCatchingUp) await wait(interval);
+      if (!isCatchingUp) await wait(config.interval);
     } catch (error) {
-      logger.error(error, `Failed on getter.service`);
-      await wait(interval);
+      logger.error(error, `Error on getter.service`);
+      await wait(config.interval);
     }
   }
 
@@ -219,7 +229,8 @@ const queryAllBountyEvents = async (
       } catch (error) {
         i++;
         logger.warn(
-          `Failed to 'getLogs' for address ${address} from ${startBlock} to ${endBlock} (try ${i}).`,
+          { address, startBlock, endBlock, try: i },
+          `Failed to 'getLogs' on getter.`,
         );
         await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));
       }
@@ -245,7 +256,7 @@ const handleBountyPlacedEvent = async (
   const messageIdentifier = event.args.messageIdentifier;
   const incentive = event.args.incentive;
 
-  logger.info(`BountyPlaced ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyPlaced event found.`);
 
   await store.registerBountyPlaced({
     messageIdentifier,
@@ -270,7 +281,7 @@ const handleBountyClaimedEvent = async (
 ) => {
   const messageIdentifier = event.args.uniqueIdentifier;
 
-  logger.info(`BountyClaimed ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyClaimed event found.`);
 
   await store.registerBountyClaimed({
     messageIdentifier,
@@ -294,7 +305,7 @@ const handleMessageDeliveredEvent = async (
 ) => {
   const messageIdentifier = event.args.messageIdentifier;
 
-  logger.info(`MessageDelivered ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `MessageDelivered event found.`);
 
   await store.registerMessageDelivered({
     messageIdentifier,
@@ -321,7 +332,7 @@ const handleBountyIncreasedEvent = async (
   const newDeliveryGasPrice = event.args.deliveryGasPriceIncrease;
   const newAckGasPrice = event.args.ackGasPriceIncrease;
 
-  logger.info(`BountyIncreased ${messageIdentifier}`);
+  logger.info({ messageIdentifier }, `BountyIncreased event found.`);
 
   await store.registerBountyIncreased({
     messageIdentifier,
@@ -332,4 +343,4 @@ const handleBountyIncreasedEvent = async (
   });
 };
 
-bootstrap();
+void bootstrap();

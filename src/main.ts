@@ -3,22 +3,19 @@ import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { LoggerService } from './logger/logger.service';
 
-async function logLoadedOptions(
+function logLoadedOptions(
   configService: ConfigService,
   loggerService: LoggerService,
 ) {
   // Log the loaded configuration
   loggerService.info(
-    { config: configService.relayerConfig },
-    `Loaded relayer configuration (${configService.nodeEnv})`,
-  );
-  loggerService.info(
-    { config: Object.fromEntries(configService.chainsConfig.entries()) },
-    'Loaded chains configuration',
-  );
-  loggerService.info(
-    { config: Object.fromEntries(configService.ambsConfig.entries()) },
-    'Loaded AMBs configuration',
+    {
+      mode: configService.nodeEnv,
+      globalConfig: configService.globalConfig,
+      chainsConfig: Object.fromEntries(configService.chainsConfig.entries()),
+      ambConfig: Object.fromEntries(configService.ambsConfig.entries()),
+    },
+    `Relayer initialized.`,
   );
 }
 
@@ -30,6 +27,6 @@ async function bootstrap() {
 
   logLoadedOptions(configService, loggerService);
 
-  await app.listen(configService.relayerConfig.port);
+  await app.listen(configService.globalConfig.port);
 }
-bootstrap();
+void bootstrap();
