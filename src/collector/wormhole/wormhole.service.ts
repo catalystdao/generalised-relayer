@@ -106,7 +106,7 @@ const bootstrap = async () => {
         }
 
         // Set destination address for the bounty.
-        store.registerDestinationAddress({
+        await store.registerDestinationAddress({
           messageIdentifier: amb.messageIdentifier,
           destinationAddress: await messageEscrow.implementationAddress(
             decodedPayload?.sourceApplicationAddress,

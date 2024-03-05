@@ -156,7 +156,7 @@ const bootstrap = async () => {
           await store.setAmb(amb, messageEvent.transactionHash);
 
           // Set destination address for the bounty.
-          store.registerDestinationAddress({
+          await store.registerDestinationAddress({
             messageIdentifier: amb.messageIdentifier,
             destinationAddress: messageEvent.args.recipient,
           });
