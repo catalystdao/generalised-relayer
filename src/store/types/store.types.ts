@@ -47,7 +47,8 @@ export type Bounty = {
     ack: EvaluationStatus;
   };
   status: BountyStatus;
-  address: string;
+  sourceAddress: string;
+  destinationAddress?: string;
   finalised?: boolean;
   submitTransactionHash?: string;
   execTransactionHash?: string;
@@ -69,7 +70,8 @@ export type BountyJson = {
     ack: EvaluationStatus;
   };
   status: BountyStatus;
-  address?: string;
+  sourceAddress?: string;
+  destinationAddress?: string;
   finalised?: boolean;
   submitTransactionHash?: string;
   execTransactionHash?: string;

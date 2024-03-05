@@ -155,6 +155,12 @@ const bootstrap = async () => {
           // It can be used by plugins to facilitate other jobs.
           await store.setAmb(amb, messageEvent.transactionHash);
 
+          // Set destination address for the bounty.
+          await store.registerDestinationAddress({
+            messageIdentifier: amb.messageIdentifier,
+            destinationAddress: messageEvent.args.recipient,
+          });
+
           // Encode and sign the message for delivery.
           // This is the proof which enables us to submit the transaciton later.
           // For Mock, this is essentially PoA with a single key. The deployment needs to match the private key available

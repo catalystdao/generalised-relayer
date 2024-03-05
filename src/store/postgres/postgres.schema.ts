@@ -31,7 +31,8 @@ export const bounties = pgTable('bounties', {
   priceOfAckGas: text('priceOfAckGas'),
   targetDelta: text('targetDelta'),
   bountyStatus: integer('bountyStatus'),
-  address: text('address'),
+  sourceAddress: text('sourceAddress'),
+  destinationAddress: text('destinationAddress'),
   submitTransactionId: integer('submitTransactionId').references(
     () => transactions.id,
   ),

@@ -1,0 +1,278 @@
+{
+  "id": "b9df4054-80b5-4ce9-a830-ad232886d7a5",
+  "prevId": "109bd669-f780-45cc-8e57-25a4b78556f9",
+  "version": "5",
+  "dialect": "pg",
+  "tables": {
+    "ambPayloads": {
+      "name": "ambPayloads",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bountyId": {
+          "name": "bountyId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amb": {
+          "name": "amb",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sourceChain": {
+          "name": "sourceChain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "destinationChain": {
+          "name": "destinationChain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recoveryContext": {
+          "name": "recoveryContext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "messageCtx": {
+          "name": "messageCtx",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ambPayloads_bountyId_bounties_id_fk": {
+          "name": "ambPayloads_bountyId_bounties_id_fk",
+          "tableFrom": "ambPayloads",
+          "tableTo": "bounties",
+          "columnsFrom": [
+            "bountyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "bounties": {
+      "name": "bounties",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bountyIdentifier": {
+          "name": "bountyIdentifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fromChainId": {
+          "name": "fromChainId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "toChainId": {
+          "name": "toChainId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maxGasDelivery": {
+          "name": "maxGasDelivery",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maxGasAck": {
+          "name": "maxGasAck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refundGasTo": {
+          "name": "refundGasTo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priceOfDeliveryGas": {
+          "name": "priceOfDeliveryGas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priceOfAckGas": {
+          "name": "priceOfAckGas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "targetDelta": {
+          "name": "targetDelta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bountyStatus": {
+          "name": "bountyStatus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sourceAddress": {
+          "name": "sourceAddress",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "destinationAddress": {
+          "name": "destinationAddress",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitTransactionId": {
+          "name": "submitTransactionId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "execTransactionId": {
+          "name": "execTransactionId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ackTransactionId": {
+          "name": "ackTransactionId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bounties_submitTransactionId_transactions_id_fk": {
+          "name": "bounties_submitTransactionId_transactions_id_fk",
+          "tableFrom": "bounties",
+          "tableTo": "transactions",
+          "columnsFrom": [
+            "submitTransactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bounties_execTransactionId_transactions_id_fk": {
+          "name": "bounties_execTransactionId_transactions_id_fk",
+          "tableFrom": "bounties",
+          "tableTo": "transactions",
+          "columnsFrom": [
+            "execTransactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bounties_ackTransactionId_transactions_id_fk": {
+          "name": "bounties_ackTransactionId_transactions_id_fk",
+          "tableFrom": "bounties",
+          "tableTo": "transactions",
+          "columnsFrom": [
+            "ackTransactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "transactions": {
+      "name": "transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transactionHash": {
+          "name": "transactionHash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chainId": {
+          "name": "chainId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "transactions_transactionHash_chainId_unique": {
+          "name": "transactions_transactionHash_chainId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "transactionHash",
+            "chainId"
+          ]
+        }
+      }
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {
+      "\"bounties\".\"address\"": "\"bounties\".\"sourceAddress\""
+    }
+  }
+}
