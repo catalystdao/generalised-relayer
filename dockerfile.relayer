@@ -5,7 +5,7 @@ WORKDIR /usr/catalyst-relayer
 # Copy packages and install
 COPY package.json yarn.lock tsconfig*.json ./
 COPY abis ./abis
-RUN yarn install --frozen-lockfile --prod=false
+RUN yarn install --network-concurrency 1 --frozen-lockfile --prod=false
 
 # Copy src and build
 COPY src ./src

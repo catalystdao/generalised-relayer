@@ -29,7 +29,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@typechain/ethers-v5": "^11.1.2",
-    "@wormhole-foundation/relayer-engine": "^0.2.1",
+    "@wormhole-foundation/relayer-engine": "https://github.com/wormhole-foundation/relayer-engine.git#bump-certusone-dep",
     "ajv": "^8.12.0",
     "dotenv": "^16.3.1",
     "drizzle-kit": "^0.20.6",
