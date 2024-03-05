@@ -1,6 +1,5 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino from 'pino';
-import { ChainConfig } from 'src/config/config.service';
 import {
   IWormhole__factory,
   IncentivizedMessageEscrow__factory,
@@ -40,9 +39,9 @@ const bootstrap = async () => {
   let startBlock = config.startingBlock ?? (await provider.getBlockNumber());
   await wait(config.interval);
 
-  const contract = IWormhole__factory.connect(wormholeAddress, provider);
+  const contract = IWormhole__factory.connect(config.wormholeAddress, provider);
   const messageEscrow = IncentivizedMessageEscrow__factory.connect(
-    incentivesAddress,
+    config.incentivesAddress,
     provider,
   );
   while (true) {

@@ -158,7 +158,7 @@ const bootstrap = async () => {
           // Set destination address for the bounty.
           store.registerDestinationAddress({
             messageIdentifier: amb.messageIdentifier,
-            destinationAddress: messageEvent.args.recipitent,
+            destinationAddress: messageEvent.args.recipient,
           });
 
           // Encode and sign the message for delivery.
