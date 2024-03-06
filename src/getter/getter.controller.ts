@@ -53,6 +53,14 @@ export class GetterController implements OnModuleInit {
       const chainId = chainConfig.chainId;
       const workerData = this.loadWorkerData(chainConfig, globalGetterConfig);
 
+      if (workerData.incentivesAddresses.length == 0) {
+        this.loggerService.info(
+          { chainId },
+          'Skipping getter worker creation: no incentive address to listen for found.',
+        );
+        return;
+      }
+
       const worker = new Worker(join(__dirname, 'getter.service.js'), {
         workerData,
       });
@@ -98,7 +106,9 @@ export class GetterController implements OnModuleInit {
 
     const incentivesAddresses = Array.from(
       this.configService.ambsConfig.values(),
-    ).map((amb) => amb.getIncentivesAddress(chainId));
+    )
+      .map((amb) => amb.getIncentivesAddress(chainId))
+      .filter((address) => address != undefined);
 
     return {
       chainId,

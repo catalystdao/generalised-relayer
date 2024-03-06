@@ -178,12 +178,15 @@ export class SubmitterService {
     const relayerPrivateKey = this.configService.globalConfig.privateKey;
 
     const incentivesAddresses = new Map<string, string>();
-    this.configService.ambsConfig.forEach((amb) =>
-      incentivesAddresses.set(
-        amb.name,
-        amb.getIncentivesAddress(chainConfig.chainId),
-      ),
-    );
+    this.configService.ambsConfig.forEach((amb) => {
+      const incentiveAddress = amb.getIncentivesAddress(chainConfig.chainId);
+      if (incentiveAddress != undefined) {
+        incentivesAddresses.set(
+          amb.name,
+          amb.getIncentivesAddress(chainConfig.chainId),
+        );
+      }
+    });
 
     return {
       chainId,
