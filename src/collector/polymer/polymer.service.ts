@@ -105,7 +105,7 @@ const bootstrap = async () => {
 
     let messageLogs;
     try {
-      // Get the Mock message.
+      // Get the Polymer message.
       messageLogs = await contract.queryFilter(
         contract.filters.SendPacket(),
         startBlock,
@@ -129,13 +129,32 @@ const bootstrap = async () => {
       for (const messageEvent of messageLogs) {
         try {
           const destinationChain: string = messageEvent.args.sourceChannelId;
+          // Decode the Universal channel payload
 
           const polymerOffset = 384;
-          const packet = messageEvent.args.packet.startsWith("0x") ? messageEvent.args.packet.slice(2) : messageEvent.args.packet;
+          const packet = messageEvent.args.packet.startsWith('0x')
+            ? messageEvent.args.packet.slice(2)
+            : messageEvent.args.packet;
+
+          const incentivisedMessageEscrowFromPacket: string =
+            '0x' + packet.slice(32 * 4 - 20 * 2, 32 * 4);
+
+          if (
+            incentivisedMessageEscrowFromPacket.toLowerCase() !=
+              config.incentivesAddress.toLowerCase() ||
+            packet.length + 64 * 2 <= polymerOffset
+          ) {
+            continue;
+          }
 
           // Derive the message identifier
           const amb: AmbMessage = {
-            messageIdentifier: '0x' + packet.slice(1 * 2 + polymerOffset, 33 * 2 + polymerOffset),
+            messageIdentifier:
+              '0x' +
+              packet.slice(
+                1 * 2 + polymerOffset,
+                1 * 2 + 32 * 2 + polymerOffset,
+              ),
             amb: 'polymer',
             sourceChain: chainId,
             destinationChain,
