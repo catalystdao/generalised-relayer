@@ -1,5 +1,5 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import pino from 'pino';
 import { wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
@@ -7,6 +7,8 @@ import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
 import { workerData } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
+
+const abi = ethers.utils.defaultAbiCoder;
 
 /**
  * Example AMB implementation which uses a simple signed message to validate transactions.
@@ -131,34 +133,41 @@ const bootstrap = async () => {
           const destinationChain: string = messageEvent.args.sourceChannelId;
           // Decode the Universal channel payload
 
-          const polymerOffset = 384;
           const packet = messageEvent.args.packet.startsWith('0x')
             ? messageEvent.args.packet.slice(2)
             : messageEvent.args.packet;
 
+          let params: [string, BigNumber, string, string];
+          try {
+            params = abi.decode(
+              ['tuple(bytes32, uint256, bytes32, bytes)'],
+              messageEvent.args.packet,
+            )[0];
+          } catch (error) {
+            console.debug(
+              `Couldn't decode a Polymer message. Likely because it is not a UniversalChannel Package ${error}`,
+            );
+            continue;
+          }
+
           const incentivisedMessageEscrowFromPacket: string =
-            '0x' + packet.slice(32 * 4 - 20 * 2, 32 * 4);
+            '0x' + params[0].replaceAll('0x', '').slice(12 * 2);
 
           if (
             incentivisedMessageEscrowFromPacket.toLowerCase() !=
               config.incentivesAddress.toLowerCase() ||
-            packet.length + 64 * 2 <= polymerOffset
+            packet.length <= 384 + 64 * 2
           ) {
             continue;
           }
 
           // Derive the message identifier
           const amb: AmbMessage = {
-            messageIdentifier:
-              '0x' +
-              packet.slice(
-                1 * 2 + polymerOffset,
-                1 * 2 + 32 * 2 + polymerOffset,
-              ),
+            messageIdentifier: '0x' + packet[3].slice(1 * 2, 1 * 2 + 32 * 2),
             amb: 'polymer',
             sourceChain: chainId,
             destinationChain,
-            payload: packet.slice(polymerOffset),
+            payload: packet[3],
           };
 
           // Set the collect message  on-chain. This is not the proof but the raw message.
