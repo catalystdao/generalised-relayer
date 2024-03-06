@@ -229,7 +229,7 @@ const queryAllBountyEvents = async (
       } catch (error) {
         i++;
         logger.warn(
-          { address, startBlock, endBlock, try: i },
+          { address, startBlock, endBlock, error, try: i },
           `Failed to 'getLogs' on getter.`,
         );
         await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));
