@@ -11,12 +11,10 @@ from base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 
 FROM base AS build
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile --ignore-scripts
 COPY abis ./abis
-# Run post install
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile
 
-# Copy core files
+# Build
 COPY src ./src
 COPY drizzle ./drizzle
 RUN pnpm run build
