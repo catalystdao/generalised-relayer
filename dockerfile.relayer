@@ -4,8 +4,6 @@ WORKDIR /usr/catalyst-relayer
 
 # Copy packages
 COPY package.json pnpm-lock.yaml tsconfig*.json ./
-COPY abis ./abis
-COPY src ./src
 RUN corepack enable
 
 # Install depends
@@ -13,13 +11,15 @@ from base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 
 FROM base AS build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile --ignore-scripts
+COPY abis ./abis
+# Run post install
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile
-RUN pnpm run build
 
-# Copy src and build
+# Copy core files
 COPY src ./src
 COPY drizzle ./drizzle
-RUN yarn build
+RUN pnpm run build
 
 ## Production image
 FROM node:18-alpine
