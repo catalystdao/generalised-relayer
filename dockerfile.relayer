@@ -6,10 +6,6 @@ WORKDIR /usr/catalyst-relayer
 COPY package.json pnpm-lock.yaml tsconfig*.json ./
 RUN corepack enable
 
-# Install depends
-FROM base AS prod-deps
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
-
 FROM base AS build
 COPY abis ./abis
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile
@@ -19,13 +15,15 @@ COPY src ./src
 COPY drizzle ./drizzle
 RUN pnpm run build
 
+RUN pnpm prune --prod --config.ignore-scripts=true
+
 ## Production image
 FROM node:18-alpine
 
 WORKDIR /usr/catalyst-relayer
 
 COPY --from=build /usr/catalyst-relayer/dist ./dist
-COPY --from=prod-deps /usr/catalyst-relayer/node_modules ./node_modules
+COPY --from=build /usr/catalyst-relayer/node_modules ./node_modules
 
 COPY --from=build /usr/catalyst-relayer/drizzle ./drizzle
 
