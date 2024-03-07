@@ -33,6 +33,7 @@ services:
         max-size: 50m
 
   relayer:
+    image: ghcr.io/catalystdao/generalised-relayer:latest
     build:
       context: .
       dockerfile: dockerfile.relayer
@@ -42,7 +43,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - USE_DOCKER=true
-    ports:
+    expose:
       - ${RELAYER_PORT}:${RELAYER_PORT}
     container_name: relayer
     restart: unless-stopped
