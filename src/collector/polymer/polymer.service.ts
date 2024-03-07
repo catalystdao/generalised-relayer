@@ -163,7 +163,9 @@ const bootstrap = async () => {
 
           // Derive the message identifier
           const amb: AmbMessage = {
-            messageIdentifier: '0x' + params[3].slice(1 * 2, 1 * 2 + 32 * 2),
+            messageIdentifier:
+              '0x' +
+              params[3].replaceAll('0x', '').slice(1 * 2, 1 * 2 + 32 * 2),
             amb: 'polymer',
             sourceChain: chainId,
             destinationChain,
