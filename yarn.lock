@@ -3335,9 +3335,10 @@
     "@webassemblyjs/ast" "1.11.6"
     "@xtuc/long" "4.2.2"
 
-"@wormhole-foundation/relayer-engine@https://github.com/wormhole-foundation/relayer-engine.git#bump-certusone-dep":
+"@wormhole-foundation/relayer-engine@^0.3.2":
   version "0.3.2"
-  resolved "https://github.com/wormhole-foundation/relayer-engine.git#0dc2ad2deba17befcd0154166f1911ecfe88a9b9"
+  resolved "https://registry.yarnpkg.com/@wormhole-foundation/relayer-engine/-/relayer-engine-0.3.2.tgz#4a74dc8d9fd1e2ee4f3f475fee971e1341bd7565"
+  integrity sha512-6CAGZdxDpPZph+Gx1Tob5wEarEzvD27G7khoGhB9sc8KiOhRz8zDiBspFfLetzfBEHMiTyvAOibETV5G0ULilA==
   dependencies:
     "@bull-board/api" "^5.8.1"
     "@bull-board/koa" "^5.8.1"
