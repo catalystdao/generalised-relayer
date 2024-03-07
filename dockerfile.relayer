@@ -1,30 +1,31 @@
-FROM node:18 AS BUILD_IMAGE
+FROM node:18 AS base
 
 WORKDIR /usr/catalyst-relayer
 
-# Copy packages and install
-COPY package.json yarn.lock tsconfig*.json ./
-COPY abis ./abis
-RUN yarn install --frozen-lockfile --prod=false
+# Copy packages
+COPY package.json pnpm-lock.yaml tsconfig*.json ./
+RUN corepack enable
 
-# Copy src and build
+FROM base AS build
+COPY abis ./abis
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod=false --frozen-lockfile
+
+# Build
 COPY src ./src
 COPY drizzle ./drizzle
-RUN yarn build
+RUN pnpm run build
 
-# Remove devDependencies
-RUN npm prune --omit=dev
+RUN pnpm prune --prod --config.ignore-scripts=true
 
-
-# Production image
+## Production image
 FROM node:18-alpine
 
 WORKDIR /usr/catalyst-relayer
 
-COPY --from=BUILD_IMAGE /usr/catalyst-relayer/dist ./dist
-COPY --from=BUILD_IMAGE /usr/catalyst-relayer/node_modules ./node_modules
+COPY --from=build /usr/catalyst-relayer/dist ./dist
+COPY --from=build /usr/catalyst-relayer/node_modules ./node_modules
 
-COPY --from=BUILD_IMAGE /usr/catalyst-relayer/drizzle ./drizzle
+COPY --from=build /usr/catalyst-relayer/drizzle ./drizzle
 
 ENV NODE_ENV=${NODE_ENV}
 

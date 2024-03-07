@@ -1,4 +1,4 @@
-name: Build Docker Image
+name: Build Relayer Image
 
 on:
   push:
@@ -35,7 +35,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
       -
         name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -45,8 +44,11 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v5
         with:
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           context: .
           file: ./dockerfile.relayer
+          platforms: linux/amd64, linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
