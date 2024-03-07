@@ -57,9 +57,9 @@ The `-d` option detaches the process to the background.
 Install the required dependencies with:
 
 ```bash
-yarn install
+pnpm install
 ```
-- **NOTE**: The `devDependencies` are required to build the project. If running on a production machine where `NODE_ENV=production`, use `yarn install --prod=false` 
+- **NOTE**: The `devDependencies` are required to build the project. If running on a production machine where `NODE_ENV=production`, use `pnpm install --prod=false` 
 
 Initiate a Redis database with:
 ```bash
@@ -69,7 +69,7 @@ docker container run -p 6379:6379 redis
 
 Build and start the Relayer with:
 ```bash
-yarn start
+pnpm start
 ```
 
 For further insight into the requirements for running the Relayer see the `docker-compose.yaml` file.

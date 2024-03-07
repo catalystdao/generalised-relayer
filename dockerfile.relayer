@@ -7,7 +7,7 @@ COPY package.json pnpm-lock.yaml tsconfig*.json ./
 RUN corepack enable
 
 # Install depends
-from base AS prod-deps
+FROM base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 
 FROM base AS build
