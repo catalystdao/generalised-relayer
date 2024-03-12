@@ -75,6 +75,7 @@ export class Store {
   static readonly hashAmbMapMidfix: string = 'hashAmbMap';
   static readonly proofMidfix: string = 'proof';
   static readonly wordConnecter: string = ':';
+  static readonly destinationAddressPostfix: string = 'destinationAddress';
 
   readonly chainId: string | null;
 
@@ -263,8 +264,6 @@ export class Store {
 
   /**
    * Register the destination address of a bounty.
-   * @dev This function currently doesn't work. It overrides the existing bounty and that causes
-   * problems with the persister and potentially also with submitter.
    */
   async registerDestinationAddress(event: {
     messageIdentifier: string;
@@ -280,23 +279,15 @@ export class Store {
       Store.relayerStorePrefix,
       Store.bountyMidfix,
       messageIdentifier,
+      Store.destinationAddressPostfix,
     );
-    const existingValue = await this.redis.get(key);
-    if (!existingValue) {
-      // Then we need to create some kind of baseline with the information we know.
-      const bounty = {
-        destinationAddress: event.destinationAddress,
-      };
-      // We can set this value now.
-      return this.set(key, JSON.stringify(bounty));
-    }
-    // Okay, we know a bounty exists at this value. Lets try to update it without destorying any information.
-    const bountyAsRead: BountyJson = JSON.parse(existingValue);
+
     const bounty = {
-      ...bountyAsRead,
+      messageIdentifier,
       destinationAddress: event.destinationAddress,
     };
-    await this.set(key, JSON.stringify(bounty));
+    // We can set this value now.
+    return this.set(key, JSON.stringify(bounty));
   }
 
   /**

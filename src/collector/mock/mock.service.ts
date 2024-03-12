@@ -156,10 +156,10 @@ const bootstrap = async () => {
           await store.setAmb(amb, messageEvent.transactionHash);
 
           // Set destination address for the bounty.
-          // await store.registerDestinationAddress({
-          //   messageIdentifier: amb.messageIdentifier,
-          //   destinationAddress: messageEvent.args.recipient,
-          // });
+          await store.registerDestinationAddress({
+            messageIdentifier: amb.messageIdentifier,
+            destinationAddress: messageEvent.args.recipient,
+          });
 
           // Encode and sign the message for delivery.
           // This is the proof which enables us to submit the transaciton later.

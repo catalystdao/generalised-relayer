@@ -106,13 +106,13 @@ const bootstrap = async () => {
         }
 
         // Set destination address for the bounty.
-        // await store.registerDestinationAddress({
-        //   messageIdentifier: amb.messageIdentifier,
-        //   destinationAddress: await messageEscrow.implementationAddress(
-        //     decodedPayload?.sourceApplicationAddress,
-        //     defaultAbiCoder.encode(['uint256'], [amb.destinationChain]),
-        //   ),
-        // });
+        await store.registerDestinationAddress({
+          messageIdentifier: amb.messageIdentifier,
+          destinationAddress: await messageEscrow.implementationAddress(
+            decodedPayload?.sourceApplicationAddress,
+            defaultAbiCoder.encode(['uint256'], [amb.destinationChain]),
+          ),
+        });
       }
 
       startBlock = endBlock + 1;
