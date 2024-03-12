@@ -263,6 +263,8 @@ export class Store {
 
   /**
    * Register the destination address of a bounty.
+   * @dev This function currently doesn't work. It overrides the existing bounty and that causes
+   * problems with the persister and potentially also with submitter.
    */
   async registerDestinationAddress(event: {
     messageIdentifier: string;
