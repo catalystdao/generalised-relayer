@@ -38,6 +38,11 @@ export class SubmitQueue extends ProcessingQueue<
     order: SubmitOrder,
     retryCount: number,
   ): Promise<HandleOrderResult<PendingTransaction<SubmitOrder>> | null> {
+    this.logger.debug(
+      { messageIdentifier: order.messageIdentifier },
+      `Handling submit order`,
+    );
+
     // Simulate the packet submission as a static call. Skip if it's the first submission try,
     // as in that case the packet 'evaluation' will have been executed shortly before.
     const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
