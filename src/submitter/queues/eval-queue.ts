@@ -79,7 +79,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     };
 
     if (success) {
-      if (result?.gasLimit != 0) {
+      if (result?.gasLimit != null && result.gasLimit > 0) {
         this.logger.debug(
           orderDescription,
           `Successful bounty evaluation: submit order.`,
