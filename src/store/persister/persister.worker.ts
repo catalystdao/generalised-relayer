@@ -280,7 +280,9 @@ class PersisterWorker {
         .limit(1);
       if (bountiesSelected.length === 0) {
         // Insert a bounty and get the id.
-        this.logger.debug(`Inserting ${key} as amb`);
+        this.logger.debug(
+          `Inserting ${key}, ${parsedValue.messageIdentifier} as bounty via AMB`,
+        );
         bountyId = (
           await this.db
             .insert(bounties)
