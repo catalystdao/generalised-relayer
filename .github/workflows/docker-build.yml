@@ -47,7 +47,7 @@ jobs:
           push: true
           context: .
           file: ./dockerfile.relayer
-          platforms: linux/amd64, linux/arm64
+          PLATFORMS: linux/amd64${{ github.event_name != 'pull_request' && ', linux/arm64' || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
