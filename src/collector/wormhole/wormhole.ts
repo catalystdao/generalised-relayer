@@ -366,20 +366,24 @@ function initiateRecoveryWorkers(
   });
 
   // Initiate status log interval
-  const logStatus = () => {
-    const activeWorkers = [];
-    const inactiveWorkers = [];
-    for (const chainId of Object.keys(workers)) {
-      if (workers[chainId] != null) activeWorkers.push(chainId);
-      else inactiveWorkers.push(chainId);
-    }
-    const status = {
-      activeWorkers,
-      inactiveWorkers,
+  if (Object.keys(workers).length > 0) {
+    const logStatus = () => {
+      const activeWorkers = [];
+      const inactiveWorkers = [];
+      for (const chainId of Object.keys(workers)) {
+        if (workers[chainId] != null) activeWorkers.push(chainId);
+        else inactiveWorkers.push(chainId);
+      }
+      const status = {
+        activeWorkers,
+        inactiveWorkers,
+      };
+      loggerService.info(status, 'Wormhole collector recovery workers status.');
     };
-    loggerService.info(status, 'Wormhole collector recovery workers status.');
-  };
-  setInterval(logStatus, STATUS_LOG_INTERVAL);
+    setInterval(logStatus, STATUS_LOG_INTERVAL);
+  } else {
+    loggerService.info('No Wormhole recovery worker started.');
+  }
 }
 
 export default (moduleInterface: CollectorModuleInterface) => {
