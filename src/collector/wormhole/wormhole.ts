@@ -248,7 +248,7 @@ function initiateRelayerEngineWorker(
     return;
   }
 
-  const worker = new Worker(join(__dirname, 'wormhole-engine.service.js'), {
+  const worker = new Worker(join(__dirname, 'wormhole-engine.worker.js'), {
     workerData,
   });
   let workerRunning = true;
