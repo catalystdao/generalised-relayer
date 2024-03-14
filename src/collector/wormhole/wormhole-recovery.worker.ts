@@ -141,7 +141,7 @@ class WormholeRecoveryWorker {
         messageIdentifier: decodedWormholeMessage.messageIdentifier,
         amb: 'wormhole',
         sourceChain,
-        destinationChain,
+        destinationChain, //TODO this should be the chainId and not the wormholeChainId
         payload: decodedWormholeMessage.payload,
         recoveryContext: vaa.sequence.toString(),
       },
@@ -158,6 +158,7 @@ class WormholeRecoveryWorker {
     await this.store.registerDestinationAddress({
       messageIdentifier: decodedWormholeMessage.messageIdentifier,
       destinationAddress:
+        //TODO the following contract call could fail
         await this.messageEscrowContract.implementationAddress(
           decodedPayload?.sourceApplicationAddress,
           defaultAbiCoder.encode(['uint256'], [destinationChain]),
