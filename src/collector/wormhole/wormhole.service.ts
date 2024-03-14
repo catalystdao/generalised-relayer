@@ -12,13 +12,6 @@ import { ParsePayload } from 'src/payload/decode.payload';
 import { defaultAbiCoder } from '@ethersproject/abi';
 import { WormholePacketSnifferWorkerData } from './wormhole';
 
-// TODO the following features must be implemented for the wormhole collector/engine:
-// - startingBlock
-// - stoppingBlock
-// - blockDelay (is this desired?)
-// The implementation of the above can be easily carried over from the 'mock' collector service,
-// but it has not been done until the features are implemented on the 'wormhole-engine' service.
-
 const bootstrap = async () => {
   const config = workerData as WormholePacketSnifferWorkerData;
   const chainId = config.chainId;

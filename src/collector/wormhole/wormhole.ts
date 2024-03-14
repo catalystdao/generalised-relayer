@@ -39,6 +39,17 @@ export interface WormholePacketSnifferWorkerData {
   loggerOptions: LoggerOptions;
 }
 
+export interface WormholeRecoveryWorkerData {
+  chainId: string;
+  rpc: string;
+  wormholeChainConfig: any;
+  reverseWormholeChainConfig: Map<string, any>;
+  startingBlock: number;
+  stoppingBlock?: number;
+  incentivesAddress: string;
+  loggerOptions: LoggerOptions;
+}
+
 function loadRelayerEngineWorkerData(
   wormholeConfig: AMBConfig,
   configService: ConfigService,
@@ -136,6 +147,75 @@ function loadPacketSnifferWorkerData(
     maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
     incentivesAddress,
     wormholeAddress,
+    loggerOptions: loggerService.loggerOptions,
+  };
+}
+
+function loadRecoveryWorkerData(
+  wormholeConfig: AMBConfig,
+  configService: ConfigService,
+  loggerService: LoggerService,
+  chainConfig: ChainConfig,
+): WormholeRecoveryWorkerData | null {
+  const chainId = chainConfig.chainId;
+  const rpc = chainConfig.rpc;
+
+  const incentivesAddress = wormholeConfig.getIncentivesAddress(
+    chainConfig.chainId,
+  );
+
+  if (chainConfig.startingBlock == undefined) {
+    return null;
+  }
+
+  // Get the chain-specific Wormhole config
+  const wormholeChainId = configService.getAMBConfig(
+    'wormhole',
+    'wormholeChainId',
+    chainConfig.chainId,
+  );
+
+  if (wormholeChainId == undefined) {
+    return null;
+  }
+
+  const wormholeChainConfig = {
+    wormholeChainId,
+    incentivesAddress: wormholeConfig.getIncentivesAddress(chainConfig.chainId),
+  };
+
+  // TODO remove the following code duplication
+  const reverseWormholeChainConfig = new Map<string, any>();
+  configService.chainsConfig.forEach((chainConfig) => {
+    const wormholeChainId: string | undefined = configService.getAMBConfig(
+      'wormhole',
+      'wormholeChainId',
+      chainConfig.chainId,
+    );
+
+    if (wormholeChainId != undefined) {
+      reverseWormholeChainConfig.set(
+        String(wormholeChainId),
+        chainConfig.chainId,
+      );
+      loggerService.info(
+        `'wormholeChainId' for chain ${chainConfig.chainId} is set to ${wormholeChainId}.`,
+      );
+    } else {
+      loggerService.info(
+        `No 'wormholeChainId' set for chain ${chainConfig.chainId}. Skipping chain (wormhole collector).`,
+      );
+    }
+  });
+
+  return {
+    chainId,
+    rpc,
+    wormholeChainConfig,
+    reverseWormholeChainConfig,
+    startingBlock: chainConfig.startingBlock,
+    stoppingBlock: chainConfig.stoppingBlock,
+    incentivesAddress,
     loggerOptions: loggerService.loggerOptions,
   };
 }
@@ -241,6 +321,67 @@ function initiatePacketSnifferWorkers(
   setInterval(logStatus, STATUS_LOG_INTERVAL);
 }
 
+function initiateRecoveryWorkers(
+  wormholeConfig: AMBConfig,
+  configService: ConfigService,
+  loggerService: LoggerService,
+): void {
+  loggerService.info('Starting the wormhole recovery workers...');
+
+  const workers: Record<string, Worker | null> = {};
+
+  configService.chainsConfig.forEach((chainConfig) => {
+    // Spawn a worker for every Wormhole implementation
+    const workerData = loadRecoveryWorkerData(
+      wormholeConfig,
+      configService,
+      loggerService,
+      chainConfig,
+    );
+
+    if (workerData) {
+      const worker = new Worker(
+        join(__dirname, 'wormhole-recovery.worker.js'),
+        {
+          workerData,
+        },
+      );
+      workers[chainConfig.chainId] = worker;
+
+      worker.on('error', (error) =>
+        loggerService.fatal(
+          { error, chainId: chainConfig.chainId },
+          'Error on Wormhole recovery service worker.',
+        ),
+      );
+
+      worker.on('exit', (exitCode) => {
+        workers[chainConfig.chainId] = null;
+        loggerService.info(
+          { exitCode, chainId: chainConfig.chainId },
+          `Wormhole recovery service worker exited.`,
+        );
+      });
+    }
+  });
+
+  // Initiate status log interval
+  const logStatus = () => {
+    const activeWorkers = [];
+    const inactiveWorkers = [];
+    for (const chainId of Object.keys(workers)) {
+      if (workers[chainId] != null) activeWorkers.push(chainId);
+      else inactiveWorkers.push(chainId);
+    }
+    const status = {
+      activeWorkers,
+      inactiveWorkers,
+    };
+    loggerService.info(status, 'Wormhole collector recovery workers status.');
+  };
+  setInterval(logStatus, STATUS_LOG_INTERVAL);
+}
+
 export default (moduleInterface: CollectorModuleInterface) => {
   const { configService, loggerService } = moduleInterface;
 
@@ -255,4 +396,6 @@ export default (moduleInterface: CollectorModuleInterface) => {
   initiateRelayerEngineWorker(wormholeConfig, configService, loggerService);
 
   initiatePacketSnifferWorkers(wormholeConfig, configService, loggerService);
+
+  initiateRecoveryWorkers(wormholeConfig, configService, loggerService);
 };
