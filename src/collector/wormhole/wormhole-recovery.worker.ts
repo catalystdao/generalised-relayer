@@ -1,6 +1,6 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import { WormholeRecoveryWorkerData } from './wormhole';
-import pino from 'pino';
+import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
 import {
@@ -37,7 +37,10 @@ class WormholeRecoveryWorker {
     this.chainId = this.config.chainId;
 
     this.store = new Store(this.chainId);
-    this.logger = this.initializeLogger(this.chainId);
+    this.logger = this.initializeLogger(
+      this.chainId,
+      this.config.loggerOptions,
+    );
     this.provider = this.initializeProvider(this.config.rpc);
     this.messageEscrowContract = this.initializeMessageEscrow(
       this.config.incentivesAddress,
@@ -48,9 +51,12 @@ class WormholeRecoveryWorker {
   // Initialization helpers
   // ********************************************************************************************
 
-  private initializeLogger(chainId: string): pino.Logger {
-    return pino(this.config.loggerOptions).child({
-      worker: 'wormhole-recovery',
+  private initializeLogger(
+    chainId: string,
+    loggerOptions: LoggerOptions,
+  ): pino.Logger {
+    return pino(loggerOptions).child({
+      worker: 'collector-wormhole-recovery',
       chain: chainId,
     });
   }
