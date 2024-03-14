@@ -115,9 +115,15 @@ class WormholeRecoveryWorker {
     // The following effectively runs the same logic as the 'wormhole.service.ts' worker. When
     // recovering VAAs, both this and the 'wormhole.service.ts' are executed to prevent VAAs from
     // being missed in some edge cases (when recovering right before the latest blocks).
-    const amb = decodeWormholeMessage(vaa.payload.toString('hex'));
+    const decodedWormholeMessage = decodeWormholeMessage(
+      vaa.payload.toString('hex'),
+    );
+
+    const destinationChain =
+      decodedWormholeMessage.destinationWormholeChainId.toString();
+
     this.logger.info(
-      { messageIdentifier: amb.messageIdentifier },
+      { messageIdentifier: decodedWormholeMessage.messageIdentifier },
       `Collected message (recovery).`,
     );
 
@@ -132,26 +138,29 @@ class WormholeRecoveryWorker {
 
     await this.store.setAmb(
       {
-        ...amb,
+        messageIdentifier: decodedWormholeMessage.messageIdentifier,
+        amb: 'wormhole',
         sourceChain,
+        destinationChain,
+        payload: decodedWormholeMessage.payload,
         recoveryContext: vaa.sequence.toString(),
       },
       vaa.hash.toString('hex'),
     );
 
     // Decode payload
-    const decodedPayload = ParsePayload(amb.payload);
+    const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
     if (decodedPayload === undefined) {
       throw new Error('Could not decode VAA payload.');
     }
 
     // Set destination address for the bounty.
     await this.store.registerDestinationAddress({
-      messageIdentifier: amb.messageIdentifier,
+      messageIdentifier: decodedWormholeMessage.messageIdentifier,
       destinationAddress:
         await this.messageEscrowContract.implementationAddress(
           decodedPayload?.sourceApplicationAddress,
-          defaultAbiCoder.encode(['uint256'], [amb.destinationChain]),
+          defaultAbiCoder.encode(['uint256'], [destinationChain]),
         ),
     });
   }
@@ -162,7 +171,7 @@ class WormholeRecoveryWorker {
     );
 
     const destinationChain = this.config.reverseWormholeChainConfig.get(
-      String(wormholeInfo.destinationChain),
+      String(wormholeInfo.destinationWormholeChainId),
     );
 
     const ambPayload: AmbPayload = {

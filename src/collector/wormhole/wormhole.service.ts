@@ -77,22 +77,29 @@ const bootstrap = async () => {
 
       for (const event of logs) {
         const payload = event.args.payload;
-        const amb = decodeWormholeMessage(payload);
+        const decodedWormholeMessage = decodeWormholeMessage(payload);
+
+        const destinationChain =
+          decodedWormholeMessage.destinationWormholeChainId.toString();
+
         logger.info(
-          { messageIdentifier: amb.messageIdentifier },
+          { messageIdentifier: decodedWormholeMessage.messageIdentifier },
           `Collected message.`,
         );
         await store.setAmb(
           {
-            ...amb,
+            messageIdentifier: decodedWormholeMessage.messageIdentifier,
+            amb: 'wormhole',
             sourceChain: chainId,
+            destinationChain,
+            payload: decodedWormholeMessage.payload,
             recoveryContext: event.args.sequence.toString(),
           },
           event.transactionHash,
         );
 
         // Decode payload
-        const decodedPayload = ParsePayload(amb.payload);
+        const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
         if (decodedPayload === undefined) {
           logger.info('Could not decode payload.');
           continue;
@@ -100,10 +107,10 @@ const bootstrap = async () => {
 
         // Set destination address for the bounty.
         await store.registerDestinationAddress({
-          messageIdentifier: amb.messageIdentifier,
+          messageIdentifier: decodedWormholeMessage.messageIdentifier,
           destinationAddress: await messageEscrow.implementationAddress(
             decodedPayload?.sourceApplicationAddress,
-            defaultAbiCoder.encode(['uint256'], [amb.destinationChain]),
+            defaultAbiCoder.encode(['uint256'], [destinationChain]),
           ),
         });
       }

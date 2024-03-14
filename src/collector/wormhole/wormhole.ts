@@ -10,13 +10,13 @@ import {
   DEFAULT_GETTER_MAX_BLOCKS,
 } from 'src/getter/getter.controller';
 import { LoggerOptions } from 'pino';
+import { WormholeChainConfig } from './wormhole.types';
 
 export interface WormholeRelayerEngineWorkerData {
   isTestnet: boolean;
   useDocker: boolean;
   spyPort: string;
-  wormholeChainConfig: Map<string, any>;
-  reverseWormholeChainConfig: Map<string, any>;
+  wormholeChainConfigs: Map<string, WormholeChainConfig>;
   loggerOptions: LoggerOptions;
 }
 
@@ -55,45 +55,17 @@ function loadRelayerEngineWorkerData(
   configService: ConfigService,
   loggerService: LoggerService,
 ): WormholeRelayerEngineWorkerData {
-  // Get the chain-specific Wormhole config
-  const wormholeChainConfig = new Map<string, any>();
-  const reverseWormholeChainConfig = new Map<string, any>();
-  configService.chainsConfig.forEach((chainConfig) => {
-    const wormholeChainId: string | undefined = configService.getAMBConfig(
-      'wormhole',
-      'wormholeChainId',
-      chainConfig.chainId,
-    );
-
-    if (wormholeChainId != undefined) {
-      const incentivesAddress = wormholeConfig.getIncentivesAddress(
-        chainConfig.chainId,
-      );
-
-      wormholeChainConfig.set(chainConfig.chainId, {
-        wormholeChainId,
-        incentivesAddress,
-      });
-      reverseWormholeChainConfig.set(
-        String(wormholeChainId),
-        chainConfig.chainId,
-      );
-      loggerService.info(
-        `'wormholeChainId' for chain ${chainConfig.chainId} is set to ${wormholeChainId}.`,
-      );
-    } else {
-      loggerService.info(
-        `No 'wormholeChainId' set for chain ${chainConfig.chainId}. Skipping chain (wormhole collector).`,
-      );
-    }
-  });
+  const wormholeChainConfigs = loadWormholeChainConfigs(
+    wormholeConfig,
+    configService,
+    loggerService,
+  );
 
   return {
     isTestnet: wormholeConfig.globalProperties['isTestnet'],
     useDocker: process.env.USE_DOCKER == 'true',
     spyPort: process.env.SPY_PORT ?? '',
-    wormholeChainConfig,
-    reverseWormholeChainConfig,
+    wormholeChainConfigs,
     loggerOptions: loggerService.loggerOptions,
   };
 }
@@ -220,6 +192,42 @@ function loadRecoveryWorkerData(
   };
 }
 
+function loadWormholeChainConfigs(
+  wormholeConfig: AMBConfig,
+  configService: ConfigService,
+  loggerService: LoggerService,
+): Map<string, WormholeChainConfig> {
+  // Get the chain-specific Wormhole config
+  const wormholeChainConfigs = new Map<string, any>();
+  configService.chainsConfig.forEach((chainConfig) => {
+    const wormholeChainId: string | undefined = configService.getAMBConfig(
+      'wormhole',
+      'wormholeChainId',
+      chainConfig.chainId,
+    );
+
+    if (wormholeChainId != undefined) {
+      const incentivesAddress = wormholeConfig.getIncentivesAddress(
+        chainConfig.chainId,
+      );
+
+      wormholeChainConfigs.set(chainConfig.chainId, {
+        wormholeChainId,
+        incentivesAddress,
+      });
+      loggerService.info(
+        `'wormholeChainId' for chain ${chainConfig.chainId} is set to ${wormholeChainId}.`,
+      );
+    } else {
+      loggerService.info(
+        `No 'wormholeChainId' set for chain ${chainConfig.chainId}. Skipping chain (wormhole collector).`,
+      );
+    }
+  });
+
+  return wormholeChainConfigs;
+}
+
 function initiateRelayerEngineWorker(
   wormholeConfig: AMBConfig,
   configService: ConfigService,
@@ -232,6 +240,13 @@ function initiateRelayerEngineWorker(
     configService,
     loggerService,
   );
+
+  if (workerData.wormholeChainConfigs.size == 0) {
+    loggerService.warn(
+      'Skipping relayer engine worker initialization: no Wormhole chain configs found',
+    );
+    return;
+  }
 
   const worker = new Worker(join(__dirname, 'wormhole-engine.service.js'), {
     workerData,

@@ -1,17 +1,20 @@
-import { AmbMessage } from 'src/store/types/store.types';
+import { WormholeChainConfig, WormholeChainId } from './wormhole.types';
+
+export interface DecodedWormholeMessage {
+  messageIdentifier: string;
+  destinationWormholeChainId: WormholeChainId;
+  payload: string;
+}
 
 export function decodeWormholeMessage(
   rawWormholePayload: string,
-): Omit<AmbMessage, 'sourceChain'> {
-  // Remove 0x.
-  if (rawWormholePayload.includes('0x'))
-    rawWormholePayload = rawWormholePayload.slice(2);
+): DecodedWormholeMessage {
+  let counter = rawWormholePayload.includes('0x') ? 2 : 0;
 
-  let counter = 0;
   // The destination chain identifier is the first 32 bytes.
-  const destinationChain = BigInt(
-    '0x' + rawWormholePayload.slice(counter, (counter += 32 * 2)),
-  ).toString();
+  const destinationWormholeChainId = Number(
+    BigInt('0x' + rawWormholePayload.slice(counter, (counter += 32 * 2))),
+  );
 
   const payload = rawWormholePayload.slice(counter);
 
@@ -23,8 +26,20 @@ export function decodeWormholeMessage(
 
   return {
     messageIdentifier,
-    amb: 'wormhole',
-    destinationChain,
-    payload: payload,
+    destinationWormholeChainId,
+    payload,
   };
+}
+
+export function mapWormholeChainIdToChainId(
+  wormholeChainId: WormholeChainId,
+  wormholeChainConfigs: Map<string, WormholeChainConfig>,
+): string | undefined {
+  for (const [chainId, wormholeChainConfig] of wormholeChainConfigs) {
+    if (wormholeChainId === wormholeChainConfig.wormholeChainId) {
+      return chainId;
+    }
+  }
+
+  return undefined;
 }
