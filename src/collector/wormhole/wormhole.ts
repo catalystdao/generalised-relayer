@@ -20,13 +20,13 @@ export interface WormholeRelayerEngineWorkerData {
   loggerOptions: LoggerOptions;
 }
 
-interface WormholeGlobalPacketSnifferConfig {
+interface WormholeGlobalMessageSnifferConfig {
   blockDelay: number;
   interval: number;
   maxBlocks: number | null;
 }
 
-export interface WormholePacketSnifferWorkerData {
+export interface WormholeMessageSnifferWorkerData {
   chainId: string;
   rpc: string;
   startingBlock?: number;
@@ -70,9 +70,9 @@ function loadRelayerEngineWorkerData(
   };
 }
 
-function loadGlobalPacketSnifferConfig(
+function loadGlobalMessageSnifferConfig(
   configService: ConfigService,
-): WormholeGlobalPacketSnifferConfig {
+): WormholeGlobalMessageSnifferConfig {
   const blockDelay =
     configService.globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
 
@@ -87,13 +87,13 @@ function loadGlobalPacketSnifferConfig(
   };
 }
 
-function loadPacketSnifferWorkerData(
+function loadMessageSnifferWorkerData(
   wormholeConfig: AMBConfig,
   configService: ConfigService,
   loggerService: LoggerService,
   chainConfig: ChainConfig,
-  globalConfig: WormholeGlobalPacketSnifferConfig,
-): WormholePacketSnifferWorkerData | undefined {
+  globalConfig: WormholeGlobalMessageSnifferConfig,
+): WormholeMessageSnifferWorkerData | undefined {
   const chainId = chainConfig.chainId;
   const rpc = chainConfig.rpc;
 
@@ -272,20 +272,20 @@ function initiateRelayerEngineWorker(
   setInterval(logStatus, STATUS_LOG_INTERVAL);
 }
 
-function initiatePacketSnifferWorkers(
+function initiateMessageSnifferWorkers(
   wormholeConfig: AMBConfig,
   configService: ConfigService,
   loggerService: LoggerService,
 ): void {
-  loggerService.info('Starting the wormhole packet sniffer workers...');
+  loggerService.info('Starting the wormhole message sniffer workers...');
 
   const workers: Record<string, Worker | null> = {};
 
-  const globalMockConfig = loadGlobalPacketSnifferConfig(configService);
+  const globalMockConfig = loadGlobalMessageSnifferConfig(configService);
 
   configService.chainsConfig.forEach((chainConfig) => {
     // Spawn a worker for every Wormhole implementation
-    const workerData = loadPacketSnifferWorkerData(
+    const workerData = loadMessageSnifferWorkerData(
       wormholeConfig,
       configService,
       loggerService,
@@ -294,9 +294,12 @@ function initiatePacketSnifferWorkers(
     );
 
     if (workerData) {
-      const worker = new Worker(join(__dirname, 'wormhole.service.js'), {
-        workerData,
-      });
+      const worker = new Worker(
+        join(__dirname, 'wormhole-message-sniffer.worker.js'),
+        {
+          workerData,
+        },
+      );
       workers[chainConfig.chainId] = worker;
 
       worker.on('error', (error) =>
@@ -330,7 +333,7 @@ function initiatePacketSnifferWorkers(
     };
     loggerService.info(
       status,
-      'Wormhole collector packet sniffer workers status.',
+      'Wormhole collector message sniffer workers status.',
     );
   };
   setInterval(logStatus, STATUS_LOG_INTERVAL);
@@ -414,7 +417,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
 
   initiateRelayerEngineWorker(wormholeConfig, configService, loggerService);
 
-  initiatePacketSnifferWorkers(wormholeConfig, configService, loggerService);
+  initiateMessageSnifferWorkers(wormholeConfig, configService, loggerService);
 
   initiateRecoveryWorkers(wormholeConfig, configService, loggerService);
 };

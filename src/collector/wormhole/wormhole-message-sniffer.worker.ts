@@ -10,10 +10,10 @@ import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { WormholePacketSnifferWorkerData } from './wormhole';
+import { WormholeMessageSnifferWorkerData } from './wormhole';
 
 const bootstrap = async () => {
-  const config = workerData as WormholePacketSnifferWorkerData;
+  const config = workerData as WormholeMessageSnifferWorkerData;
   const chainId = config.chainId;
 
   const store = new Store(chainId);
