@@ -212,15 +212,28 @@ class WormholeRecoveryWorker {
     startingBlock: number,
     stoppingBlock: number | undefined,
   ): Promise<{ startingTimestamp: number; stoppingTimestamp: number }> {
-    const getBlockTimestamp = async (
-      blockNumber: number | undefined,
-    ): Promise<number> => {
-      const block = await this.provider.getBlock(blockNumber ?? 'latest');
-      return block.timestamp;
-    };
+    // This recovery worker does not work for blocks that are in the future.
+    const currentBlock = await this.provider.getBlock('latest');
 
-    const startingTimestamp = await getBlockTimestamp(startingBlock);
-    const stoppingTimestamp = await getBlockTimestamp(stoppingBlock);
+    if (startingBlock > currentBlock.number) {
+      throw new Error(
+        `Unable to initialize the Wormhole recovery worker. Provided 'startingBlock' (${startingBlock}) is larger than the current block number.`,
+      );
+    }
+
+    const startingTimestamp = (await this.provider.getBlock(startingBlock))
+      .timestamp;
+
+    let stoppingTimestamp;
+    if (stoppingBlock != undefined && stoppingBlock > currentBlock.number) {
+      // stoppingBlock > currentBlock is a valid configuration. This will be handled by the other
+      // Wormhole collector workers.
+      stoppingTimestamp = currentBlock.timestamp;
+    } else {
+      stoppingTimestamp = (
+        await this.provider.getBlock(stoppingBlock ?? 'latest')
+      ).timestamp;
+    }
 
     return {
       startingTimestamp,
