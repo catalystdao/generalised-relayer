@@ -1,6 +1,4 @@
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
-import { Wallet, ethers } from 'ethers';
-import { keccak256 } from 'ethers/lib/utils';
+import { JsonRpcProvider, Wallet, keccak256, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { convertHexToDecimal, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
@@ -57,17 +55,19 @@ const bootstrap = async () => {
   );
 
   // Get an Ethers provider for us to collect bounties with.
-  const provider = new StaticJsonRpcProvider(config.rpc);
+  const provider = new JsonRpcProvider(config.rpc, undefined, {
+    staticNetwork: true,
+  });
 
   // Create a signing key using the provided AMB config:
-  const signingKey = new Wallet(config.privateKey, provider)._signingKey();
+  const signingKey = new Wallet(config.privateKey, provider).signingKey;
 
   // Set the contract which we will receive messages through.
   const contract = IncentivizedMockEscrow__factory.connect(
     config.incentivesAddress,
     provider,
   );
-  const bytes32Address = ethers.utils.hexZeroPad(config.incentivesAddress, 32);
+  const bytes32Address = zeroPadValue(config.incentivesAddress, 32);
 
   // In case this worker crashes (say bad RPC), the worker will be restarted.
   // If the error is indeed from the RPC, it is better to wait a bit before calling the RPC again.
@@ -166,7 +166,7 @@ const bootstrap = async () => {
           // For Mock, this is essentially PoA with a single key. The deployment needs to match the private key available
           // to the relayer.
           const encodedMessage = encodeMessage(bytes32Address, message);
-          const signature = signingKey.signDigest(keccak256(encodedMessage));
+          const signature = signingKey.sign(keccak256(encodedMessage));
           const executionContext = encodeSignature(signature);
 
           const destinationChainId = convertHexToDecimal(amb.destinationChain);

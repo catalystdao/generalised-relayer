@@ -1,5 +1,10 @@
-import { BytesLike, ContractTransaction, Wallet, constants } from 'ethers';
-import { BaseProvider, StaticJsonRpcProvider } from '@ethersproject/providers';
+import {
+  BytesLike,
+  JsonRpcProvider,
+  TransactionResponse,
+  Wallet,
+  ZeroAddress,
+} from 'ethers6';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { IncentivizedMessageEscrow } from 'src/contracts';
@@ -24,7 +29,6 @@ import {
   ConfirmedTransaction,
   PendingTransaction,
 } from './queues/confirm-queue';
-import { addTransactionTimeout } from './utils';
 
 class SubmitterWorker {
   readonly store: Store;
@@ -32,7 +36,7 @@ class SubmitterWorker {
 
   readonly config: SubmitterWorkerData;
 
-  readonly provider: StaticJsonRpcProvider;
+  readonly provider: JsonRpcProvider;
   readonly signer: Wallet;
 
   readonly chainId: string;
@@ -56,7 +60,9 @@ class SubmitterWorker {
       this.chainId,
       this.config.loggerOptions,
     );
-    this.provider = new StaticJsonRpcProvider(this.config.rpc);
+    this.provider = new JsonRpcProvider(this.config.rpc, undefined, {
+      staticNetwork: true,
+    });
     this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
     this.transactionHelper = new TransactionHelper(
@@ -109,7 +115,7 @@ class SubmitterWorker {
     confirmations: number,
     confirmationTimeout: number,
     transactionHelper: TransactionHelper,
-    provider: BaseProvider,
+    provider: JsonRpcProvider,
     signer: Wallet,
     logger: pino.Logger,
   ): [EvalQueue, SubmitQueue, ConfirmQueue] {
@@ -253,7 +259,7 @@ class SubmitterWorker {
     for (const confirmedOrder of confirmedSubmitOrders) {
       // Register the gas cost used
       const txReceipt = confirmedOrder.txReceipt;
-      const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      const gasCost = txReceipt.gasUsed * txReceipt.gasPrice;
       await this.transactionHelper.registerBalanceUse(gasCost);
     }
   }
@@ -348,7 +354,7 @@ class SubmitterWorker {
   }
 
   // This function does not return until the transaction of the given nonce is mined!
-  private async cancelTransaction(baseTx: ContractTransaction): Promise<void> {
+  private async cancelTransaction(baseTx: TransactionResponse): Promise<void> {
     const cancelTxNonce = baseTx.nonce;
     if (cancelTxNonce == undefined) {
       // This point should never be reached.
@@ -360,7 +366,7 @@ class SubmitterWorker {
       try {
         // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
         // helper takes into account the 'pending' transactions.
-        const latestNonce = await this.signer.getTransactionCount('latest');
+        const latestNonce = await this.signer.getNonce('latest');
 
         if (latestNonce > cancelTxNonce) {
           return;
@@ -370,19 +376,22 @@ class SubmitterWorker {
 
         const tx = await this.signer.sendTransaction({
           nonce: cancelTxNonce,
-          to: constants.AddressZero,
+          to: ZeroAddress,
           data: '0x',
           ...this.transactionHelper.getIncreasedFeeDataForTransaction(baseTx),
         });
 
-        const receipt = await addTransactionTimeout(
-          tx.wait(this.config.confirmations),
+        const receipt = await tx.wait(
+          this.config.confirmations,
           this.config.confirmationTimeout,
         );
 
-        await this.transactionHelper.registerBalanceUse(
-          receipt.gasUsed.mul(receipt.effectiveGasPrice),
-        );
+        // receipt != null should always be the case if 'confirmations' > 0
+        if (receipt) {
+          await this.transactionHelper.registerBalanceUse(
+            receipt.gasUsed * receipt.gasPrice,
+          );
+        }
 
         // Transaction cancelled
         return;
@@ -402,7 +411,7 @@ class SubmitterWorker {
 
       // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
       // helper takes into account the 'pending' transactions.
-      const latestNonce = await this.signer.getTransactionCount('latest');
+      const latestNonce = await this.signer.getNonce('latest');
 
       if (latestNonce > cancelTxNonce) {
         this.logger.info(

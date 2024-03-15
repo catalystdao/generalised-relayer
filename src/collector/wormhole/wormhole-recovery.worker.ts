@@ -1,4 +1,3 @@
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
@@ -10,12 +9,14 @@ import { decodeWormholeMessage } from './wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { AmbPayload } from 'src/store/types/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
-import { defaultAbiCoder } from '@ethersproject/abi';
 import {
   IncentivizedMessageEscrow,
   IncentivizedMessageEscrow__factory,
 } from 'src/contracts';
 import { WormholeRecoveryWorkerData } from './wormhole.types';
+import { AbiCoder, JsonRpcProvider } from 'ethers6';
+
+const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 const WORMHOLESCAN_API_ENDPOINT = 'https://api.testnet.wormholescan.io';
 
@@ -25,7 +26,7 @@ class WormholeRecoveryWorker {
 
   readonly config: WormholeRecoveryWorkerData;
 
-  readonly provider: StaticJsonRpcProvider;
+  readonly provider: JsonRpcProvider;
 
   readonly chainId: string;
 
@@ -61,13 +62,13 @@ class WormholeRecoveryWorker {
     });
   }
 
-  private initializeProvider(rpc: string): StaticJsonRpcProvider {
-    return new StaticJsonRpcProvider(rpc);
+  private initializeProvider(rpc: string): JsonRpcProvider {
+    return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
   }
 
   private initializeMessageEscrow(
     incentivesAddress: string,
-    provider: StaticJsonRpcProvider,
+    provider: JsonRpcProvider,
   ): IncentivizedMessageEscrow {
     return IncentivizedMessageEscrow__factory.connect(
       incentivesAddress,
@@ -215,13 +216,19 @@ class WormholeRecoveryWorker {
     // This recovery worker does not work for blocks that are in the future.
     const currentBlock = await this.provider.getBlock('latest');
 
+    if (currentBlock == null) {
+      throw new Error(
+        `Unable to initialize the Wormhole recovery worker. Failed to fetch the current block.`,
+      );
+    }
+
     if (startingBlock > currentBlock.number) {
       throw new Error(
         `Unable to initialize the Wormhole recovery worker. Provided 'startingBlock' (${startingBlock}) is larger than the current block number.`,
       );
     }
 
-    const startingTimestamp = (await this.provider.getBlock(startingBlock))
+    const startingTimestamp = (await this.provider.getBlock(startingBlock))!
       .timestamp;
 
     let stoppingTimestamp;
@@ -230,9 +237,10 @@ class WormholeRecoveryWorker {
       // Wormhole collector workers.
       stoppingTimestamp = currentBlock.timestamp;
     } else {
-      stoppingTimestamp = (
-        await this.provider.getBlock(stoppingBlock ?? 'latest')
-      ).timestamp;
+      stoppingTimestamp =
+        stoppingBlock == undefined
+          ? currentBlock.timestamp
+          : (await this.provider.getBlock(stoppingBlock))!.timestamp;
     }
 
     return {

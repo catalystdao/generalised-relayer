@@ -1,7 +1,8 @@
-import { BigNumber } from 'ethers';
-import { defaultAbiCoder, keccak256 } from 'ethers/lib/utils';
+import { AbiCoder, keccak256 } from 'ethers6';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { Bounty } from 'src/store/types/store.types';
+
+const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 export const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -43,8 +44,8 @@ export const bountyToDTO = (bounty: Bounty) => ({
 
 export const getSwapIdentifier = (
   toAccount: string,
-  units: BigNumber,
-  fromAmountMinusFee: BigNumber,
+  units: bigint,
+  fromAmountMinusFee: bigint,
   fromAsset: string,
   blockNumber: number,
 ) => {

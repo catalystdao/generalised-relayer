@@ -1,4 +1,4 @@
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
+import { LogMessagePublishedEvent } from 'src/contracts/IWormhole';
 import pino, { LoggerOptions } from 'pino';
 import {
   IWormhole,
@@ -11,9 +11,10 @@ import { workerData } from 'worker_threads';
 import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
-import { defaultAbiCoder } from '@ethersproject/abi';
-import { LogMessagePublishedEvent } from 'src/contracts/IWormhole';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
+import { AbiCoder, JsonRpcProvider } from 'ethers6';
+
+const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 //TODO implement stopping block (see getter)
 
@@ -23,7 +24,7 @@ class WormholeMessageSnifferWorker {
 
   readonly config: WormholeMessageSnifferWorkerData;
 
-  readonly provider: StaticJsonRpcProvider;
+  readonly provider: JsonRpcProvider;
 
   readonly chainId: string;
 
@@ -66,20 +67,20 @@ class WormholeMessageSnifferWorker {
     });
   }
 
-  private initializeProvider(rpc: string): StaticJsonRpcProvider {
-    return new StaticJsonRpcProvider(rpc);
+  private initializeProvider(rpc: string): JsonRpcProvider {
+    return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
   }
 
   private initializeWormholeContract(
     wormholeAddress: string,
-    provider: StaticJsonRpcProvider,
+    provider: JsonRpcProvider,
   ): IWormhole {
     return IWormhole__factory.connect(wormholeAddress, provider);
   }
 
   private initializeMessageEscrowContract(
     incentivesAddress: string,
-    provider: StaticJsonRpcProvider,
+    provider: JsonRpcProvider,
   ): IncentivizedMessageEscrow {
     return IncentivizedMessageEscrow__factory.connect(
       incentivesAddress,
@@ -154,12 +155,12 @@ class WormholeMessageSnifferWorker {
   private async queryLogs(
     fromBlock: number,
     toBlock: number,
-  ): Promise<LogMessagePublishedEvent[]> {
+  ): Promise<LogMessagePublishedEvent.Log[]> {
     const filter = this.wormholeContract.filters.LogMessagePublished(
       this.config.incentivesAddress,
     );
 
-    let logs: LogMessagePublishedEvent[] | undefined;
+    let logs: LogMessagePublishedEvent.Log[] | undefined;
     let i = 0;
     while (logs == undefined) {
       try {
@@ -182,7 +183,7 @@ class WormholeMessageSnifferWorker {
   }
 
   private async handleLogMessagedPublishedEvent(
-    log: LogMessagePublishedEvent,
+    log: LogMessagePublishedEvent.Log,
   ): Promise<void> {
     const payload = log.args.payload;
     const decodedWormholeMessage = decodeWormholeMessage(payload);

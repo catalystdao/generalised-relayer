@@ -1,9 +1,8 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
 import { SubmitOrder } from '../submitter.types';
-import { Wallet } from 'ethers';
+import { Wallet, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { hexZeroPad } from 'ethers/lib/utils';
 import { TransactionHelper } from '../transaction-helper';
 import { PendingTransaction } from './confirm-queue';
 
@@ -26,7 +25,7 @@ export class SubmitQueue extends ProcessingQueue<
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
+    this.relayerAddress = zeroPadValue(this.wallet.address, 32);
   }
 
   protected async onProcessOrders(): Promise<void> {
@@ -48,7 +47,7 @@ export class SubmitQueue extends ProcessingQueue<
     const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
 
     if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {
-      await contract.callStatic.processPacket(
+      await contract.processPacket.staticCall(
         order.messageCtx,
         order.message,
         this.relayerAddress,

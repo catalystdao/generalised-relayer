@@ -1,5 +1,4 @@
-import { BaseProvider, FeeData } from '@ethersproject/providers';
-import { BigNumber, ContractTransaction, Wallet } from 'ethers';
+import { FeeData, JsonRpcProvider, TransactionResponse, Wallet } from 'ethers6';
 import {
   BalanceConfig,
   GasFeeConfig,
@@ -8,7 +7,7 @@ import {
 import pino from 'pino';
 
 const DECIMAL_BASE = 10000;
-const DECIMAL_BASE_BIG_NUMBER = BigNumber.from(DECIMAL_BASE);
+const DECIMAL_BASE_BIG_INT = BigInt(DECIMAL_BASE);
 
 export const DEFAULT_PRIORITY_ADJUSTMENT_FACTOR = 1.1;
 export const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
@@ -17,30 +16,30 @@ export class TransactionHelper {
   private transactionCount: number;
   private feeData: FeeData | undefined;
 
-  private priorityAdjustmentFactor: BigNumber;
+  private priorityAdjustmentFactor: bigint;
 
   // Config for legacy transactions
-  private gasPriceAdjustmentFactor: BigNumber | undefined;
-  private maxAllowedGasPrice: BigNumber | undefined;
+  private gasPriceAdjustmentFactor: bigint | undefined;
+  private maxAllowedGasPrice: bigint | undefined;
 
   // Config for EIP 1559 transactions
-  private maxFeePerGas: BigNumber | undefined;
-  private maxPriorityFeeAdjustmentFactor: BigNumber | undefined;
-  private maxAllowedPriorityFeePerGas: BigNumber | undefined;
+  private maxFeePerGas: bigint | undefined;
+  private maxPriorityFeeAdjustmentFactor: bigint | undefined;
+  private maxAllowedPriorityFeePerGas: bigint | undefined;
 
   // Balance config
-  private walletBalance: BigNumber;
+  private walletBalance: bigint;
   private transactionsSinceLastBalanceUpdate: number = 0;
   private isBalanceLow: boolean = false;
 
-  private lowBalanceWarning: BigNumber | undefined;
+  private lowBalanceWarning: bigint | undefined;
   private balanceUpdateInterval: number;
 
   constructor(
     gasFeeConfig: GasFeeConfig,
     balanceConfig: BalanceConfig,
     private readonly retryInterval: number,
-    private readonly provider: BaseProvider,
+    private readonly provider: JsonRpcProvider,
     private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
@@ -66,13 +65,13 @@ export class TransactionHelper {
         );
       }
 
-      this.gasPriceAdjustmentFactor = BigNumber.from(
+      this.gasPriceAdjustmentFactor = BigInt(
         gasPriceAdjustmentFactor * DECIMAL_BASE,
       );
     }
 
     if (maxAllowedGasPrice != undefined) {
-      this.maxAllowedGasPrice = BigNumber.from(maxAllowedGasPrice);
+      this.maxAllowedGasPrice = BigInt(maxAllowedGasPrice);
     }
 
     // Config for EIP 1559 transactions
@@ -83,19 +82,17 @@ export class TransactionHelper {
         );
       }
 
-      this.maxPriorityFeeAdjustmentFactor = BigNumber.from(
+      this.maxPriorityFeeAdjustmentFactor = BigInt(
         maxPriorityFeeAdjustmentFactor * DECIMAL_BASE,
       );
     }
 
     if (maxFeePerGas != undefined) {
-      this.maxFeePerGas = BigNumber.from(maxFeePerGas);
+      this.maxFeePerGas = BigInt(maxFeePerGas);
     }
 
     if (maxAllowedPriorityFeePerGas != undefined) {
-      this.maxAllowedPriorityFeePerGas = BigNumber.from(
-        maxAllowedPriorityFeePerGas,
-      );
+      this.maxAllowedPriorityFeePerGas = BigInt(maxAllowedPriorityFeePerGas);
     }
 
     // Priority config
@@ -109,7 +106,7 @@ export class TransactionHelper {
         );
       }
 
-      this.priorityAdjustmentFactor = BigNumber.from(
+      this.priorityAdjustmentFactor = BigInt(
         priorityAdjustmentFactor * DECIMAL_BASE,
       );
     } else {
@@ -117,7 +114,7 @@ export class TransactionHelper {
         `Priority adjustment factor unset. Defaulting to ${DEFAULT_PRIORITY_ADJUSTMENT_FACTOR}`,
       );
 
-      this.priorityAdjustmentFactor = BigNumber.from(
+      this.priorityAdjustmentFactor = BigInt(
         DEFAULT_PRIORITY_ADJUSTMENT_FACTOR * DECIMAL_BASE,
       );
     }
@@ -127,7 +124,7 @@ export class TransactionHelper {
     this.lowBalanceWarning =
       config.lowBalanceWarning == undefined
         ? undefined
-        : BigNumber.from(config.lowBalanceWarning);
+        : BigInt(config.lowBalanceWarning);
     this.balanceUpdateInterval = config.balanceUpdateInterval;
   }
 
@@ -144,8 +141,7 @@ export class TransactionHelper {
     let i = 1;
     while (true) {
       try {
-        this.transactionCount =
-          await this.wallet.getTransactionCount('pending'); //TODO 'pending' may not be supported
+        this.transactionCount = await this.wallet.getNonce('pending'); //TODO 'pending' may not be supported
         break;
       } catch (error) {
         // Continue trying indefinitely. If the transaction count is incorrect, no transaction will go through.
@@ -168,12 +164,12 @@ export class TransactionHelper {
     this.transactionCount++;
   }
 
-  async registerBalanceUse(amount: BigNumber): Promise<void> {
+  async registerBalanceUse(amount: bigint): Promise<void> {
     this.transactionsSinceLastBalanceUpdate++;
 
-    const newWalletBalance = this.walletBalance.sub(amount);
-    if (newWalletBalance.lt(BigNumber.from(0))) {
-      this.walletBalance = BigNumber.from(0);
+    const newWalletBalance = this.walletBalance - amount;
+    if (newWalletBalance < BigInt(0)) {
+      this.walletBalance = BigInt(0);
     } else {
       this.walletBalance = newWalletBalance;
     }
@@ -181,14 +177,14 @@ export class TransactionHelper {
     if (
       this.lowBalanceWarning != undefined &&
       !this.isBalanceLow && // Only trigger update if the current saved state is 'balance not low' (i.e. crossing the boundary)
-      this.walletBalance.lt(this.lowBalanceWarning)
+      this.walletBalance < this.lowBalanceWarning
     ) {
       await this.updateWalletBalance();
     }
   }
 
-  async registerBalanceRefund(amount: BigNumber): Promise<void> {
-    this.walletBalance = this.walletBalance.add(amount);
+  async registerBalanceRefund(amount: bigint): Promise<void> {
+    this.walletBalance = this.walletBalance + amount;
   }
 
   async runBalanceCheck(): Promise<void> {
@@ -205,7 +201,10 @@ export class TransactionHelper {
     let walletBalance;
     while (true) {
       try {
-        walletBalance = await this.wallet.getBalance('pending');
+        walletBalance = await this.provider.getBalance(
+          this.wallet.address,
+          'pending',
+        );
         break;
       } catch {
         i++;
@@ -222,7 +221,7 @@ export class TransactionHelper {
     this.transactionsSinceLastBalanceUpdate = 0;
 
     if (this.lowBalanceWarning != undefined) {
-      const isBalanceLow = this.walletBalance.lt(this.lowBalanceWarning);
+      const isBalanceLow = this.walletBalance < this.lowBalanceWarning;
       if (isBalanceLow != this.isBalanceLow) {
         this.isBalanceLow = isBalanceLow;
         const balanceInfo = {
@@ -258,28 +257,32 @@ export class TransactionHelper {
       // Adjust the 'maxPriorityFeePerGas' by the adjustment factor
       let maxPriorityFeePerGas;
       if (this.maxPriorityFeeAdjustmentFactor != undefined) {
-        maxPriorityFeePerGas = queriedMaxPriorityFeePerGas
-          .mul(this.maxPriorityFeeAdjustmentFactor)
-          .div(DECIMAL_BASE_BIG_NUMBER);
+        maxPriorityFeePerGas =
+          (queriedMaxPriorityFeePerGas * this.maxPriorityFeeAdjustmentFactor) /
+          DECIMAL_BASE_BIG_INT;
       }
 
       // Apply the max allowed 'maxPriorityFeePerGas'
       if (
         maxPriorityFeePerGas != undefined &&
         this.maxAllowedPriorityFeePerGas != undefined &&
-        this.maxAllowedPriorityFeePerGas.lt(maxPriorityFeePerGas)
+        this.maxAllowedPriorityFeePerGas < maxPriorityFeePerGas
       ) {
         maxPriorityFeePerGas = this.maxAllowedPriorityFeePerGas;
       }
 
       if (priority) {
-        maxFeePerGas = maxFeePerGas
-          ?.mul(this.priorityAdjustmentFactor)
-          .div(DECIMAL_BASE_BIG_NUMBER);
+        maxFeePerGas =
+          maxFeePerGas != undefined
+            ? (maxFeePerGas * this.priorityAdjustmentFactor) /
+              DECIMAL_BASE_BIG_INT
+            : undefined;
 
-        maxPriorityFeePerGas = maxPriorityFeePerGas
-          ?.mul(this.priorityAdjustmentFactor)
-          .div(DECIMAL_BASE_BIG_NUMBER);
+        maxPriorityFeePerGas =
+          maxPriorityFeePerGas != undefined
+            ? (maxPriorityFeePerGas * this.priorityAdjustmentFactor) /
+              DECIMAL_BASE_BIG_INT
+            : undefined;
       }
 
       return {
@@ -294,24 +297,25 @@ export class TransactionHelper {
       // Adjust the 'gasPrice' by the adjustment factor
       let gasPrice;
       if (this.gasPriceAdjustmentFactor != undefined) {
-        gasPrice = queriedGasPrice
-          .mul(this.gasPriceAdjustmentFactor)
-          .div(DECIMAL_BASE_BIG_NUMBER);
+        gasPrice =
+          (queriedGasPrice * this.gasPriceAdjustmentFactor) /
+          DECIMAL_BASE_BIG_INT;
       }
 
       // Apply the max allowed 'gasPrice'
       if (
         gasPrice != undefined &&
         this.maxAllowedGasPrice != undefined &&
-        this.maxAllowedGasPrice.lt(gasPrice)
+        this.maxAllowedGasPrice < gasPrice
       ) {
         gasPrice = this.maxAllowedGasPrice;
       }
 
       if (priority) {
-        gasPrice = gasPrice
-          ?.mul(this.priorityAdjustmentFactor)
-          .div(DECIMAL_BASE_BIG_NUMBER);
+        gasPrice =
+          gasPrice != undefined
+            ? (gasPrice * this.priorityAdjustmentFactor) / DECIMAL_BASE_BIG_INT
+            : undefined;
       }
 
       return {
@@ -321,7 +325,7 @@ export class TransactionHelper {
   }
 
   getIncreasedFeeDataForTransaction(
-    originalTx: ContractTransaction,
+    originalTx: TransactionResponse,
   ): GasFeeOverrides {
     const priorityFees = this.getFeeDataForTransaction(true);
 
@@ -330,11 +334,11 @@ export class TransactionHelper {
       priorityFees.gasPrice,
     );
     const maxFeePerGas = this.getLargestFee(
-      originalTx.maxFeePerGas,
+      originalTx.maxFeePerGas ?? undefined,
       priorityFees.maxFeePerGas,
     );
     const maxPriorityFeePerGas = this.getLargestFee(
-      originalTx.maxPriorityFeePerGas,
+      originalTx.maxPriorityFeePerGas ?? undefined,
       priorityFees.maxPriorityFeePerGas,
     );
 
@@ -360,13 +364,12 @@ export class TransactionHelper {
   // - previousFee * priorityAdjustmentFactor
   // - priorityFee
   private getLargestFee(
-    previousFee: BigNumber | undefined,
-    priorityFee: BigNumber | undefined,
-  ): BigNumber | undefined {
+    previousFee: bigint | undefined,
+    priorityFee: bigint | undefined,
+  ): bigint | undefined {
     if (previousFee != undefined) {
-      const increasedPreviousFee = previousFee
-        .mul(this.priorityAdjustmentFactor)
-        .div(DECIMAL_BASE_BIG_NUMBER);
+      const increasedPreviousFee =
+        (previousFee * this.priorityAdjustmentFactor) / DECIMAL_BASE_BIG_INT;
 
       if (priorityFee == undefined || increasedPreviousFee > priorityFee) {
         return increasedPreviousFee;

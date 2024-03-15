@@ -1,7 +1,8 @@
-import { BigNumber, Signature } from 'ethers';
-import { defaultAbiCoder, hexStripZeros, solidityPack } from 'ethers/lib/utils';
+import { AbiCoder, Signature, solidityPacked } from 'ethers6';
 import { add0X, getSwapIdentifier } from 'src/common/utils';
 import { AmbMessage } from 'src/store/types/store.types';
+
+const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 export function decodeMockMessage(rawMockPayload: string): AmbMessage {
   // Remove 0x.
@@ -40,7 +41,7 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
  * @returns The Encoded message
  */
 export const encodeMessage = (address: string, message: string): string => {
-  return solidityPack(['bytes', 'bytes'], [address, message]);
+  return solidityPacked(['bytes', 'bytes'], [address, message]);
 };
 
 /**

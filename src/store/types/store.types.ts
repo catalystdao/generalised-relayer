@@ -1,4 +1,3 @@
-import { BigNumber } from 'ethers';
 import { BountyStatus } from './bounty.enum';
 
 export type AmbMessage = {
@@ -39,9 +38,9 @@ export type Bounty = {
   maxGasDelivery: number;
   maxGasAck: number;
   refundGasTo: string;
-  priceOfDeliveryGas: BigNumber;
-  priceOfAckGas: BigNumber;
-  targetDelta: BigNumber;
+  priceOfDeliveryGas: bigint;
+  priceOfAckGas: bigint;
+  targetDelta: bigint;
   evaluationStatus: {
     delivery: EvaluationStatus;
     ack: EvaluationStatus;

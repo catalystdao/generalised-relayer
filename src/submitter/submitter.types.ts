@@ -1,4 +1,4 @@
-import { BigNumber, BytesLike } from 'ethers';
+import { BytesLike } from 'ethers6';
 
 export interface Order {
   amb: string;
@@ -22,9 +22,9 @@ export interface NewOrder<OrderType> {
 }
 
 export interface GasFeeOverrides {
-  gasPrice?: BigNumber;
-  maxFeePerGas?: BigNumber;
-  maxPriorityFeePerGas?: BigNumber;
+  gasPrice?: bigint;
+  maxFeePerGas?: bigint;
+  maxPriorityFeePerGas?: bigint;
 }
 
 export interface GasFeeConfig {

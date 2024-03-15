@@ -1,4 +1,3 @@
-import { BigNumber } from 'ethers';
 import { Redis } from 'ioredis';
 
 import { BountyStatus } from 'src/store/types/bounty.enum';
@@ -12,7 +11,7 @@ import {
 } from 'src/store/types/store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
-(BigNumber.prototype as any).toJSON = function () {
+(BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
 
@@ -194,9 +193,9 @@ export class Store {
       bounty.priceOfAckGas &&
       bounty.targetDelta
     ) {
-      bounty.priceOfDeliveryGas = BigNumber.from(bounty.priceOfDeliveryGas);
-      bounty.priceOfAckGas = BigNumber.from(bounty.priceOfAckGas);
-      bounty.targetDelta = BigNumber.from(bounty.targetDelta);
+      bounty.priceOfDeliveryGas = BigInt(bounty.priceOfDeliveryGas);
+      bounty.priceOfAckGas = BigInt(bounty.priceOfAckGas);
+      bounty.targetDelta = BigInt(bounty.targetDelta);
     } else {
       // TODO: handle this case better.
       return null;
@@ -422,8 +421,8 @@ export class Store {
    */
   async registerBountyIncreased(event: {
     messageIdentifier: string;
-    newDeliveryGasPrice: BigNumber;
-    newAckGasPrice: BigNumber;
+    newDeliveryGasPrice: bigint;
+    newAckGasPrice: bigint;
     incentivesAddress: string;
     transactionHash: string;
   }) {
@@ -431,8 +430,8 @@ export class Store {
     if (chainId === null)
       throw new Error('ChainId is not set: This connection is readonly');
     const messageIdentifier = event.messageIdentifier;
-    const newDeliveryGasPrice: BigNumber = event.newDeliveryGasPrice;
-    const newAckGasPrice: BigNumber = event.newAckGasPrice;
+    const newDeliveryGasPrice: bigint = event.newDeliveryGasPrice;
+    const newAckGasPrice: bigint = event.newAckGasPrice;
 
     // Lets get the bounty.
     const key = Store.combineString(
@@ -455,16 +454,14 @@ export class Store {
     // We know a bounty exists at this value.
     const bountyAsRead: BountyJson = JSON.parse(existingValue);
     // Lets check if there exists values for it, otherwise set to 0. Remember, these are stored as strings.
-    const currentDeliveryGasPrice = BigNumber.from(
+    const currentDeliveryGasPrice = BigInt(
       bountyAsRead.priceOfDeliveryGas ?? '0',
     );
-    const currentAckGasPrice = BigNumber.from(
-      bountyAsRead.priceOfAckGas ?? '0',
-    );
+    const currentAckGasPrice = BigInt(bountyAsRead.priceOfAckGas ?? '0');
     // Otherwise we need to check get the maximums of current and observed new values.
     const hasDeliveryGasPriceIncreased =
-      currentDeliveryGasPrice.lt(newDeliveryGasPrice);
-    const hasAckGasPriceIncreased = currentAckGasPrice.lt(newAckGasPrice);
+      currentDeliveryGasPrice < newDeliveryGasPrice;
+    const hasAckGasPriceIncreased = currentAckGasPrice < newAckGasPrice;
     const hasChanged = hasDeliveryGasPriceIncreased || hasAckGasPriceIncreased;
     // If hasChanged is false, then we don't need to do anything.
     if (hasChanged) {

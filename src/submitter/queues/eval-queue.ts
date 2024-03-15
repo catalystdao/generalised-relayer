@@ -1,12 +1,11 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
 import { EvalOrder, SubmitOrder } from '../submitter.types';
-import { BigNumber, Wallet } from 'ethers';
+import { Wallet, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
 import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { hexZeroPad } from 'ethers/lib/utils';
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
   readonly relayerAddress: string;
@@ -25,7 +24,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
+    this.relayerAddress = zeroPadValue(this.wallet.address, 32);
   }
 
   protected async handleOrder(
@@ -150,7 +149,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     }
 
     const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
-    const gasEstimation = await contract.estimateGas.processPacket(
+    const gasEstimation = await contract.processPacket.estimateGas(
       order.messageCtx,
       order.message,
       this.relayerAddress,
@@ -174,8 +173,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (source to destination).`,
       );
 
-      const relayDelivery =
-        order.priority || BigNumber.from(gasLimit).gte(gasEstimation);
+      const relayDelivery = order.priority || BigInt(gasLimit) >= gasEstimation;
 
       await this.store.registerEvaluationStatus({
         messageIdentifier: order.messageIdentifier,
@@ -200,8 +198,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (destination to source).`,
       );
 
-      const relayAck =
-        order.priority || BigNumber.from(gasLimit).gte(gasEstimation);
+      const relayAck = order.priority || BigInt(gasLimit) >= gasEstimation;
 
       await this.store.registerEvaluationStatus({
         messageIdentifier: order.messageIdentifier,

@@ -1,13 +1,12 @@
 import { HandleOrderResult, ProcessingQueue } from './processing-queue';
-import { Wallet } from 'ethers';
-import pino from 'pino';
-import { TransactionHelper } from '../transaction-helper';
 import {
-  BaseProvider,
+  JsonRpcProvider,
   TransactionReceipt,
   TransactionResponse,
-} from '@ethersproject/providers';
-import { addTransactionTimeout } from '../utils';
+  Wallet,
+} from 'ethers6';
+import pino from 'pino';
+import { TransactionHelper } from '../transaction-helper';
 
 export interface PendingTransaction<T = any> {
   data: T;
@@ -32,7 +31,7 @@ export class ConfirmQueue extends ProcessingQueue<
     private readonly confirmations: number,
     private readonly transactionHelper: TransactionHelper,
     private readonly confirmationTimeout: number,
-    private readonly provider: BaseProvider,
+    private readonly provider: JsonRpcProvider,
     private readonly wallet: Wallet,
     private readonly logger: pino.Logger,
   ) {
@@ -58,14 +57,13 @@ export class ConfirmQueue extends ProcessingQueue<
   ): Promise<HandleOrderResult<ConfirmedTransaction> | null> {
     // If it's the first time the order is processed, just wait for it
     if (retryCount == 0) {
-      const transactionReceipt = addTransactionTimeout(
-        order.tx.wait(this.confirmations),
-        this.confirmationTimeout,
-      ).then((receipt) => ({
-        data: order.data,
-        tx: order.tx,
-        txReceipt: receipt,
-      }));
+      const transactionReceipt = order.tx
+        .wait(this.confirmations, this.confirmationTimeout)
+        .then((receipt) => ({
+          data: order.data,
+          tx: order.tx,
+          txReceipt: receipt!,
+        }));
 
       return { result: transactionReceipt };
     }
@@ -92,24 +90,27 @@ export class ConfirmQueue extends ProcessingQueue<
     }
 
     // Wait for either the original or the replace transaction to fulfill
-    const originalTxReceipt = addTransactionTimeout(
-      order.tx.wait(this.confirmations),
-      this.confirmationTimeout,
-    ).then((txReceipt) => ({ tx: order.tx, txReceipt }));
-    const replaceTxReceipt = addTransactionTimeout(
-      order.replaceTx!.wait(this.confirmations),
-      this.confirmationTimeout,
-    ).then((txReceipt) => ({ tx: order.replaceTx!, txReceipt }));
+    const originalTxReceipt = order.tx
+      .wait(this.confirmations, this.confirmationTimeout)
+      .then((txReceipt) => ({ tx: order.tx, txReceipt }));
+    const replaceTxReceipt = order
+      .replaceTx!.wait(this.confirmations, this.confirmationTimeout)
+      .then((txReceipt) => ({ tx: order.replaceTx!, txReceipt: txReceipt }));
 
     const confirmationPromise = Promise.any([
       originalTxReceipt,
       replaceTxReceipt,
     ]).then(
-      (result) => ({
-        data: order.data,
-        tx: result.tx,
-        txReceipt: result.txReceipt,
-      }),
+      (result) => {
+        if (result.txReceipt == null) {
+          throw new Error("Receipt is 'null' after waiting for transaction"); // This should never happen if confirmations > 0
+        }
+        return {
+          ...order,
+          tx: result.tx, // ! May not be the same as 'order.tx' (may be 'order.replaceTx')
+          txReceipt: result.txReceipt,
+        };
+      },
       (aggregateError) => {
         // If both the original/replace tx promises reject, throw the error of the replace tx.
         throw aggregateError.errors?.[1];

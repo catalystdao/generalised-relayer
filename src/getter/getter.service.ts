@@ -1,16 +1,10 @@
 import { wait } from 'src/common/utils';
 import pino from 'pino';
 import { workerData } from 'worker_threads';
-import { utils } from 'ethers';
-import { FormatTypes, LogDescription } from '@ethersproject/abi';
-import {
-  BaseProvider,
-  Log,
-  StaticJsonRpcProvider,
-} from '@ethersproject/providers';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { GetterWorkerData } from './getter.controller';
+import { JsonRpcProvider, Log, LogDescription } from 'ethers6';
 
 const GET_LOGS_RETRY_INTERVAL = 2000;
 
@@ -30,33 +24,19 @@ const bootstrap = async () => {
     chain: chainId,
   });
 
-  const provider = new StaticJsonRpcProvider(config.rpc);
+  const provider = new JsonRpcProvider(config.rpc, undefined, {
+    staticNetwork: true,
+  });
 
   const incentivesContractInterface =
     IMessageEscrowEvents__factory.createInterface();
 
   const topics = [
     [
-      utils.id(
-        incentivesContractInterface
-          .getEvent('BountyPlaced')
-          .format(FormatTypes.sighash),
-      ),
-      utils.id(
-        incentivesContractInterface
-          .getEvent('BountyClaimed')
-          .format(FormatTypes.sighash),
-      ),
-      utils.id(
-        incentivesContractInterface
-          .getEvent('MessageDelivered')
-          .format(FormatTypes.sighash),
-      ),
-      utils.id(
-        incentivesContractInterface
-          .getEvent('BountyIncreased')
-          .format(FormatTypes.sighash),
-      ),
+      incentivesContractInterface.getEvent('BountyPlaced').topicHash,
+      incentivesContractInterface.getEvent('BountyClaimed').topicHash,
+      incentivesContractInterface.getEvent('MessageDelivered').topicHash,
+      incentivesContractInterface.getEvent('BountyIncreased').topicHash,
     ],
   ];
 
@@ -124,10 +104,7 @@ const bootstrap = async () => {
       );
 
       for (const log of logs) {
-        const parsedLog = {
-          ...incentivesContractInterface.parseLog(log),
-          transactionHash: log.transactionHash,
-        };
+        const parsedLog = incentivesContractInterface.parseLog(log);
 
         if (parsedLog == null) {
           logger.error(
@@ -141,6 +118,7 @@ const bootstrap = async () => {
           case 'BountyPlaced':
             await handleBountyPlacedEvent(
               log.address,
+              log.transactionHash,
               parsedLog,
               store,
               logger,
@@ -150,6 +128,7 @@ const bootstrap = async () => {
           case 'BountyClaimed':
             await handleBountyClaimedEvent(
               log.address,
+              log.transactionHash,
               parsedLog,
               store,
               logger,
@@ -159,6 +138,7 @@ const bootstrap = async () => {
           case 'MessageDelivered':
             await handleMessageDeliveredEvent(
               log.address,
+              log.transactionHash,
               parsedLog,
               store,
               logger,
@@ -168,6 +148,7 @@ const bootstrap = async () => {
           case 'BountyIncreased':
             await handleBountyIncreasedEvent(
               log.address,
+              log.transactionHash,
               parsedLog,
               store,
               logger,
@@ -203,37 +184,30 @@ const bootstrap = async () => {
 };
 
 const queryAllBountyEvents = async (
-  provider: BaseProvider,
+  provider: JsonRpcProvider,
   incentivesAddresses: string[],
   topics: string[][],
   startBlock: number,
   endBlock: number,
   logger: pino.Logger,
 ): Promise<Log[]> => {
-  //TODO fix: use a single rpc call once ethers is upgraded to v6
-
-  const logs: Log[] = [];
-  for (const address of incentivesAddresses) {
-    let i = 0;
-    while (true) {
-      try {
-        const addressLogs = await provider.getLogs({
-          address: address,
-          topics,
-          fromBlock: startBlock,
-          toBlock: endBlock,
-        });
-        logs.push(...addressLogs);
-
-        break;
-      } catch (error) {
-        i++;
-        logger.warn(
-          { address, startBlock, endBlock, error, try: i },
-          `Failed to 'getLogs' on getter.`,
-        );
-        await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));
-      }
+  let i = 0;
+  let logs: Log[] | undefined;
+  while (logs == undefined) {
+    try {
+      logs = await provider.getLogs({
+        address: incentivesAddresses,
+        topics,
+        fromBlock: startBlock,
+        toBlock: endBlock,
+      });
+    } catch (error) {
+      i++;
+      logger.warn(
+        { incentivesAddresses, startBlock, endBlock, error, try: i },
+        `Failed to 'getLogs' on getter.`,
+      );
+      await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));
     }
   }
 
@@ -249,7 +223,8 @@ const queryAllBountyEvents = async (
  */
 const handleBountyPlacedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & { transactionHash: string },
+  transactionHash: string,
+  event: LogDescription,
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -262,7 +237,7 @@ const handleBountyPlacedEvent = async (
     messageIdentifier,
     incentive,
     incentivesAddress,
-    transactionHash: event.transactionHash,
+    transactionHash,
   });
 };
 
@@ -275,7 +250,8 @@ const handleBountyPlacedEvent = async (
  */
 const handleBountyClaimedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & { transactionHash: string },
+  transactionHash: string,
+  event: LogDescription,
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -286,7 +262,7 @@ const handleBountyClaimedEvent = async (
   await store.registerBountyClaimed({
     messageIdentifier,
     incentivesAddress,
-    transactionHash: event.transactionHash,
+    transactionHash,
   });
 };
 
@@ -299,7 +275,8 @@ const handleBountyClaimedEvent = async (
  */
 const handleMessageDeliveredEvent = async (
   incentivesAddress: string,
-  event: LogDescription & { transactionHash: string },
+  transactionHash: string,
+  event: LogDescription,
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -310,7 +287,7 @@ const handleMessageDeliveredEvent = async (
   await store.registerMessageDelivered({
     messageIdentifier,
     incentivesAddress,
-    transactionHash: event.transactionHash,
+    transactionHash,
   });
 };
 
@@ -323,7 +300,8 @@ const handleMessageDeliveredEvent = async (
  */
 const handleBountyIncreasedEvent = async (
   incentivesAddress: string,
-  event: LogDescription & { transactionHash: string },
+  transactionHash: string,
+  event: LogDescription,
   store: Store,
   logger: pino.Logger,
 ) => {
@@ -339,7 +317,7 @@ const handleBountyIncreasedEvent = async (
     newDeliveryGasPrice,
     newAckGasPrice,
     incentivesAddress,
-    transactionHash: event.transactionHash,
+    transactionHash,
   });
 };
 

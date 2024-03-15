@@ -1,5 +1,3 @@
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
-import { BigNumber, ethers } from 'ethers';
 import pino from 'pino';
 import { wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
@@ -7,8 +5,9 @@ import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
 import { workerData } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
+import { AbiCoder, JsonRpcProvider } from 'ethers6';
 
-const abi = ethers.utils.defaultAbiCoder;
+const abi = AbiCoder.defaultAbiCoder();
 
 /**
  * Example AMB implementation which uses a simple signed message to validate transactions.
@@ -45,7 +44,9 @@ const bootstrap = async () => {
   );
 
   // Get an Ethers provider for us to collect bounties with.
-  const provider = new StaticJsonRpcProvider(config.rpc);
+  const provider = new JsonRpcProvider(config.rpc, undefined, {
+    staticNetwork: true,
+  });
 
   // Set the contract which we will receive messages through.
   const contract = IbcEventEmitter__factory.connect(
@@ -137,7 +138,7 @@ const bootstrap = async () => {
             ? messageEvent.args.packet.slice(2)
             : messageEvent.args.packet;
 
-          let params: [string, BigNumber, string, string];
+          let params: [string, bigint, string, string];
           try {
             params = abi.decode(
               ['tuple(bytes32, uint256, bytes32, bytes)'],
