@@ -12,8 +12,8 @@ import { wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { WormholeMessageSnifferWorkerData } from './wormhole';
 import { LogMessagePublishedEvent } from 'src/contracts/IWormhole';
+import { WormholeMessageSnifferWorkerData } from './wormhole.types';
 
 class WormholeMessageSnifferWorker {
   readonly store: Store;

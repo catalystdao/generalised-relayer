@@ -1,5 +1,4 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
-import { WormholeRecoveryWorkerData } from './wormhole';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
@@ -16,6 +15,7 @@ import {
   IncentivizedMessageEscrow,
   IncentivizedMessageEscrow__factory,
 } from 'src/contracts';
+import { WormholeRecoveryWorkerData } from './wormhole.types';
 
 const WORMHOLESCAN_API_ENDPOINT = 'https://api.testnet.wormholescan.io';
 
@@ -94,8 +94,8 @@ class WormholeRecoveryWorker {
     const vaas = await this.recoverVAAs(
       timestamps.startingTimestamp,
       timestamps.stoppingTimestamp,
-      this.config.wormholeChainConfig.wormholeChainId,
-      this.config.wormholeChainConfig.incentivesAddress,
+      this.config.wormholeChainId,
+      this.config.incentivesAddress,
       1000,
     );
 
@@ -125,17 +125,21 @@ class WormholeRecoveryWorker {
       vaa.payload.toString('hex'),
     );
 
-    const destinationChain =
-      decodedWormholeMessage.destinationWormholeChainId.toString();
-
     this.logger.info(
       { messageIdentifier: decodedWormholeMessage.messageIdentifier },
       `Collected message (recovery).`,
     );
 
-    const sourceChain = this.config.reverseWormholeChainConfig.get(
-      String(vaa.emitterChain),
+    const destinationChain = this.config.wormholeChainIdMap.get(
+      decodedWormholeMessage.destinationWormholeChainId,
     );
+    if (destinationChain == undefined) {
+      throw new Error(
+        `Destination chain id not found for the give wormhole chain id (${decodedWormholeMessage.destinationWormholeChainId}`,
+      );
+    }
+
+    const sourceChain = this.config.wormholeChainIdMap.get(vaa.emitterChain);
     if (sourceChain == undefined) {
       throw new Error(
         `Source chain id not found for the give wormhole chain id (${vaa.emitterChain}`,
@@ -167,7 +171,10 @@ class WormholeRecoveryWorker {
         //TODO the following contract call could fail
         await this.messageEscrowContract.implementationAddress(
           decodedPayload?.sourceApplicationAddress,
-          defaultAbiCoder.encode(['uint256'], [destinationChain]),
+          defaultAbiCoder.encode(
+            ['uint256'],
+            [decodedWormholeMessage.destinationWormholeChainId],
+          ),
         ),
     });
   }
@@ -177,9 +184,14 @@ class WormholeRecoveryWorker {
       add0X(vaa.payload.toString('hex')),
     );
 
-    const destinationChain = this.config.reverseWormholeChainConfig.get(
-      String(wormholeInfo.destinationWormholeChainId),
+    const destinationChain = this.config.wormholeChainIdMap.get(
+      wormholeInfo.destinationWormholeChainId,
     );
+    if (destinationChain == undefined) {
+      throw new Error(
+        `Destination chain id not found for the given wormhole chain id (${vaa.emitterChain}`,
+      );
+    }
 
     const ambPayload: AmbPayload = {
       messageIdentifier: wormholeInfo.messageIdentifier,

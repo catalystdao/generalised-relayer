@@ -31,15 +31,13 @@ export function decodeWormholeMessage(
   };
 }
 
-export function mapWormholeChainIdToChainId(
-  wormholeChainId: WormholeChainId,
+export function loadWormholeChainIdMap(
   wormholeChainConfigs: Map<string, WormholeChainConfig>,
-): string | undefined {
+) {
+  const wormholeChainIdMap = new Map<WormholeChainId, string>();
   for (const [chainId, wormholeChainConfig] of wormholeChainConfigs) {
-    if (wormholeChainId === wormholeChainConfig.wormholeChainId) {
-      return chainId;
-    }
+    wormholeChainIdMap.set(wormholeChainConfig.wormholeChainId, chainId);
   }
 
-  return undefined;
+  return wormholeChainIdMap;
 }

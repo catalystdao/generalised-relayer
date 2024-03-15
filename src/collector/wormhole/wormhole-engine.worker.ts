@@ -4,17 +4,17 @@ import {
   StandardRelayerApp,
   StandardRelayerContext,
 } from '@wormhole-foundation/relayer-engine';
-import {
-  decodeWormholeMessage,
-  mapWormholeChainIdToChainId,
-} from 'src/collector/wormhole/wormhole.utils';
+import { decodeWormholeMessage } from 'src/collector/wormhole/wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { workerData } from 'worker_threads';
 import { Store } from 'src/store/store.lib';
 import { AmbPayload } from 'src/store/types/store.types';
 import pino, { LoggerOptions } from 'pino';
-import { WormholeRelayerEngineWorkerData } from './wormhole';
-import { WormholeChainConfig, WormholeChainId } from './wormhole.types';
+import {
+  WormholeChainConfig,
+  WormholeChainId,
+  WormholeRelayerEngineWorkerData,
+} from './wormhole.types';
 
 // NOTE: the Wormhole relayer engine is only able of scanning new VAAs. For old VAA recovery
 // the 'wormhole-recovery' worker is used.
@@ -137,9 +137,8 @@ class WormholeEngineWorker {
       add0X(vaa.payload.toString('hex')),
     );
 
-    const destinationChainId = mapWormholeChainIdToChainId(
+    const destinationChainId = this.config.wormholeChainIdMap.get(
       wormholeInfo.destinationWormholeChainId,
-      this.config.wormholeChainConfigs,
     );
 
     if (destinationChainId == undefined) {
