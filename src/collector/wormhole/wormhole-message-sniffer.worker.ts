@@ -15,6 +15,8 @@ import { defaultAbiCoder } from '@ethersproject/abi';
 import { LogMessagePublishedEvent } from 'src/contracts/IWormhole';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
 
+//TODO implement stopping block (see getter)
+
 class WormholeMessageSnifferWorker {
   readonly store: Store;
   readonly logger: pino.Logger;

@@ -19,6 +19,8 @@ import {
 // NOTE: the Wormhole relayer engine is only able of scanning new VAAs. For old VAA recovery
 // the 'wormhole-recovery' worker is used.
 
+//TODO implement stopping block
+
 class WormholeEngineWorker {
   readonly config: WormholeRelayerEngineWorkerData;
 
