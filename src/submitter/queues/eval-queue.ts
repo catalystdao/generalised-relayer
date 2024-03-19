@@ -1,4 +1,7 @@
-import { HandleOrderResult, ProcessingQueue } from './processing-queue';
+import {
+  HandleOrderResult,
+  ProcessingQueue,
+} from '../../processing-queue/processing-queue';
 import { EvalOrder, SubmitOrder } from '../submitter.types';
 import { Wallet, zeroPadValue } from 'ethers6';
 import pino from 'pino';

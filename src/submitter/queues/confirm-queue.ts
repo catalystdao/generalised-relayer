@@ -1,4 +1,7 @@
-import { HandleOrderResult, ProcessingQueue } from './processing-queue';
+import {
+  HandleOrderResult,
+  ProcessingQueue,
+} from '../../processing-queue/processing-queue';
 import {
   JsonRpcProvider,
   TransactionReceipt,
