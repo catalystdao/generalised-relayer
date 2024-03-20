@@ -1,51 +1,50 @@
 # Global Relayer configuration
 global:
-  privateKey: '' # The privateKey of the account that will be submitting the packet relays
+  privateKey: ''                        # The privateKey of the account that will be submitting the packet relays
   logLevel: 'info'
-  blockDelay: 5 # Delay with which to process the chain blocks
+  blockDelay: 5                         # Delay with which to process the chain blocks
 
   getter:
-    interval: 5000 # Interval at which to poll the chains RPCs for new events
-    maxBlocks: 1000 # Maximum number of blocks to query in a single call
+    interval: 5000                      # Interval at which to poll the chains RPCs for new events
+    maxBlocks: 1000                     # Maximum number of blocks to query in a single call
 
   submitter:
     enabled: true
-    newOrdersDelay: 1000 # Time to wait before processing new 'submission' orders
-    retryInterval: 30000 # Time to wait before retrying a failed transaction
-    processingInterval: 100 # Throttle for the Submitter main 'run' loop
-    maxTries: 3 # Maximum tries for a transaction
-    maxPendingTransactions: 50 # Maximum number of transactions within the 'submit' pipeline.
-    confirmations: 1 # Number of confirmations to deem that a transaction has been mined
-    confirmationTimeout: 90000 # Timeout for a transaction to confirm
+    newOrdersDelay: 1000                # Time to wait before processing new 'submission' orders
+    retryInterval: 30000                # Time to wait before retrying a failed transaction
+    processingInterval: 100             # Throttle for the Submitter main 'run' loop
+    maxTries: 3                         # Maximum tries for a transaction
+    maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
+    confirmations: 1                    # Number of confirmations to deem that a transaction has been mined
+    confirmationTimeout: 90000          # Timeout for a transaction to confirm
 
-    lowBalanceWarning: '1000000000000000000' # Balance below which a 'low balance' warning is emitted.
-    balanceUpdateInterval: 50 # Number of transactions after which to update the Relayer balance from the rpc.
+    lowBalanceWarning:                  # Balance below which a 'low balance' warning is emitted.
+      '1000000000000000000'
+    balanceUpdateInterval: 50           # Number of transactions after which to update the Relayer balance from the rpc.
 
     # Gas properties
-    gasLimitBuffer: # Extra gasLimit buffer. Customizable per AMB.
+    gasLimitBuffer:                     # Extra gasLimit buffer. Customizable per AMB.
       default: 10000
       mock: 50000
 
     # EIP-1559 Transactions
-    maxFeePerGas: '200000000000' # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
+    maxFeePerGas: '200000000000'        # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
 
-    maxAllowedPriorityFeePerGas: '100000000000' # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
-    maxPriorityFeeAdjustmentFactor:
-      1.05 # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'.
-      # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
-      # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
+    maxAllowedPriorityFeePerGas:        # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
+      '100000000000'
+    maxPriorityFeeAdjustmentFactor:     # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'.
+      1.05                              # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
+                                        # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
 
     # Legacy Transactions
-    maxAllowedGasPrice: '200000000000' # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
-    gasPriceAdjustmentFactor:
-      1.05 # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting
-      # value is set as the 'gasPrice' property of the transaction if it is smaller than the
-      # configuration property 'maxAllowedGasPrice' (if set).
+    maxAllowedGasPrice: '200000000000'  # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
+    gasPriceAdjustmentFactor: 1.05      # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting
+                                        # value is set as the 'gasPrice' property of the transaction if it is smaller than the
+                                        # configuration property 'maxAllowedGasPrice' (if set).
 
     # All Transactions
-    priorityAdjustmentFactor:
-      1.2 # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for
-      # priority transactions.
+    priorityAdjustmentFactor: 1.2       # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for
+                                        # priority transactions.
 
   persister:
     enabled: false
@@ -55,7 +54,7 @@ global:
 ambs:
   # Mock is used for internal testnets. For production it should never be used.
   - name: mock
-    enabled: false # Defaults to 'true' if the key is missing
+    enabled: false                      # Defaults to 'true' if the key is missing
     incentivesAddress: '0x0000000000000000000000000000000000000000'
     privateKey: ''
 
