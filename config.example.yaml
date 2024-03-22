@@ -2,7 +2,7 @@
 global:
   privateKey: '' # The privateKey of the account that will be submitting the packet relays
   logLevel: 'info'
-  blockDelay: 5 # Delay with which to process the chain blocks
+  blockDelay: 1 # Delay with which to process the chain blocks
 
   getter:
     interval: 5000 # Interval at which to poll the chains RPCs for new events
