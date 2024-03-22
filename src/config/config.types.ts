@@ -6,6 +6,7 @@ export interface GlobalConfig {
   getter: GetterGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
+  wallet: WalletGlobalConfig;
 }
 
 export interface GetterGlobalConfig {
@@ -22,12 +23,26 @@ export interface SubmitterGlobalConfig {
   processingInterval?: number;
   maxTries?: number;
   maxPendingTransactions?: number;
-  confirmations?: number;
-  confirmationTimeout?: number;
-  lowBalanceWarning?: number;
-  balanceUpdateInterval?: number;
 
   gasLimitBuffer?: Record<string, number> & { default?: number };
+}
+
+export interface SubmitterConfig extends SubmitterGlobalConfig {}
+
+export interface PersisterConfig {
+  enabled: boolean;
+  postgresString: string;
+}
+
+export interface WalletGlobalConfig {
+  retryInterval?: number;
+  processingInterval?: number;
+  maxTries?: number;
+  maxPendingTransactions?: number;
+  confirmations?: number;
+  confirmationTimeout?: number;
+  lowGasBalanceWarning?: bigint;
+  gasBalanceUpdateInterval?: number;
   maxFeePerGas?: number | string;
   maxAllowedPriorityFeePerGas?: number | string;
   maxPriorityFeeAdjustmentFactor?: number;
@@ -36,11 +51,8 @@ export interface SubmitterGlobalConfig {
   priorityAdjustmentFactor?: number;
 }
 
-export interface SubmitterConfig extends SubmitterGlobalConfig {}
-
-export interface PersisterConfig {
-  enabled: boolean;
-  postgresString: string;
+export interface WalletConfig extends WalletGlobalConfig {
+  rpc?: string;
 }
 
 export interface AMBConfig {
@@ -58,4 +70,5 @@ export interface ChainConfig {
   blockDelay?: number;
   getter: GetterConfig;
   submitter: SubmitterConfig;
+  wallet: WalletConfig;
 }

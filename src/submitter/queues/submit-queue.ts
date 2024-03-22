@@ -2,18 +2,16 @@ import {
   HandleOrderResult,
   ProcessingQueue,
 } from '../../processing-queue/processing-queue';
-import { SubmitOrder } from '../submitter.types';
-import { Wallet, zeroPadValue } from 'ethers6';
+import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
+import { TransactionRequest } from 'ethers6';
 import pino from 'pino';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { TransactionHelper } from '../transaction-helper';
-import { PendingTransaction } from './confirm-queue';
+import { WalletInterface } from 'src/wallet/src/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
-  PendingTransaction<SubmitOrder>
+  SubmitOrderResult
 > {
-  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -22,24 +20,17 @@ export class SubmitQueue extends ProcessingQueue<
       string,
       IncentivizedMessageEscrow
     >,
-    private readonly transactionHelper: TransactionHelper,
-    private readonly confirmationTimeout: number,
-    private readonly wallet: Wallet,
+    private readonly relayerAddress: string,
+    private readonly wallet: WalletInterface,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-    this.relayerAddress = zeroPadValue(this.wallet.address, 32);
-  }
-
-  protected async onProcessOrders(): Promise<void> {
-    await this.transactionHelper.updateFeeData();
-    await this.transactionHelper.runBalanceCheck();
   }
 
   protected async handleOrder(
     order: SubmitOrder,
     retryCount: number,
-  ): Promise<HandleOrderResult<PendingTransaction<SubmitOrder>> | null> {
+  ): Promise<HandleOrderResult<SubmitOrderResult> | null> {
     this.logger.debug(
       { messageIdentifier: order.messageIdentifier },
       `Handling submit order`,
@@ -61,20 +52,48 @@ export class SubmitQueue extends ProcessingQueue<
     }
 
     // Execute the relay transaction if the static call did not fail.
-    const tx = await contract.processPacket(
+    const txData = contract.interface.encodeFunctionData("processPacket", [
       order.messageCtx,
       order.message,
       this.relayerAddress,
-      {
-        nonce: this.transactionHelper.getTransactionCount(),
-        gasLimit: order.gasLimit,
-        ...this.transactionHelper.getFeeDataForTransaction(),
-      },
-    );
+    ]);
 
-    this.transactionHelper.increaseTransactionCount();
+    const txRequest: TransactionRequest = {
+      to: await contract.getAddress(),
+      data: txData,
+      gasLimit: order.gasLimit,
+    };
 
-    return { result: { data: order, tx } };
+    const txPromise = this.wallet.submitTransaction(
+      txRequest,
+      order,
+    ).then((transactionResult): SubmitOrderResult => {
+      if (transactionResult.submissionError) {
+        throw transactionResult.submissionError;    //TODO wrap in a 'SubmissionError' type?
+      }
+      if (transactionResult.confirmationError) {
+        throw transactionResult.confirmationError;    //TODO wrap in a 'ConfirmationError' type?
+      }
+
+      if (transactionResult.tx == undefined) {
+        // This case should never be reached (if tx == undefined, a 'submissionError' should be returned).
+        throw new Error('No transaction returned on wallet transaction submission result.');
+      }
+      if (transactionResult.txReceipt == undefined) {
+        // This case should never be reached (if txReceipt == undefined, a 'confirmationError' should be returned).
+        throw new Error('No transaction receipt returned on wallet transaction submission result.');
+      }
+
+      const order = transactionResult.metadata as SubmitOrder;
+
+      return {
+        ...order,
+        tx: transactionResult.tx,
+        txReceipt: transactionResult.txReceipt
+      };
+    });
+
+    return { result: txPromise };
   }
 
   protected async handleFailedOrder(
@@ -97,23 +116,14 @@ export class SubmitQueue extends ProcessingQueue<
       return false; // Do not retry eval
     }
 
-    this.logger.warn(errorDescription, `Error on message submission`);
-
-    if (
-      error.code === 'NONCE_EXPIRED' ||
-      error.code === 'REPLACEMENT_UNDERPRICED' ||
-      error.error?.message.includes('invalid sequence') //TODO is this dangerous?
-    ) {
-      await this.transactionHelper.updateTransactionCount();
-    }
-
+    this.logger.warn(errorDescription, `Error on message submission. Retrying if possible.`);
     return true;
   }
 
   protected async onOrderCompletion(
     order: SubmitOrder,
     success: boolean,
-    result: PendingTransaction<SubmitOrder> | null,
+    result: SubmitOrderResult | null,
     retryCount: number,
   ): Promise<void> {
     const orderDescription = {

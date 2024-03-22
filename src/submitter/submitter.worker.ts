@@ -1,9 +1,7 @@
 import {
   BytesLike,
   JsonRpcProvider,
-  TransactionResponse,
   Wallet,
-  ZeroAddress,
 } from 'ethers6';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
@@ -12,23 +10,12 @@ import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/Ince
 import { workerData } from 'worker_threads';
 import { AmbPayload, PrioritiseMessage } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import {
-  BalanceConfig,
-  EvalOrder,
-  GasFeeConfig,
-  NewOrder,
-  SubmitOrder,
-} from './submitter.types';
+import { EvalOrder, NewOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
-import { TransactionHelper } from './transaction-helper';
-import {
-  ConfirmQueue,
-  ConfirmedTransaction,
-  PendingTransaction,
-} from './queues/confirm-queue';
+import { WalletInterface } from 'src/wallet/src/wallet.interface';
 
 class SubmitterWorker {
   readonly store: Store;
@@ -41,12 +28,11 @@ class SubmitterWorker {
 
   readonly chainId: string;
 
-  readonly transactionHelper: TransactionHelper;
+  readonly wallet: WalletInterface;
 
   readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
   readonly evalQueue: EvalQueue;
   readonly submitQueue: SubmitQueue;
-  readonly confirmQueue: ConfirmQueue;
 
   private isStalled = false;
 
@@ -65,16 +51,9 @@ class SubmitterWorker {
     });
     this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
-    this.transactionHelper = new TransactionHelper(
-      this.getGasFeeConfig(this.config),
-      this.getBalanceConfig(this.config),
-      this.config.retryInterval,
-      this.provider,
-      this.signer,
-      this.logger,
-    );
+    this.wallet = new WalletInterface(this.config.walletPort);
 
-    [this.evalQueue, this.submitQueue, this.confirmQueue] =
+    [this.evalQueue, this.submitQueue] =
       this.initializeQueues(
         this.config.retryInterval,
         this.config.maxTries,
@@ -82,11 +61,8 @@ class SubmitterWorker {
         this.loadIncentivesContracts(this.config.incentivesAddresses),
         this.config.chainId,
         this.config.gasLimitBuffer,
-        this.config.confirmations,
-        this.config.confirmationTimeout,
-        this.transactionHelper,
-        this.provider,
-        this.signer,
+        this.config.walletPublicKey,
+        this.wallet,
         this.logger,
       );
 
@@ -112,13 +88,10 @@ class SubmitterWorker {
     incentivesContracts: Map<string, IncentivizedMessageEscrow>,
     chainId: string,
     gasLimitBuffer: Record<string, number>,
-    confirmations: number,
-    confirmationTimeout: number,
-    transactionHelper: TransactionHelper,
-    provider: JsonRpcProvider,
-    signer: Wallet,
+    walletPublicKey: string,
+    wallet: WalletInterface,
     logger: pino.Logger,
-  ): [EvalQueue, SubmitQueue, ConfirmQueue] {
+  ): [EvalQueue, SubmitQueue] {
     const evalQueue = new EvalQueue(
       retryInterval,
       maxTries,
@@ -126,7 +99,7 @@ class SubmitterWorker {
       incentivesContracts,
       chainId,
       gasLimitBuffer,
-      signer,
+      walletPublicKey,
       logger,
     );
 
@@ -134,24 +107,12 @@ class SubmitterWorker {
       retryInterval,
       maxTries,
       incentivesContracts,
-      transactionHelper,
-      confirmationTimeout,
-      signer,
+      walletPublicKey,
+      wallet,
       logger,
     );
 
-    const confirmQueue = new ConfirmQueue(
-      retryInterval,
-      maxTries,
-      confirmations,
-      transactionHelper,
-      confirmationTimeout,
-      provider,
-      signer,
-      logger,
-    );
-
-    return [evalQueue, submitQueue, confirmQueue];
+    return [evalQueue, submitQueue];
   }
 
   /**
@@ -168,8 +129,6 @@ class SubmitterWorker {
         evalRetryQueue: this.evalQueue.retryQueue.length,
         submitQueue: this.submitQueue.size,
         submitRetryQueue: this.submitQueue.retryQueue.length,
-        confirmQueue: this.confirmQueue.size,
-        confirmRetryQueue: this.confirmQueue.retryQueue.length,
         isStalled: this.isStalled,
       };
       this.logger.info(status, 'Submitter status.');
@@ -193,34 +152,14 @@ class SubmitterWorker {
     return incentivesContracts;
   }
 
-  private getGasFeeConfig(config: SubmitterWorkerData): GasFeeConfig {
-    return {
-      gasPriceAdjustmentFactor: config.gasPriceAdjustmentFactor,
-      maxAllowedGasPrice: config.maxAllowedGasPrice,
-      maxFeePerGas: config.maxFeePerGas,
-      maxPriorityFeeAdjustmentFactor: config.maxPriorityFeeAdjustmentFactor,
-      maxAllowedPriorityFeePerGas: config.maxAllowedPriorityFeePerGas,
-      priorityAdjustmentFactor: config.priorityAdjustmentFactor,
-    };
-  }
-
-  private getBalanceConfig(config: SubmitterWorkerData): BalanceConfig {
-    return {
-      lowBalanceWarning: config.lowBalanceWarning,
-      balanceUpdateInterval: config.balanceUpdateInterval,
-    };
-  }
-
   /***************  Main Logic Loop.  ***************/
 
   async run(): Promise<void> {
     this.logger.debug({ relayer: this.signer.address }, `Relaying messages.`);
 
     // Initialize the queues
-    await this.transactionHelper.init();
     await this.evalQueue.init();
     await this.submitQueue.init();
-    await this.confirmQueue.init();
 
     // Start listener.
     await this.listenForOrders();
@@ -235,192 +174,9 @@ class SubmitterWorker {
       await this.submitQueue.addOrders(...newSubmitOrders);
       await this.submitQueue.processOrders();
 
-      const [toConfirmSubmitOrders, ,] = this.submitQueue.getFinishedOrders();
-      await this.confirmQueue.addOrders(...toConfirmSubmitOrders);
-      await this.confirmQueue.processOrders();
-
-      const [
-        confirmedSubmitOrders,
-        unconfirmedSubmitOrders,
-        rejectedSubmitOrders,
-      ] = this.confirmQueue.getFinishedOrders();
-
-      await this.handleConfirmedSubmitOrders(confirmedSubmitOrders);
-      await this.handleUnconfirmedSubmitOrders(unconfirmedSubmitOrders);
-      await this.handleRejectedSubmitOrders(rejectedSubmitOrders);
+      this.submitQueue.getFinishedOrders(); // Flush the internal queues
 
       await wait(this.config.processingInterval);
-    }
-  }
-
-  private async handleConfirmedSubmitOrders(
-    confirmedSubmitOrders: ConfirmedTransaction[],
-  ): Promise<void> {
-    for (const confirmedOrder of confirmedSubmitOrders) {
-      // Register the gas cost used
-      const txReceipt = confirmedOrder.txReceipt;
-      const gasCost = txReceipt.gasUsed * txReceipt.gasPrice;
-      await this.transactionHelper.registerBalanceUse(gasCost);
-    }
-  }
-
-  private async handleUnconfirmedSubmitOrders(
-    unconfirmedSubmitOrders: PendingTransaction[],
-  ): Promise<void> {
-    for (const unconfirmedOrder of unconfirmedSubmitOrders) {
-      const submitOrder = unconfirmedOrder.data as SubmitOrder;
-      const resubmitOrder = this.processConfirmationError(unconfirmedOrder);
-
-      // Currently, the gas used by failed transactions is not taken into account for the
-      // relayer gas estimate.
-
-      if (resubmitOrder) {
-        const requeueCount = submitOrder.requeueCount ?? 0;
-        if (requeueCount >= this.config.maxTries - 1) {
-          const orderDescription = {
-            originalTxHash: unconfirmedOrder.tx.hash,
-            replaceTxHash: unconfirmedOrder.replaceTx?.hash,
-            requeueCount: requeueCount,
-          };
-
-          this.logger.warn(
-            orderDescription,
-            `Transaction confirmation failure. Maximum number of requeues reached. Dropping message.`,
-          );
-          continue;
-        }
-
-        const requeueOrder: SubmitOrder = {
-          amb: submitOrder.amb,
-          messageIdentifier: submitOrder.messageIdentifier,
-          message: submitOrder.message,
-          messageCtx: submitOrder.messageCtx,
-          gasLimit: submitOrder.gasLimit,
-          requeueCount: requeueCount + 1,
-        };
-        await this.submitQueue.addOrders(requeueOrder);
-      }
-    }
-  }
-
-  // Returns whether to resubmit the order
-  private processConfirmationError(
-    unconfirmedOrder: PendingTransaction,
-  ): boolean {
-    const error = unconfirmedOrder.confirmationError;
-    const submitOrder = unconfirmedOrder.data as SubmitOrder;
-
-    if (error == null) return false;
-
-    const errorDescription = {
-      messageIdentifier: submitOrder.messageIdentifier,
-      error,
-      requeueCount: submitOrder.requeueCount,
-    };
-
-    // If tx errors with 'CALL_EXCEPTION', drop the order
-    if (error.code === 'CALL_EXCEPTION') {
-      this.logger.info(
-        errorDescription,
-        `Error on transaction confirmation: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message.`,
-      );
-      return false; // Do not resubmit
-    }
-
-    // If tx errors because of an invalid nonce, requeue the order for submission
-    // NOTE: it is possible for this error to occur because of the original tx being accepted. In
-    // that case, the order will error on the submit queue when resubmission is attempted.
-    if (
-      error.code === 'NONCE_EXPIRED' ||
-      error.code === 'REPLACEMENT_UNDERPRICED' ||
-      error.error?.message.includes('invalid sequence') //TODO is this dangerous? (any contract may include that error)
-    ) {
-      this.logger.info(
-        errorDescription,
-        `Error on transaction confirmation: nonce error. Requeue order for submission if possible.`,
-      );
-      return true;
-    }
-
-    return false;
-  }
-
-  private async handleRejectedSubmitOrders(
-    rejectedSubmitOrders: PendingTransaction[],
-  ): Promise<void> {
-    for (const rejectedOrder of rejectedSubmitOrders) {
-      await this.cancelTransaction(rejectedOrder.tx);
-    }
-  }
-
-  // This function does not return until the transaction of the given nonce is mined!
-  private async cancelTransaction(baseTx: TransactionResponse): Promise<void> {
-    const cancelTxNonce = baseTx.nonce;
-    if (cancelTxNonce == undefined) {
-      // This point should never be reached.
-      //TODO log warn?
-      return;
-    }
-
-    for (let i = 0; i < this.config.maxTries; i++) {
-      try {
-        // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
-        // helper takes into account the 'pending' transactions.
-        const latestNonce = await this.signer.getNonce('latest');
-
-        if (latestNonce > cancelTxNonce) {
-          return;
-        }
-
-        await this.transactionHelper.updateFeeData();
-
-        const tx = await this.signer.sendTransaction({
-          nonce: cancelTxNonce,
-          to: ZeroAddress,
-          data: '0x',
-          ...this.transactionHelper.getIncreasedFeeDataForTransaction(baseTx),
-        });
-
-        const receipt = await tx.wait(
-          this.config.confirmations,
-          this.config.confirmationTimeout,
-        );
-
-        // receipt != null should always be the case if 'confirmations' > 0
-        if (receipt) {
-          await this.transactionHelper.registerBalanceUse(
-            receipt.gasUsed * receipt.gasPrice,
-          );
-        }
-
-        // Transaction cancelled
-        return;
-      } catch {
-        // continue
-      }
-    }
-
-    this.isStalled = true;
-    while (true) {
-      this.logger.warn(
-        { nonce: cancelTxNonce },
-        `Submitter stalled. Waiting until pending transaction is resolved.`,
-      );
-
-      await wait(this.config.confirmationTimeout);
-
-      // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
-      // helper takes into account the 'pending' transactions.
-      const latestNonce = await this.signer.getNonce('latest');
-
-      if (latestNonce > cancelTxNonce) {
-        this.logger.info(
-          { nonce: cancelTxNonce },
-          `Submitter resumed after stall recovery.`,
-        );
-        this.isStalled = false;
-        return;
-      }
     }
   }
 
@@ -534,8 +290,7 @@ class SubmitterWorker {
       0,
       this.config.maxPendingTransactions -
         this.evalQueue.size -
-        this.submitQueue.size -
-        this.confirmQueue.size,
+        this.submitQueue.size
     );
   }
 }

@@ -1,4 +1,4 @@
-import { BytesLike } from 'ethers6';
+import { BytesLike, TransactionReceipt, TransactionResponse } from 'ethers6';
 
 export interface Order {
   amb: string;
@@ -14,6 +14,11 @@ export interface EvalOrder extends Order {
 export interface SubmitOrder extends Order {
   gasLimit: number | undefined;
   requeueCount?: number;
+}
+
+export interface SubmitOrderResult extends SubmitOrder {
+  tx: TransactionResponse;
+  txReceipt: TransactionReceipt;
 }
 
 export interface NewOrder<OrderType> {

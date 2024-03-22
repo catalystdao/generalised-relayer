@@ -3,7 +3,6 @@ import {
   ProcessingQueue,
 } from '../../processing-queue/processing-queue';
 import { EvalOrder, SubmitOrder } from '../submitter.types';
-import { Wallet, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
 import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
@@ -11,7 +10,6 @@ import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
-  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -23,11 +21,10 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     >,
     private readonly chainId: string,
     private readonly gasLimitBuffer: Record<string, number>,
-    private readonly wallet: Wallet,
+    private readonly relayerAddress: string,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
-    this.relayerAddress = zeroPadValue(this.wallet.address, 32);
   }
 
   protected async handleOrder(

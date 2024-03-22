@@ -89,6 +89,7 @@ export class ConfigService {
       getter: rawGlobalConfig.getter ?? {},
       submitter: rawGlobalConfig.submitter ?? {},
       persister: rawGlobalConfig.persister ?? {},
+      wallet: rawGlobalConfig.wallet ?? {},
     };
   }
 
@@ -105,6 +106,7 @@ export class ConfigService {
         blockDelay: rawChainConfig.blockDelay,
         getter: rawChainConfig.getter ?? {},
         submitter: rawChainConfig.submitter ?? {},
+        wallet: rawChainConfig.wallet ?? {},
       });
     }
 

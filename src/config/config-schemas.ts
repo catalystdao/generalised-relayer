@@ -70,6 +70,7 @@ const GLOBAL_SCHEMA = {
         getter: {$ref: "getter-schema"},
         submitter: {$ref: "submitter-schema"},
         persister: {$ref: "persister-schema"},
+        wallet: {$ref: "wallet-schema"},
     },
     required: ["privateKey"],
     additionalProperties: false
@@ -106,11 +107,6 @@ const SUBMITTER_SCHEMA = {
         processingInterval: {$ref: "processing-interval-schema"},
         maxTries: {$ref: "positive-number-schema"},
         maxPendingTransactions: {$ref: "positive-number-schema"},
-        confirmations: {$ref: "positive-number-schema"},
-        confirmationTimeout: {$ref: "positive-number-schema"},
-
-        lowBalanceWarning: {$ref: "gas-field-schema"},
-        balanceUpdateInterval: {$ref: "positive-number-schema"},
 
         gasLimitBuffer: {
             type: "object",
@@ -120,7 +116,33 @@ const SUBMITTER_SCHEMA = {
             },
             additionalProperties: false
         },
+    },
+    additionalProperties: false
+}
 
+const PERSISTER_SCHEMA = {
+    $id: "persister-schema",
+    type: "object",
+    properties: {
+        enabled: {
+            type: "boolean"
+        },
+        postgresString: {$ref: "non-empty-string-schema"}
+    },
+    additionalProperties: false
+}
+
+const WALLET_SCHEMA = {
+    $id: "wallet-schema",
+    type: "object",
+    properties: {
+        retryInterval: {$ref: "positive-number-schema"},
+        processingInterval: {$ref: "processing-interval-schema"},
+        maxTries: {$ref: "positive-number-schema"},
+        maxPendingTransactions: {$ref: "positive-number-schema"},
+        confirmationTimeout: {$ref: "positive-number-schema"},
+        lowGasBalanceWarning: {$ref: "gas-field-schema"},
+        gasBalanceUpdateInterval: {$ref: "positive-number-schema"},
         maxFeePerGas: {$ref: "gas-field-schema"},
         maxAllowedPriorityFeePerGas: {$ref: "gas-field-schema"},
         maxPriorityFeeAdjustmentFactor: {
@@ -138,19 +160,7 @@ const SUBMITTER_SCHEMA = {
             type: "number",
             minimum: 0,
             maximum: 100
-        }
-    },
-    additionalProperties: false
-}
-
-const PERSISTER_SCHEMA = {
-    $id: "persister-schema",
-    type: "object",
-    properties: {
-        enabled: {
-            type: "boolean"
         },
-        postgresString: {$ref: "non-empty-string-schema"}
     },
     additionalProperties: false
 }
@@ -189,6 +199,7 @@ const CHAINS_SCHEMA = {
 
             getter: {$ref: "getter-schema"},
             submitter: {$ref: "submitter-schema"},
+            wallet: {$ref: "wallet-schema"},
         },
         required: ["chainId", "name", "rpc"],
         additionalProperties: true  // allow for 'amb' override config
@@ -209,6 +220,7 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
     ajv.addSchema(PERSISTER_SCHEMA);
+    ajv.addSchema(WALLET_SCHEMA);
     ajv.addSchema(AMBS_SCHEMA);
     ajv.addSchema(CHAINS_SCHEMA);
 

@@ -1,19 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { join } from 'path';
-import { Worker } from 'worker_threads';
+import { Worker, MessagePort } from 'worker_threads';
 import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import { LoggerService } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
+import { WalletService } from 'src/wallet/src/wallet.service';
+import { Wallet } from 'ethers6';
 
 const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
-const CONFIRMATIONS_DEFAULT = 1;
-const CONFIRMATION_TIMEOUT_DEFAULT = 60000;
-const BALANCE_UPDATE_INTERVAL_DEFAULT = 50;
 
 interface GlobalSubmitterConfig {
   enabled: boolean;
@@ -22,17 +21,8 @@ interface GlobalSubmitterConfig {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
-  confirmations: number;
-  confirmationTimeout: number;
-  lowBalanceWarning: number | undefined;
-  balanceUpdateInterval: number;
   gasLimitBuffer: Record<string, number> & { default?: number };
-  maxFeePerGas?: number | string;
-  maxAllowedPriorityFeePerGas?: number | string;
-  maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number | string;
-  gasPriceAdjustmentFactor?: number;
-  priorityAdjustmentFactor?: number;
+  walletPublicKey: string;
 }
 
 export interface SubmitterWorkerData {
@@ -45,17 +35,9 @@ export interface SubmitterWorkerData {
   processingInterval: number;
   maxTries: number;
   maxPendingTransactions: number;
-  confirmations: number;
-  confirmationTimeout: number;
   gasLimitBuffer: Record<string, number>;
-  lowBalanceWarning: number | undefined;
-  balanceUpdateInterval: number;
-  maxFeePerGas?: number | string;
-  maxAllowedPriorityFeePerGas?: number | string;
-  maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number | string;
-  gasPriceAdjustmentFactor?: number;
-  priorityAdjustmentFactor?: number;
+  walletPublicKey: string;
+  walletPort: MessagePort;
   loggerOptions: LoggerOptions;
 }
 
@@ -65,6 +47,7 @@ export class SubmitterService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly walletService: WalletService,
     private readonly loggerService: LoggerService,
   ) {}
 
@@ -82,13 +65,14 @@ export class SubmitterService {
     // Initialize the submitter states
     for (const [, chainConfig] of this.configService.chainsConfig) {
       // Load the worker chain override config or set the defaults if missing
-      const workerData = this.loadWorkerData(
+      const workerData = await this.loadWorkerData(
         chainConfig,
         globalSubmitterConfig,
       );
 
       const worker = new Worker(join(__dirname, 'submitter.worker.js'), {
         workerData,
+        transferList: [workerData.walletPort]
       });
 
       worker.on('error', (error) =>
@@ -127,26 +111,13 @@ export class SubmitterService {
     const maxTries = submitterConfig.maxTries ?? MAX_TRIES_DEFAULT;
     const maxPendingTransactions =
       submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
-    const confirmations =
-      submitterConfig.confirmations ?? CONFIRMATIONS_DEFAULT;
-    const confirmationTimeout =
-      submitterConfig.confirmationTimeout ?? CONFIRMATION_TIMEOUT_DEFAULT;
-    const lowBalanceWarning = submitterConfig.lowBalanceWarning;
-    const balanceUpdateInterval =
-      submitterConfig.balanceUpdateInterval ?? BALANCE_UPDATE_INTERVAL_DEFAULT;
 
     const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
     if (!('default' in gasLimitBuffer)) {
       gasLimitBuffer['default'] = 0;
     }
-    const maxFeePerGas = submitterConfig.maxFeePerGas;
-    const maxAllowedPriorityFeePerGas =
-      submitterConfig.maxAllowedPriorityFeePerGas;
-    const maxPriorityFeeAdjustmentFactor =
-      submitterConfig.maxPriorityFeeAdjustmentFactor;
-    const maxAllowedGasPrice = submitterConfig.maxAllowedGasPrice;
-    const gasPriceAdjustmentFactor = submitterConfig.gasPriceAdjustmentFactor;
-    const priorityAdjustmentFactor = submitterConfig.priorityAdjustmentFactor;
+  
+    const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
 
     return {
       enabled,
@@ -155,24 +126,15 @@ export class SubmitterService {
       processingInterval,
       maxTries,
       maxPendingTransactions,
-      confirmations,
-      confirmationTimeout,
-      lowBalanceWarning,
-      balanceUpdateInterval,
       gasLimitBuffer,
-      maxFeePerGas,
-      maxAllowedPriorityFeePerGas,
-      maxPriorityFeeAdjustmentFactor,
-      maxAllowedGasPrice,
-      gasPriceAdjustmentFactor,
-      priorityAdjustmentFactor,
+      walletPublicKey,
     };
   }
 
-  private loadWorkerData(
+  private async loadWorkerData(
     chainConfig: ChainConfig,
     globalConfig: GlobalSubmitterConfig,
-  ): SubmitterWorkerData {
+  ): Promise<SubmitterWorkerData> {
     const chainId = chainConfig.chainId;
     const rpc = chainConfig.rpc;
     const relayerPrivateKey = this.configService.globalConfig.privateKey;
@@ -210,49 +172,13 @@ export class SubmitterService {
         chainConfig.submitter.maxPendingTransactions ??
         globalConfig.maxPendingTransactions,
 
-      confirmations:
-        chainConfig.submitter.confirmations ?? globalConfig.confirmations,
-
-      confirmationTimeout:
-        chainConfig.submitter.confirmationTimeout ??
-        globalConfig.confirmationTimeout,
-
       gasLimitBuffer: this.getChainGasLimitBufferConfig(
         globalConfig.gasLimitBuffer,
         chainConfig.submitter.gasLimitBuffer ?? {},
       ),
 
-      maxFeePerGas:
-        chainConfig.submitter.maxFeePerGas ?? globalConfig.maxFeePerGas,
-
-      maxPriorityFeeAdjustmentFactor:
-        chainConfig.submitter.maxPriorityFeeAdjustmentFactor ??
-        globalConfig.maxPriorityFeeAdjustmentFactor,
-
-      maxAllowedPriorityFeePerGas:
-        chainConfig.submitter.maxAllowedPriorityFeePerGas ??
-        globalConfig.maxAllowedPriorityFeePerGas,
-
-      gasPriceAdjustmentFactor:
-        chainConfig.submitter.gasPriceAdjustmentFactor ??
-        globalConfig.gasPriceAdjustmentFactor,
-
-      maxAllowedGasPrice:
-        chainConfig.submitter.maxAllowedGasPrice ??
-        globalConfig.maxAllowedGasPrice,
-
-      priorityAdjustmentFactor:
-        chainConfig.submitter.priorityAdjustmentFactor ??
-        globalConfig.priorityAdjustmentFactor,
-
-      lowBalanceWarning:
-        chainConfig.submitter.lowBalanceWarning ??
-        globalConfig.lowBalanceWarning,
-
-      balanceUpdateInterval:
-        chainConfig.submitter.balanceUpdateInterval ??
-        globalConfig.balanceUpdateInterval,
-
+      walletPublicKey: globalConfig.walletPublicKey,
+      walletPort: await this.walletService.attachToWallet(chainId),
       loggerOptions: this.loggerService.loggerOptions,
     };
   }
