@@ -1,7 +1,7 @@
 import { JsonRpcProvider, Wallet, Provider, AbstractProvider, ZeroAddress, TransactionResponse, TransactionReceipt, TransactionRequest } from "ethers6";
 import pino, { LoggerOptions } from "pino";
 import { workerData, parentPort, MessageChannel, MessagePort } from 'worker_threads';
-import { wait } from "src/common/utils";
+import { tryErrorToString, wait } from "src/common/utils";
 import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
 import { Store } from "src/store/store.lib";
 import { TransactionHelper } from "./transaction-helper";
@@ -294,7 +294,7 @@ class WalletWorker {
 
             const logDescription = {
                 txRequest: transaction.txRequest,
-                submissionError: transaction.submissionError
+                submissionError: tryErrorToString(transaction.submissionError)
             };
 
             this.logger.debug(
@@ -348,7 +348,7 @@ class WalletWorker {
                 txHash: transaction.tx.hash,
                 replaceTxHash: transaction.txReplacement?.hash,
                 requeueCount: transaction.requeueCount,
-                confirmationError,
+                confirmationError: tryErrorToString(confirmationError),
             };
 
             // If tx errors because of an invalid nonce, requeue the order for submission
@@ -490,8 +490,8 @@ class WalletWorker {
             metadata: request.metadata,
             tx,
             txReceipt,
-            submissionError,
-            confirmationError,
+            submissionError: tryErrorToString(submissionError),
+            confirmationError: tryErrorToString(confirmationError),
         }
         port.postMessage(response);
     }

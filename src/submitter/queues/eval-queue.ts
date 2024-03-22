@@ -8,6 +8,7 @@ import { Store } from 'src/store/store.lib';
 import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
+import { tryErrorToString } from 'src/common/utils';
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
@@ -48,7 +49,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
   ): Promise<boolean> {
     const errorDescription = {
       messageIdentifier: order.messageIdentifier,
-      error,
+      error: tryErrorToString(error),
       try: retryCount + 1,
     };
 

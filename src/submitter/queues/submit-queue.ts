@@ -5,6 +5,7 @@ import {
 import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
 import { TransactionRequest } from 'ethers6';
 import pino from 'pino';
+import { tryErrorToString } from 'src/common/utils';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { WalletInterface } from 'src/wallet/src/wallet.interface';
 
@@ -103,7 +104,7 @@ export class SubmitQueue extends ProcessingQueue<
   ): Promise<boolean> {
     const errorDescription = {
       messageIdentifier: order.messageIdentifier,
-      error,
+      error: tryErrorToString(error),
       try: retryCount + 1,
     };
 

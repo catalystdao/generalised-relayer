@@ -7,6 +7,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
 import { WalletService } from 'src/wallet/src/wallet.service';
 import { Wallet } from 'ethers6';
+import { tryErrorToString } from 'src/common/utils';
 
 const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
@@ -77,7 +78,7 @@ export class SubmitterService {
 
       worker.on('error', (error) =>
         this.loggerService.fatal(
-          { error, chainId: chainConfig.chainId },
+          { error: tryErrorToString(error), chainId: chainConfig.chainId },
           `Error on submitter worker.`,
         ),
       );

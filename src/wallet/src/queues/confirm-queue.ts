@@ -3,6 +3,7 @@ import { AbstractProvider, Wallet } from 'ethers6';
 import pino from 'pino';
 import { TransactionHelper } from '../transaction-helper';
 import { ConfirmedTransaction, PendingTransaction } from '../wallet.types';
+import { tryErrorToString } from 'src/common/utils';
 
 
 export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedTransaction> {
@@ -134,7 +135,7 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
 
         const errorDescription = {
             txHash: order.tx.hash,
-            error,
+            error: tryErrorToString(error),
             try: retryCount + 1
         };
 
@@ -165,7 +166,7 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
         const errorDescription = {
             txHash: order.tx.hash,
             repricedTxHash: order.txReplacement?.hash,
-            error,
+            error: tryErrorToString(error),
             try: retryCount + 1
         };
 

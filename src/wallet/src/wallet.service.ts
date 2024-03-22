@@ -6,6 +6,7 @@ import { ConfigService } from 'src/config/config.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { WalletGetPortMessage, WalletGetPortResponse } from './wallet.types';
 import { Wallet } from 'ethers6';
+import { tryErrorToString } from 'src/common/utils';
 
 const DEFAULT_WALLET_RETRY_INTERVAL = 30000;
 const DEFAULT_WALLET_PROCESSING_INTERVAL = 100;
@@ -92,7 +93,7 @@ export class WalletService implements OnModuleInit {
 
             worker.on('error', (error) =>
                 this.loggerService.fatal(
-                    { error, chainId },
+                    { error: tryErrorToString(error), chainId },
                     `Error on wallet worker.`,
                 ),
             );

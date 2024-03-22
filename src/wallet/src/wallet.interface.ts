@@ -1,6 +1,7 @@
 import { TransactionReceipt, TransactionRequest, TransactionResponse } from 'ethers6';
 import { MessagePort } from 'worker_threads';
 import { WalletTransactionOptions, WalletTransactionRequestMessage, WalletTransactionRequestResponse } from './wallet.types';
+import { tryErrorToString } from 'src/common/utils';
 
 export interface TransactionResult<T = any> {
     txRequest: TransactionRequest;
@@ -38,8 +39,8 @@ export class WalletInterface {
                         metadata: data.metadata,
                         tx: data.tx,
                         txReceipt: data.txReceipt,
-                        submissionError: data.submissionError,
-                        confirmationError: data.confirmationError
+                        submissionError: tryErrorToString(data.submissionError),
+                        confirmationError: tryErrorToString(data.confirmationError)
                     };
                     resolve(result);
                 }

@@ -1,6 +1,6 @@
 import { JsonRpcProvider, Wallet, keccak256, zeroPadValue } from 'ethers6';
 import pino from 'pino';
-import { convertHexToDecimal, wait } from 'src/common/utils';
+import { convertHexToDecimal, tryErrorToString, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { AmbPayload } from 'src/store/types/store.types';
@@ -134,7 +134,7 @@ const bootstrap = async () => {
         {
           startBlock,
           endBlock,
-          error,
+          error: tryErrorToString(error),
         },
         `Failed to fetch logs.`,
       );

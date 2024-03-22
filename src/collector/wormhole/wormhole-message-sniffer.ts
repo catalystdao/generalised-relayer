@@ -5,6 +5,7 @@ import {
   WormholeConfig,
   WormholeMessageSnifferWorkerData,
 } from './wormhole.types';
+import { tryErrorToString } from 'src/common/utils';
 
 function loadMessageSnifferWorkerData(
   chainId: string,
@@ -45,7 +46,7 @@ export function initiateMessageSnifferWorkers(
 
       worker.on('error', (error) =>
         loggerService.fatal(
-          { error, chainId: chainId },
+          { error: tryErrorToString(error), chainId: chainId },
           'Error on Wormhole service worker.',
         ),
       );

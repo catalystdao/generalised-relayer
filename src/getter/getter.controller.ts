@@ -6,6 +6,7 @@ import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
+import { tryErrorToString } from 'src/common/utils';
 
 export const DEFAULT_GETTER_INTERVAL = 5000;
 export const DEFAULT_GETTER_BLOCK_DELAY = 0;
@@ -68,7 +69,7 @@ export class GetterController implements OnModuleInit {
 
       worker.on('error', (error) =>
         this.loggerService.fatal(
-          { error, chainId: chainConfig.chainId },
+          { error: tryErrorToString(error), chainId: chainConfig.chainId },
           `Error on getter worker.`,
         ),
       );

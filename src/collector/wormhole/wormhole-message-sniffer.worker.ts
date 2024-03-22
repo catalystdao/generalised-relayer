@@ -8,7 +8,7 @@ import {
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
-import { wait } from '../../common/utils';
+import { tryErrorToString, wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
@@ -172,7 +172,7 @@ class WormholeMessageSnifferWorker {
       } catch (error) {
         i++;
         this.logger.warn(
-          { ...filter, error, try: i },
+          { ...filter, error: tryErrorToString(error), try: i },
           `Failed to get 'LogMessagePublished' events on WormholeMessageSnifferWorker. Worker blocked until successful query.`,
         );
         await wait(this.config.interval);

@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { wait } from 'src/common/utils';
+import { tryErrorToString, wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
@@ -119,7 +119,7 @@ const bootstrap = async () => {
         {
           startBlock,
           endBlock,
-          error,
+          error: tryErrorToString(error),
         },
         `Failed to fetch logs.`,
       );

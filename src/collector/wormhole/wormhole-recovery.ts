@@ -2,6 +2,7 @@ import { join } from 'path';
 import { Worker } from 'worker_threads';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { WormholeConfig, WormholeRecoveryWorkerData } from './wormhole.types';
+import { tryErrorToString } from 'src/common/utils';
 
 function loadRecoveryWorkerData(
   chainId: string,
@@ -48,7 +49,7 @@ export function initiateRecoveryWorkers(
 
       worker.on('error', (error) =>
         loggerService.fatal(
-          { error, chainId: chainId },
+          { error: tryErrorToString(error), chainId: chainId },
           'Error on Wormhole recovery service worker.',
         ),
       );

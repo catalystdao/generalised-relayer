@@ -1,4 +1,4 @@
-import { wait } from 'src/common/utils';
+import { tryErrorToString, wait } from 'src/common/utils';
 import pino from 'pino';
 import { workerData } from 'worker_threads';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
@@ -204,7 +204,7 @@ const queryAllBountyEvents = async (
     } catch (error) {
       i++;
       logger.warn(
-        { incentivesAddresses, startBlock, endBlock, error, try: i },
+        { incentivesAddresses, startBlock, endBlock, error: tryErrorToString(error), try: i },
         `Failed to 'getLogs' on getter.`,
       );
       await new Promise((r) => setTimeout(r, GET_LOGS_RETRY_INTERVAL));

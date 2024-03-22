@@ -3,6 +3,7 @@ import pino from "pino";
 import { HandleOrderResult, ProcessingQueue } from "src/processing-queue/processing-queue";
 import { PendingTransaction, WalletTransactionRequest } from "../wallet.types";
 import { TransactionHelper } from "../transaction-helper";
+import { tryErrorToString } from "src/common/utils";
 
 export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, PendingTransaction> {
 
@@ -54,7 +55,7 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
 
         const errorDescription = {
             transactionRequest: order.txRequest,
-            error,
+            error: tryErrorToString(error),
             try: retryCount + 1
         };
 
