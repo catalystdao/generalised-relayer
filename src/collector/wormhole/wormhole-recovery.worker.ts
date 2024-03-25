@@ -6,7 +6,7 @@ import {
   parseVaaWithBytes,
 } from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from './wormhole.utils';
-import { add0X } from 'src/common/utils';
+import { add0X, wait } from 'src/common/utils';
 import { AmbPayload } from 'src/store/types/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
 import {
@@ -301,7 +301,7 @@ class WormholeRecoveryWorker {
     emitterAddress: string,
     pageIndex: number,
     pageSize = 1000,
-    maxTries = 3,
+    maxTries = 20,
   ): Promise<any[]> {
     for (let tryCount = 0; tryCount < maxTries; tryCount++) {
       try {
@@ -324,6 +324,8 @@ class WormholeRecoveryWorker {
           },
           `Error on VAAs query.`,
         );
+
+        await wait(this.config.interval);
       }
     }
 
