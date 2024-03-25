@@ -220,11 +220,12 @@ export class Store {
     const messageIdentifier = event.messageIdentifier;
     const incentive = event.incentive;
 
+    //TODO after the ethers 6 upgrade `maxGasDelivery` and `maxGasAck` are now a bigint. The rest of the code should be refactored/reviewed to work with this change (including persister/explorer).
     let bounty: Bounty = {
       messageIdentifier: messageIdentifier,
       fromChainId: chainId,
-      maxGasDelivery: incentive.maxGasDelivery,
-      maxGasAck: incentive.maxGasAck,
+      maxGasDelivery: Number(incentive.maxGasDelivery),
+      maxGasAck: Number(incentive.maxGasAck),
       refundGasTo: incentive.refundGasTo,
       priceOfDeliveryGas: incentive.priceOfDeliveryGas,
       priceOfAckGas: incentive.priceOfAckGas,
