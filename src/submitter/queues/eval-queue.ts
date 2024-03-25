@@ -9,8 +9,10 @@ import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { tryErrorToString } from 'src/common/utils';
+import { zeroPadValue } from 'ethers6';
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
+  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -22,10 +24,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     >,
     private readonly chainId: string,
     private readonly gasLimitBuffer: Record<string, number>,
-    private readonly relayerAddress: string,
+    relayerAddress: string,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
+    this.relayerAddress = zeroPadValue(relayerAddress, 32);
   }
 
   protected async handleOrder(

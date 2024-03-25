@@ -3,7 +3,7 @@ import {
   ProcessingQueue,
 } from '../../processing-queue/processing-queue';
 import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
-import { TransactionRequest } from 'ethers6';
+import { TransactionRequest, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { tryErrorToString } from 'src/common/utils';
 import { IncentivizedMessageEscrow } from 'src/contracts';
@@ -13,6 +13,7 @@ export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,
   SubmitOrderResult
 > {
+  readonly relayerAddress: string;
 
   constructor(
     readonly retryInterval: number,
@@ -21,11 +22,12 @@ export class SubmitQueue extends ProcessingQueue<
       string,
       IncentivizedMessageEscrow
     >,
-    private readonly relayerAddress: string,
+    relayerAddress: string,
     private readonly wallet: WalletInterface,
     private readonly logger: pino.Logger,
   ) {
     super(retryInterval, maxTries);
+    this.relayerAddress = zeroPadValue(relayerAddress, 32);
   }
 
   protected async handleOrder(
