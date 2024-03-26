@@ -163,8 +163,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (source to destination).`,
       );
 
-      const relayDelivery = order.priority || gasLimit >= gasEstimation;
-      return relayDelivery ? gasLimit : 0n;
+      const isGasLimitEnough = gasLimit >= gasEstimation;
+      const relayDelivery = order.priority || isGasLimitEnough;
+      return relayDelivery
+        ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
+        : 0n;
     } else {
       // Destination to Source
       const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer);
@@ -180,8 +183,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (destination to source).`,
       );
 
-      const relayAck = order.priority || gasLimit >= gasEstimation;
-      return relayAck ? gasLimit : 0n;
+      const isGasLimitEnough = gasLimit >= gasEstimation;
+      const relayAck = order.priority || isGasLimitEnough;
+      return relayAck
+        ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
+        : 0n;
     }
 
     return 0n; // Do not relay packet
