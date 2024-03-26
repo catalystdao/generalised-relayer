@@ -2,9 +2,9 @@
   "name": "generalised-relayer",
   "version": "0.1.0",
   "description": "",
-  "author": "",
+  "author": "Cata Labs, Inc.",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
