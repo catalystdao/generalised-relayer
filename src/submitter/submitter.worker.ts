@@ -8,7 +8,7 @@ import { Store } from 'src/store/store.lib';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/IncentivizedMessageEscrow__factory';
 import { workerData } from 'worker_threads';
-import { AmbPayload, PrioritiseMessage } from 'src/store/types/store.types';
+import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { EvalOrder, NewOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
@@ -185,41 +185,31 @@ class SubmitterWorker {
    */
   private async listenForOrders(): Promise<void> {
     const listenToChannel = Store.getChannel('submit', this.chainId);
-    const prioritiseChannel = Store.getChannel('prioritise', this.chainId);
     this.logger.info(
-      { globalChannel: listenToChannel, prioritiseChannel: prioritiseChannel },
+      { globalChannel: listenToChannel },
       `Listing for messages to submit.`,
     );
 
     await this.store.on(listenToChannel, (message: AmbPayload) => {
-      void this.addSubmitOrder(
-        message.amb,
-        message.messageIdentifier,
-        message.message,
-        message.messageCtx ?? '',
-        !!message.priority, // eval priority => undefined = false.
-      );
-    });
-
-    await this.store.on(prioritiseChannel, (message: PrioritiseMessage) => {
-      void this.store
-        .getAmbPayload(message.sourceChainId, message.messageIdentifier)
-        .then((ambPayload) => {
-          if (ambPayload == null) {
+      void this.store.getAmb(message.messageIdentifier)
+        .then(ambMessage => {
+          if (ambMessage == null) {
             this.logger.warn(
-              message,
-              'No AMB payload found for the prioritisation request.',
-            );
-          } else {
-            void this.addSubmitOrder(
-              ambPayload.amb,
-              ambPayload.messageIdentifier,
-              ambPayload.message,
-              ambPayload.messageCtx ?? '',
-              true,
-            );
+              {
+                messageIdentifier: message.messageIdentifier,
+              },
+              `AMB message not found on submit order. Priority set to 'false'.`
+            )
           }
-        });
+
+          return this.addSubmitOrder(
+            message.amb,
+            message.messageIdentifier,
+            message.message,
+            message.messageCtx ?? '',
+            ambMessage?.priority ?? false, // eval priority => undefined = false.
+          );
+        })
     });
   }
 

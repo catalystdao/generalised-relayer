@@ -559,6 +559,26 @@ export class Store {
     );
   }
 
+  async setAmbPriority(messageIdentifier: string, priority: boolean): Promise<void> {
+    const key = Store.combineString(
+      Store.relayerStorePrefix,
+      Store.ambMidfix,
+      messageIdentifier,
+    );
+    
+    const query: string | null = await this.redis.get(key);
+
+    if (query == null) {
+      throw new Error(
+        `Unable to set AMB priority: AMB message not found (message identifier: ${messageIdentifier}`
+      );
+    }
+
+    const amb: AmbMessage = JSON.parse(query);
+    amb.priority = priority;
+    await this.set(key, JSON.stringify(amb));
+  }
+
   async setAmbPayload(amb: AmbPayload): Promise<void> {
     const chainId = this.chainId;
     if (chainId === null)
@@ -605,20 +625,4 @@ export class Store {
     await this.postMessage(emitToChannel, ambPayload);
   }
 
-  async prioritiseMessage(
-    sourceChainId: string,
-    destinationChainId: string,
-    messageIdentifier: string,
-    amb: string,
-  ): Promise<void> {
-    const emitToChannel = Store.getChannel('prioritise', destinationChainId);
-    const data: PrioritiseMessage = {
-      sourceChainId,
-      destinationChainId,
-      messageIdentifier,
-      amb,
-    };
-
-    await this.postMessage(emitToChannel, data);
-  }
 }

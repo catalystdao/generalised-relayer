@@ -7,6 +7,7 @@ export type AmbMessage = {
   destinationChain: string;
   payload: string; // This is specifically Generalised Incentive payload.
   recoveryContext?: string; // Normally we would listen for the proofs but sometimes we might miss or somethings goes wrong. If this field is set, then it can be used to recover the tx. The encoding scheme depends entirely on the amb.
+  priority?: boolean;
 };
 
 export type AmbPayload = {
