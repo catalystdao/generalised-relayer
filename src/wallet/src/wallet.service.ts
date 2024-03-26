@@ -25,10 +25,10 @@ interface DefaultWalletWorkerData {
     confirmationTimeout: number;
     lowBalanceWarning: bigint | undefined;
     balanceUpdateInterval: number;
-    maxFeePerGas?: number | string;
-    maxAllowedPriorityFeePerGas?: number | string;
+    maxFeePerGas?: bigint;
+    maxAllowedPriorityFeePerGas?: bigint;
     maxPriorityFeeAdjustmentFactor?: number;
-    maxAllowedGasPrice?: number | string;
+    maxAllowedGasPrice?: bigint;
     gasPriceAdjustmentFactor?: number;
     priorityAdjustmentFactor?: number;
 }
@@ -46,10 +46,10 @@ export interface WalletWorkerData {
     privateKey: string;
     lowBalanceWarning: bigint | undefined;
     balanceUpdateInterval: number;
-    maxFeePerGas?: number | string;
-    maxAllowedPriorityFeePerGas?: number | string;
+    maxFeePerGas?: bigint;
+    maxAllowedPriorityFeePerGas?: bigint;
     maxPriorityFeeAdjustmentFactor?: number;
-    maxAllowedGasPrice?: number | string;
+    maxAllowedGasPrice?: bigint;
     gasPriceAdjustmentFactor?: number;
     priorityAdjustmentFactor?: number;
     loggerOptions: LoggerOptions;

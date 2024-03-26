@@ -46,14 +46,13 @@ export class TransactionHelper {
     private loadGasFeeConfig(config: GasFeeConfig): void {
         const {
             gasPriceAdjustmentFactor,
-            maxAllowedGasPrice,
-            maxFeePerGas,
             maxPriorityFeeAdjustmentFactor,
-            maxAllowedPriorityFeePerGas,
             priorityAdjustmentFactor,
         } = config;
 
         // Config for legacy transactions
+        this.maxAllowedGasPrice = config.maxAllowedGasPrice;
+    
         if (gasPriceAdjustmentFactor != undefined) {
             if (gasPriceAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR) {
                 throw new Error(
@@ -66,11 +65,11 @@ export class TransactionHelper {
             );
         }
 
-        if (maxAllowedGasPrice != undefined) {
-            this.maxAllowedGasPrice = BigInt(maxAllowedGasPrice);
-        }
 
         // Config for EIP 1559 transactions
+        this.maxFeePerGas = config.maxFeePerGas;
+        this.maxAllowedPriorityFeePerGas = config.maxAllowedPriorityFeePerGas;
+
         if (maxPriorityFeeAdjustmentFactor != undefined) {
             if (maxPriorityFeeAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR) {
                 throw new Error(
@@ -83,21 +82,12 @@ export class TransactionHelper {
             );
         }
 
-        if (maxFeePerGas != undefined) {
-            this.maxFeePerGas = BigInt(maxFeePerGas);
-        }
-
-        if (maxAllowedPriorityFeePerGas != undefined) {
-            this.maxAllowedPriorityFeePerGas = BigInt(
-                maxAllowedPriorityFeePerGas,
-            );
-        }
 
         // Priority config
         if (priorityAdjustmentFactor != undefined) {
             if (
                 priorityAdjustmentFactor > MAX_GAS_PRICE_ADJUSTMENT_FACTOR ||
-        priorityAdjustmentFactor < 1
+                priorityAdjustmentFactor < 1
             ) {
                 throw new Error(
                     `Failed to load gas fee configuration. 'priorityAdjustmentFactor' is larger than the allowed (${MAX_GAS_PRICE_ADJUSTMENT_FACTOR}) or less than 1.`,

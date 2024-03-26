@@ -43,10 +43,10 @@ export interface WalletGlobalConfig {
   confirmationTimeout?: number;
   lowGasBalanceWarning?: bigint;
   gasBalanceUpdateInterval?: number;
-  maxFeePerGas?: number | string;
-  maxAllowedPriorityFeePerGas?: number | string;
+  maxFeePerGas?: bigint;
+  maxAllowedPriorityFeePerGas?: bigint;
   maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number | string;
+  maxAllowedGasPrice?: bigint;
   gasPriceAdjustmentFactor?: number;
   priorityAdjustmentFactor?: number;
 }

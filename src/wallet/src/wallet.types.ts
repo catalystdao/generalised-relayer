@@ -75,10 +75,10 @@ export interface GasFeeOverrides {
 
 export interface GasFeeConfig {
     gasPriceAdjustmentFactor?: number;
-    maxAllowedGasPrice?: number | string;
-    maxFeePerGas?: number | string;
+    maxAllowedGasPrice?: bigint;
+    maxFeePerGas?: bigint;
     maxPriorityFeeAdjustmentFactor?: number;
-    maxAllowedPriorityFeePerGas?: number | string;
+    maxAllowedPriorityFeePerGas?: bigint;
     priorityAdjustmentFactor?: number;
 }
 

@@ -168,7 +168,16 @@ export class ConfigService {
   private formatWalletGlobalConfig(rawConfig: any): WalletGlobalConfig {
     const config = {...rawConfig};
     if (config.lowGasBalanceWarning != undefined) {
-        config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
+      config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
+    }
+    if (config.maxFeePerGas != undefined) {
+      config.maxFeePerGas = BigInt(config.maxFeePerGas);
+    }
+    if (config.maxAllowedPriorityFeePerGas != undefined) {
+      config.maxAllowedPriorityFeePerGas = BigInt(config.maxAllowedPriorityFeePerGas);
+    }
+    if (config.maxAllowedGasPrice != undefined) {
+      config.maxAllowedGasPrice = BigInt(config.maxAllowedGasPrice);
     }
     return config as WalletGlobalConfig;
   }
