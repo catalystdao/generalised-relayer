@@ -59,23 +59,28 @@ function loadWorkerData(
   loggerService: LoggerService,
   chainConfig: ChainConfig,
   globalConfig: GlobalPolymerConfig,
-): PolymerWorkerData | undefined {
+): PolymerWorkerData | null {
   const chainId = chainConfig.chainId;
   const rpc = chainConfig.rpc;
 
-  const incentivesAddress = configService.getAMBConfig(
+  const incentivesAddress: string | undefined = configService.getAMBConfig(
     'polymer',
     'incentivesAddress',
     chainId,
-  ) as string;
+  );
 
-  const polymerAddress = configService.getAMBConfig(
+  const polymerAddress: string | undefined = configService.getAMBConfig(
     'polymer',
     'bridgeAddress',
     chainConfig.chainId,
-  ) as string | undefined;
+  );
 
-  if (polymerAddress === undefined) return undefined;
+  if (
+    incentivesAddress == undefined ||
+    polymerAddress == undefined
+  ) {
+    return null;
+  };
 
   return {
     chainId,
@@ -126,6 +131,11 @@ export default (moduleInterface: CollectorModuleInterface) => {
           `Polymer collector service worker exited.`,
         );
       });
+    } else {
+      loggerService.info(
+        { chainId: chainConfig.chainId },
+        `Polymer configuration for chain not found or incomplete.`,
+      );
     }
   });
 
