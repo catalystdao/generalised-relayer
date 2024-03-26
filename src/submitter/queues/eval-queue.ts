@@ -5,7 +5,7 @@ import {
 import { EvalOrder, SubmitOrder } from '../submitter.types';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
-import { Bounty, EvaluationStatus } from 'src/store/types/store.types';
+import { Bounty } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
 import { tryErrorToString } from 'src/common/utils';
@@ -127,26 +127,12 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         );
         return 0; // Do not relay packet
       }
-      if (bounty.evaluationStatus.delivery == EvaluationStatus.Valid) {
-        this.logger.debug(
-          { messageIdentifier },
-          `Bounty evaluation (source to destination). Bounty delivery already in process.`,
-        );
-        return 0; // Do not relay packet
-      }
     } else {
       // Destination to Source
       if (bounty.status >= BountyStatus.BountyClaimed) {
         this.logger.debug(
           { messageIdentifier },
           `Bounty evaluation (destination to source). Bounty already acked.`,
-        );
-        return 0; // Do not relay packet
-      }
-      if (bounty.evaluationStatus.ack == EvaluationStatus.Valid) {
-        this.logger.debug(
-          { messageIdentifier },
-          `Bounty evaluation (destination to source). Bounty delivery already in process.`,
         );
         return 0; // Do not relay packet
       }
@@ -178,14 +164,6 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       );
 
       const relayDelivery = order.priority || BigInt(gasLimit) >= gasEstimation;
-
-      await this.store.registerEvaluationStatus({
-        messageIdentifier: order.messageIdentifier,
-        deliveryEvaluationStatus: relayDelivery
-          ? EvaluationStatus.Valid
-          : EvaluationStatus.Invalid,
-      });
-
       return relayDelivery ? gasLimit : 0;
     } else {
       // Destination to Source
@@ -203,14 +181,6 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       );
 
       const relayAck = order.priority || BigInt(gasLimit) >= gasEstimation;
-
-      await this.store.registerEvaluationStatus({
-        messageIdentifier: order.messageIdentifier,
-        ackEvaluationStatus: relayAck
-          ? EvaluationStatus.Valid
-          : EvaluationStatus.Invalid,
-      });
-
       return relayAck ? gasLimit : 0;
     }
 

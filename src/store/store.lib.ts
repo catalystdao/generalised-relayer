@@ -6,8 +6,6 @@ import {
   AmbPayload,
   Bounty,
   BountyJson,
-  EvaluationStatus,
-  PrioritiseMessage,
 } from 'src/store/types/store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
@@ -230,10 +228,6 @@ export class Store {
       priceOfDeliveryGas: incentive.priceOfDeliveryGas,
       priceOfAckGas: incentive.priceOfAckGas,
       targetDelta: incentive.targetDelta,
-      evaluationStatus: {
-        delivery: EvaluationStatus.None,
-        ack: EvaluationStatus.None,
-      },
       status: BountyStatus.BountyPlaced,
       sourceAddress: event.incentivesAddress,
       finalised: false,
@@ -333,41 +327,6 @@ export class Store {
       toChainId: this.chainId,
     };
     await this.set(key, JSON.stringify(bounty));
-  }
-
-  /**
-   * Updates an existing bounty entry with an updated 'evaluationStatus'.
-   */
-  async registerEvaluationStatus(event: {
-    messageIdentifier: string;
-    deliveryEvaluationStatus?: EvaluationStatus;
-    ackEvaluationStatus?: EvaluationStatus;
-  }) {
-    const chainId = this.chainId;
-    if (chainId === null)
-      throw new Error('ChainId is not set: This connection is readonly');
-    const messageIdentifier = event.messageIdentifier;
-
-    // Lets get the bounty.
-    const key = Store.combineString(
-      Store.relayerStorePrefix,
-      Store.bountyMidfix,
-      messageIdentifier,
-    );
-    const existingValue = await this.redis.get(key);
-    if (!existingValue) {
-      throw new Error(
-        "Unable to save the bounty 'evaluation status': bounty not found.",
-      );
-    }
-    const bountyAsRead: BountyJson = JSON.parse(existingValue);
-    if (event.deliveryEvaluationStatus) {
-      bountyAsRead.evaluationStatus.delivery = event.deliveryEvaluationStatus;
-    }
-    if (event.ackEvaluationStatus) {
-      bountyAsRead.evaluationStatus.ack = event.ackEvaluationStatus;
-    }
-    await this.set(key, JSON.stringify(bountyAsRead));
   }
 
   /**
