@@ -141,7 +141,7 @@ export abstract class ProcessingQueue<OrderType, ReturnType = OrderType> {
     }
   }
 
-  getOrdersToRetry(): ProcessOrder<OrderType>[] {
+  private getOrdersToRetry(): ProcessOrder<OrderType>[] {
     // Get the number of elements to move from the `retry` to the `submit` queue. Note that the
     // `retry` queue elements are in chronological order.
 
