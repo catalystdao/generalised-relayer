@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { getConfigValidator } from './config-schemas';
-import { GlobalConfig, ChainConfig, AMBConfig } from './config.types';
+import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig } from './config.types';
 
 @Injectable()
 export class ConfigService {
@@ -86,10 +86,10 @@ export class ConfigService {
       privateKey: rawGlobalConfig.privateKey,
       logLevel: rawGlobalConfig.logLevel,
       blockDelay: rawGlobalConfig.blockDelay,
-      getter: rawGlobalConfig.getter ?? {},
-      submitter: rawGlobalConfig.submitter ?? {},
-      persister: rawGlobalConfig.persister ?? {},
-      wallet: rawGlobalConfig.wallet ?? {},
+      getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
+      submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
+      persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
+      wallet: this.formatWalletGlobalConfig(rawGlobalConfig.wallet),
     };
   }
 
@@ -104,9 +104,9 @@ export class ConfigService {
         startingBlock: rawChainConfig.startingBlock,
         stoppingBlock: rawChainConfig.stoppingBlock,
         blockDelay: rawChainConfig.blockDelay,
-        getter: rawChainConfig.getter ?? {},
-        submitter: rawChainConfig.submitter ?? {},
-        wallet: rawChainConfig.wallet ?? {},
+        getter: this.formatGetterConfig(rawChainConfig.getter),
+        submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
+        wallet: this.formatWalletConfig(rawChainConfig.wallet),
       });
     }
 
@@ -149,4 +149,41 @@ export class ConfigService {
     // If there is no chain-specific override, return the default value for the property.
     return this.ambsConfig.get(amb)?.globalProperties[key];
   }
+
+
+  // Formatting helpers
+  // ********************************************************************************************
+  private formatGetterGlobalConfig(rawConfig: any): GetterGlobalConfig {
+    return {...rawConfig} as GetterGlobalConfig;
+  }
+
+  private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
+    return {...rawConfig} as SubmitterGlobalConfig;
+  }
+
+  private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {
+    return {...rawConfig} as PersisterConfig;
+  }
+
+  private formatWalletGlobalConfig(rawConfig: any): WalletGlobalConfig {
+    const config = {...rawConfig};
+    if (config.lowGasBalanceWarning != undefined) {
+        config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
+    }
+    return config as WalletGlobalConfig;
+  }
+
+
+  private formatGetterConfig(rawConfig: any): GetterConfig {
+    return this.formatGetterGlobalConfig(rawConfig);
+  }
+
+  private formatSubmitterConfig(rawConfig: any): SubmitterConfig {
+    return this.formatSubmitterGlobalConfig(rawConfig);
+  }
+
+  private formatWalletConfig(rawConfig: any): WalletConfig {
+    return this.formatWalletGlobalConfig(rawConfig);
+  }
+
 }
