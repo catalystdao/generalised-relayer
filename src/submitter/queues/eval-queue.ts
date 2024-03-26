@@ -107,7 +107,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     return this.store.getBounty(messageIdentifier);
   }
 
-  private async evaluateBounty(order: EvalOrder): Promise<number> {
+  private async evaluateBounty(order: EvalOrder): Promise<bigint> {
     const messageIdentifier = order.messageIdentifier;
     const bounty = await this.queryBountyInfo(messageIdentifier);
     if (bounty === null || bounty === undefined) {
@@ -125,7 +125,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
           { messageIdentifier },
           `Bounty evaluation (source to destination). Bounty already delivered.`,
         );
-        return 0; // Do not relay packet
+        return 0n; // Do not relay packet
       }
     } else {
       // Destination to Source
@@ -134,7 +134,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
           { messageIdentifier },
           `Bounty evaluation (destination to source). Bounty already acked.`,
         );
-        return 0; // Do not relay packet
+        return 0n; // Do not relay packet
       }
     }
 
@@ -150,7 +150,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     //TODO gas prices are not being considered at this point
     if (isDelivery) {
       // Source to Destination
-      const gasLimit = bounty.maxGasDelivery + gasLimitBuffer;
+      const gasLimit = BigInt(bounty.maxGasDelivery + gasLimitBuffer);
 
       this.logger.debug(
         {
@@ -163,11 +163,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (source to destination).`,
       );
 
-      const relayDelivery = order.priority || BigInt(gasLimit) >= gasEstimation;
-      return relayDelivery ? gasLimit : 0;
+      const relayDelivery = order.priority || gasLimit >= gasEstimation;
+      return relayDelivery ? gasLimit : 0n;
     } else {
       // Destination to Source
-      const gasLimit = bounty.maxGasAck + gasLimitBuffer;
+      const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer);
 
       this.logger.debug(
         {
@@ -180,11 +180,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         `Bounty evaluation (destination to source).`,
       );
 
-      const relayAck = order.priority || BigInt(gasLimit) >= gasEstimation;
-      return relayAck ? gasLimit : 0;
+      const relayAck = order.priority || gasLimit >= gasEstimation;
+      return relayAck ? gasLimit : 0n;
     }
 
-    return 0; // Do not relay packet
+    return 0n; // Do not relay packet
   }
 
   private getGasLimitBuffer(amb: string): number {
