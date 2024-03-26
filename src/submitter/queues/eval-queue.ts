@@ -95,6 +95,16 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
       }
     } else {
       this.logger.error(orderDescription, `Unsuccessful bounty evaluation.`);
+
+      if (order.priority) {
+        this.logger.warn(
+          {
+            ...orderDescription,
+            priority: order.priority
+          },
+          `Priority submit order evaluation failed.`
+        );
+      }
     }
   }
 

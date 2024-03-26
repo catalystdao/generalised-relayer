@@ -149,6 +149,16 @@ export class SubmitQueue extends ProcessingQueue<
       }
     } else {
       this.logger.error(orderDescription, `Unsuccessful submit order.`);
+
+      if (order.priority) {
+        this.logger.warn(
+          {
+            ...orderDescription,
+            priority: order.priority
+          },
+          `Priority submit order failed.`
+        );
+      }
     }
   }
 }
