@@ -7,7 +7,7 @@ import { TransactionRequest, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { tryErrorToString } from 'src/common/utils';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { WalletInterface } from 'src/wallet/src/wallet.interface';
+import { WalletInterface } from 'src/wallet/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
   SubmitOrder,

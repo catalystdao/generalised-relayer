@@ -15,7 +15,7 @@ import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
-import { WalletInterface } from 'src/wallet/src/wallet.interface';
+import { WalletInterface } from 'src/wallet/wallet.interface';
 
 class SubmitterWorker {
   readonly store: Store;

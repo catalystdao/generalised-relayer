@@ -5,7 +5,7 @@ import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import { LoggerService } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
-import { WalletService } from 'src/wallet/src/wallet.service';
+import { WalletService } from 'src/wallet/wallet.service';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
 
