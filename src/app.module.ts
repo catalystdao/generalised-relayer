@@ -6,6 +6,7 @@ import { GetterModule } from './getter/getter.module';
 import { LoggerModule } from './logger/logger.module';
 import { SubmitterModule } from './submitter/submitter.module';
 import { PersisterModule } from './store/persister/persister.module';
+import { StoreModule } from './store/store.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PersisterModule } from './store/persister/persister.module';
     CollectorModule,
     SubmitterModule,
     PersisterModule,
+    StoreModule,
   ],
 })
 export class AppModule {}
