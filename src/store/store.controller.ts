@@ -10,9 +10,8 @@ export class StoreController {
     private readonly loggerService: LoggerService,
   ) {}
 
-  //TODO set a more descriptive endpoint name.
-  @Get('getAMBs')
-  async getAMBs(@Query() query: any): Promise<any | undefined> {
+  @Get('getAMBMessages')
+  async getAMBMessages(@Query() query: any): Promise<any | undefined> {
     const chainId = query.chainId;
     const txHash = query.txHash;
 
