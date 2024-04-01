@@ -82,6 +82,7 @@ chains:
       retryInterval: 30000
 
     # AMB configuration
+    wormhole:
       wormholeChainId: 10002
       incentivesAddress: '0x45C140Dd2526E4bfD1c2A5Bb0Aa6aA1DB00b1744'
       bridgeAddress: '0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78'
