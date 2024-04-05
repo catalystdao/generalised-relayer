@@ -188,19 +188,31 @@ class WormholeMessageSnifferWorker {
     const payload = log.args.payload;
     const decodedWormholeMessage = decodeWormholeMessage(payload);
 
-    const destinationChain =
-      decodedWormholeMessage.destinationWormholeChainId.toString();
-
     this.logger.info(
       { messageIdentifier: decodedWormholeMessage.messageIdentifier },
       `Collected message.`,
     );
+
+    const destinationWormholeChainId = decodedWormholeMessage.destinationWormholeChainId;
+    const destinationChain = this.config.wormholeChainIdMap.get(destinationWormholeChainId);
+
+    if (destinationChain == undefined) {
+      this.logger.info(
+        {
+          messageIdentifier: decodedWormholeMessage.messageIdentifier,
+          destinationWormholeChainId
+        },
+        `Unable to determine the destination chain id. Skipping message.`
+      );
+      return;
+    }
+
     await this.store.setAmb(
       {
         messageIdentifier: decodedWormholeMessage.messageIdentifier,
         amb: 'wormhole',
         sourceChain: this.chainId,
-        destinationChain, //TODO this should be the chainId and not the wormholeChainId
+        destinationChain,
         payload: decodedWormholeMessage.payload,
         recoveryContext: log.args.sequence.toString(),
       },
