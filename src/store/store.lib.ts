@@ -74,6 +74,8 @@ export class Store {
   static readonly wordConnecter: string = ':';
   static readonly destinationAddressPostfix: string = 'destinationAddress';
 
+  static readonly newAMBChannel: string = 'newAMBChannel';
+
   readonly chainId: string | null;
 
   // If chainId is set to null, this should only be used for reading.
@@ -516,6 +518,8 @@ export class Store {
       amb.messageIdentifier,
       txHash,
     );
+
+    await this.postMessage(Store.newAMBChannel, amb);
   }
 
   async setAmbPriority(messageIdentifier: string, priority: boolean): Promise<void> {

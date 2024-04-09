@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { LoggerService } from './logger/logger.service';
@@ -21,6 +22,7 @@ function logLoadedOptions(
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   const configService = app.get(ConfigService);
   const loggerService = app.get(LoggerService);
