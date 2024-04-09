@@ -170,7 +170,11 @@ const bootstrap = async () => {
             amb: 'polymer',
             sourceChain: chainId,
             destinationChain,
+            sourceEscrow: "", // ! TODO implement (important for underwriting)
             payload: params[3],
+            blockNumber: messageEvent.blockNumber,
+            blockHash: messageEvent.blockHash,
+            transactionHash: messageEvent.transactionHash
           };
 
           // Set the collect message  on-chain. This is not the proof but the raw message.

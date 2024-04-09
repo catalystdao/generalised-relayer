@@ -147,12 +147,16 @@ class WormholeRecoveryWorker {
       );
     }
 
+    // Emitter address is a 32 bytes buffer: convert to hex string and keep the last 20 bytes
+    const sender = '0x' + vaa.emitterAddress.toString('hex').slice(24);
+
     await this.store.setAmb(
       {
         messageIdentifier: decodedWormholeMessage.messageIdentifier,
         amb: 'wormhole',
         sourceChain,
         destinationChain, //TODO this should be the chainId and not the wormholeChainId
+        sourceEscrow: sender,
         payload: decodedWormholeMessage.payload,
         recoveryContext: vaa.sequence.toString(),
       },

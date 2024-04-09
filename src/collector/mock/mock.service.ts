@@ -3,7 +3,7 @@ import pino from 'pino';
 import { convertHexToDecimal, tryErrorToString, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
 import { workerData } from 'worker_threads';
 import {
   decodeMockMessage,
@@ -149,7 +149,15 @@ const bootstrap = async () => {
           const message = messageEvent.args.message;
 
           // Derive the message identifier
-          const amb = decodeMockMessage(message);
+          const decodedMessage = decodeMockMessage(message);
+          const amb: AmbMessage = {
+            ...decodedMessage,
+            amb: 'mock',
+            sourceEscrow: config.incentivesAddress,
+            blockNumber: messageEvent.blockNumber,
+            blockHash: messageEvent.blockHash,
+            transactionHash: messageEvent.transactionHash
+          }
 
           // Set the collect message  on-chain. This is not the proof but the raw message.
           // It can be used by plugins to facilitate other jobs.

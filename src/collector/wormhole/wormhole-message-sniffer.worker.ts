@@ -213,8 +213,12 @@ class WormholeMessageSnifferWorker {
         amb: 'wormhole',
         sourceChain: this.chainId,
         destinationChain,
+        sourceEscrow: log.args.sender,
         payload: decodedWormholeMessage.payload,
         recoveryContext: log.args.sequence.toString(),
+        blockNumber: log.blockNumber,
+        blockHash: log.blockHash,
+        transactionHash: log.transactionHash,
       },
       log.transactionHash,
     );

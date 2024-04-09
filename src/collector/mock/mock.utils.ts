@@ -4,7 +4,12 @@ import { AmbMessage } from 'src/store/types/store.types';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
-export function decodeMockMessage(rawMockPayload: string): AmbMessage {
+export function decodeMockMessage(rawMockPayload: string): {
+  messageIdentifier: string,
+  sourceChain: string,
+  destinationChain: string,
+  payload: string,
+} {
   // Remove 0x.
   if (rawMockPayload.includes('0x')) rawMockPayload = rawMockPayload.slice(2);
 
@@ -27,7 +32,6 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
 
   return {
     messageIdentifier,
-    amb: 'mock',
     sourceChain,
     destinationChain,
     payload: payload,
