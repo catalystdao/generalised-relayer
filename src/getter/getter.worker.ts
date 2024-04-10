@@ -3,7 +3,7 @@ import pino from 'pino';
 import { workerData } from 'worker_threads';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { GetterWorkerData } from './getter.controller';
+import { GetterWorkerData } from './getter.service';
 import { JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { BountyClaimedEvent, BountyIncreasedEvent, BountyPlacedEvent, IMessageEscrowEventsInterface, MessageDeliveredEvent } from 'src/contracts/IMessageEscrowEvents';
 

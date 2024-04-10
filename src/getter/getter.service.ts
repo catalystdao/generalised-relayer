@@ -1,4 +1,4 @@
-import { Controller, OnModuleInit } from '@nestjs/common';
+import { OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 // import { bountyToDTO } from 'src/common/utils';
 import { Worker } from 'worker_threads';
@@ -30,8 +30,7 @@ export interface GetterWorkerData {
   loggerOptions: LoggerOptions;
 }
 
-@Controller()
-export class GetterController implements OnModuleInit {
+export class GetterService implements OnModuleInit {
   private workers: Record<string, Worker | null> = {};
 
   constructor(

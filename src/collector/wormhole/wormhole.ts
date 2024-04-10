@@ -10,7 +10,7 @@ import {
   DEFAULT_GETTER_BLOCK_DELAY,
   DEFAULT_GETTER_INTERVAL,
   DEFAULT_GETTER_MAX_BLOCKS,
-} from 'src/getter/getter.controller';
+} from 'src/getter/getter.service';
 import { loadWormholeChainIdMap } from './wormhole.utils';
 
 function loadWormholeConfig(

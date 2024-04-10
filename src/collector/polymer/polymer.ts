@@ -6,7 +6,7 @@ import {
   DEFAULT_GETTER_BLOCK_DELAY,
   DEFAULT_GETTER_INTERVAL,
   DEFAULT_GETTER_MAX_BLOCKS,
-} from 'src/getter/getter.controller';
+} from 'src/getter/getter.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { Worker } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';

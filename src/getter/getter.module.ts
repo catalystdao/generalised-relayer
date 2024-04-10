@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'src/logger/logger.module';
-import { GetterController } from './getter.controller';
+import { GetterService } from './getter.service';
 
 @Module({
-  controllers: [GetterController],
+  controllers: [GetterService],
   imports: [LoggerModule],
 })
 export class GetterModule {}
