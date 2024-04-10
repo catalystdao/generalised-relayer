@@ -62,7 +62,7 @@ export class GetterController implements OnModuleInit {
         return;
       }
 
-      const worker = new Worker(join(__dirname, 'getter.service.js'), {
+      const worker = new Worker(join(__dirname, 'getter.worker.js'), {
         workerData,
       });
       this.workers[chainId] = worker;
