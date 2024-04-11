@@ -112,7 +112,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
     );
 
     if (workerData) {
-      const worker = new Worker(join(__dirname, 'polymer.service.js'), {
+      const worker = new Worker(join(__dirname, 'polymer.worker.js'), {
         workerData,
       });
       workers[workerData.chainId] = worker;
