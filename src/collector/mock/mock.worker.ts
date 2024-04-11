@@ -30,15 +30,10 @@ import { IncentivizedMockEscrowInterface, MessageEvent } from 'src/contracts/Inc
  * @dev Custom additional configuration parameters should be set on config.example.yaml for future reference.
  */
 class MockCollectorWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
 
     readonly config: MockWorkerData;
 
-    readonly provider: JsonRpcProvider;
-
     readonly chainId: string;
-    readonly chainName: string;
 
     private readonly signingKey: SigningKey;
 
@@ -46,6 +41,10 @@ class MockCollectorWorker {
     readonly incentivesAddressBytes32: string;
     readonly incentivesEscrowInterface: IncentivizedMockEscrowInterface;
     readonly filterTopics: string[][];
+
+    readonly store: Store;
+    readonly provider: JsonRpcProvider;
+    readonly logger: pino.Logger;
 
 
     constructor() {
@@ -244,6 +243,7 @@ class MockCollectorWorker {
                 { name: parsedLog.name, topic: parsedLog.topic },
                 `Event with unknown name/topic received.`,
             );
+            return;
         }
 
         await this.handleMockMessage(log, parsedLog);

@@ -101,7 +101,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
       globalMockConfig,
     );
 
-    const worker = new Worker(join(__dirname, 'mock.service.js'), {
+    const worker = new Worker(join(__dirname, 'mock.worker.js'), {
       workerData,
     });
     workers[workerData.chainId] = worker;
