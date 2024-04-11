@@ -10,19 +10,18 @@ import { BountyClaimedEvent, BountyIncreasedEvent, BountyPlacedEvent, IMessageEs
 const GET_LOGS_RETRY_INTERVAL = 2000;
 
 class GetterWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
 
     readonly config: GetterWorkerData;
 
-    readonly provider: JsonRpcProvider;
-
     readonly chainId: string;
-    readonly chainName: string;
 
     readonly incentivesEscrowInterface: IMessageEscrowEventsInterface;
     readonly addresses: string[];
     readonly topics: string[][];
+
+    readonly store: Store;
+    readonly provider: JsonRpcProvider;
+    readonly logger: pino.Logger;
 
 
     constructor() {
@@ -31,8 +30,8 @@ class GetterWorker {
         this.chainId = this.config.chainId;
 
         this.store = new Store(this.chainId);
-        this.logger = this.initializeLogger(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
+        this.logger = this.initializeLogger(this.chainId);
 
         const contractTypes = this.initializeContractTypes();
         this.incentivesEscrowInterface = contractTypes.chainInterfaceInterface;
