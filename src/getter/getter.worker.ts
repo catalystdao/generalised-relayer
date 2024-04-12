@@ -15,7 +15,7 @@ class GetterWorker {
     readonly chainId: string;
 
     readonly incentivesEscrowInterface: IMessageEscrowEventsInterface;
-    readonly addresses: string[];
+    readonly incentiveAddresses: string[];
     readonly topics: string[][];
 
     readonly store: Store;
@@ -35,6 +35,7 @@ class GetterWorker {
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
 
+        this.incentiveAddresses = this.config.incentivesAddresses;
         const contractTypes = this.initializeContractTypes();
         this.incentivesEscrowInterface = contractTypes.chainInterfaceInterface;
         this.topics = contractTypes.topics;
@@ -99,7 +100,7 @@ class GetterWorker {
     // ********************************************************************************************
     async run(): Promise<void> {
         this.logger.info(
-            { incentiveAddresses: this.addresses },
+            { incentiveAddresses: this.incentiveAddresses },
             `Getter worker started.`,
         );
 
@@ -192,7 +193,7 @@ class GetterWorker {
         toBlock: number
     ): Promise<Log[]> {
         const filter = {
-            address: this.addresses,
+            address: this.incentiveAddresses,
             topics: this.topics,
             fromBlock,
             toBlock
