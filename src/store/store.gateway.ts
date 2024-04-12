@@ -16,9 +16,9 @@ export class StoreGateway implements OnGatewayInit {
     private store = new Store();
     private onAMBMessageObservable = new Subject<WsResponse<AmbMessage>>();
 
-    afterInit() {
+    async afterInit() {
         this.loggerService.info("Store gateway initialized.");
-        this.listenForNewAMBMessages();
+        await this.listenForNewAMBMessages();
     }
 
     @SubscribeMessage(newAMBMessageEventName)
