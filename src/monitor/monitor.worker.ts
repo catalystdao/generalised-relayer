@@ -122,7 +122,7 @@ class MonitorWorker {
 
         const status: MonitorStatusMessage = {
             blockNumber: this.latestBlock.number,
-            hash: this.latestBlock.hash,
+            blockHash: this.latestBlock.hash,
             timestamp: this.latestBlock.timestamp
         };
 
