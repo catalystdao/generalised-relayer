@@ -1,4 +1,4 @@
-import { OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 // import { bountyToDTO } from 'src/common/utils';
 import { Worker, MessagePort } from 'worker_threads';
@@ -32,6 +32,7 @@ export interface GetterWorkerData {
   loggerOptions: LoggerOptions;
 }
 
+@Injectable()
 export class GetterService implements OnModuleInit {
   private workers: Record<string, Worker | null> = {};
 

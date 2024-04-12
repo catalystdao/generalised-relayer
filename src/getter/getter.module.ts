@@ -3,7 +3,7 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { GetterService } from './getter.service';
 
 @Module({
-  controllers: [GetterService],
+  providers: [GetterService],
   imports: [LoggerModule],
 })
 export class GetterModule {}
