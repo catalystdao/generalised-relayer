@@ -1,10 +1,4 @@
-import {
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    SubscribeMessage,
-    WebSocketGateway,
-    WsResponse,
-} from "@nestjs/websockets";
+import { SubscribeMessage, WebSocketGateway, WsResponse } from "@nestjs/websockets";
 import { Observable, Subject } from 'rxjs';
 import { LoggerService } from "src/logger/logger.service";
 import { MonitorService } from "./monitor.service";
@@ -19,7 +13,7 @@ export interface MonitorEvent extends MonitorStatus {
 }
 
 @WebSocketGateway()
-export class MonitorGateway implements OnModuleInit, OnGatewayConnection, OnGatewayDisconnect {
+export class MonitorGateway implements OnModuleInit {
 
     private onMonitorObservable = new Subject<WsResponse<MonitorEvent>>();
 
@@ -32,14 +26,6 @@ export class MonitorGateway implements OnModuleInit, OnGatewayConnection, OnGate
     async onModuleInit() {
         this.loggerService.info("Monitor gateway initialized.");
         await this.listenToMonitors();
-    }
-
-    handleConnection(_client: any, ..._args: any[]) {
-        this.loggerService.info('Monitor gateway: client connected.');
-    }
-
-    handleDisconnect(_client: any) {
-        this.loggerService.info('Monitor gateway: client disconnected.');
     }
 
     @SubscribeMessage(MONITOR_EVENT_NAME)

@@ -1,12 +1,4 @@
-import {
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    OnGatewayInit,
-    SubscribeMessage,
-    WebSocketGateway,
-    WebSocketServer,
-    WsResponse,
-} from "@nestjs/websockets";
+import { OnGatewayInit, SubscribeMessage, WebSocketGateway, WsResponse } from "@nestjs/websockets";
 import { Observable, Subject } from 'rxjs';
 import { LoggerService } from "src/logger/logger.service";
 import { AmbMessage } from "./types/store.types";
@@ -17,7 +9,7 @@ const newAMBMessageEventName = 'ambMessage';
 //TODO this is currently on the main thread. Move to worker?
 
 @WebSocketGateway()
-export class StoreGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class StoreGateway implements OnGatewayInit {
 
     constructor(private readonly loggerService: LoggerService) { }
 
@@ -27,14 +19,6 @@ export class StoreGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     afterInit() {
         this.loggerService.info("Store gateway initialized.");
         this.listenForNewAMBMessages();
-    }
-
-    handleConnection(client: any, ...args: any[]) {
-        this.loggerService.info('Store gateway: client connected.');
-    }
-
-    handleDisconnect(client: any) {
-        this.loggerService.info('Store gateway: client disconnected.');
     }
 
     @SubscribeMessage(newAMBMessageEventName)
