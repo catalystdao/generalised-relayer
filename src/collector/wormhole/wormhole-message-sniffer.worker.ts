@@ -1,246 +1,277 @@
 import { LogMessagePublishedEvent } from 'src/contracts/IWormhole';
 import pino, { LoggerOptions } from 'pino';
 import {
-  IWormhole,
-  IWormhole__factory,
-  IncentivizedMessageEscrow,
-  IncentivizedMessageEscrow__factory,
+    IWormhole,
+    IWormhole__factory,
+    IncentivizedMessageEscrow,
+    IncentivizedMessageEscrow__factory,
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { workerData } from 'worker_threads';
+import { workerData, MessagePort } from 'worker_threads';
 import { tryErrorToString, wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
 import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
-//TODO implement stopping block (see getter)
-
 class WormholeMessageSnifferWorker {
-  readonly store: Store;
-  readonly logger: pino.Logger;
+    readonly store: Store;
+    readonly logger: pino.Logger;
 
-  readonly config: WormholeMessageSnifferWorkerData;
+    readonly config: WormholeMessageSnifferWorkerData;
 
-  readonly provider: JsonRpcProvider;
+    readonly provider: JsonRpcProvider;
 
-  readonly chainId: string;
+    readonly chainId: string;
 
-  readonly wormholeContract: IWormhole;
-  readonly messageEscrowContract: IncentivizedMessageEscrow;
+    readonly wormholeContract: IWormhole;
+    readonly messageEscrowContract: IncentivizedMessageEscrow;
 
-  constructor() {
-    this.config = workerData as WormholeMessageSnifferWorkerData;
+    private currentStatus: MonitorStatus | null;
+    private monitor: MonitorInterface;
 
-    this.chainId = this.config.chainId;
 
-    this.store = new Store(this.chainId);
-    this.logger = this.initializeLogger(
-      this.chainId,
-      this.config.loggerOptions,
-    );
-    this.provider = this.initializeProvider(this.config.rpc);
+    constructor() {
+        this.config = workerData as WormholeMessageSnifferWorkerData;
 
-    this.wormholeContract = this.initializeWormholeContract(
-      this.config.wormholeAddress,
-      this.provider,
-    );
+        this.chainId = this.config.chainId;
 
-    this.messageEscrowContract = this.initializeMessageEscrowContract(
-      this.config.incentivesAddress,
-      this.provider,
-    );
-  }
-
-  // Initialization helpers
-  // ********************************************************************************************
-
-  private initializeLogger(
-    chainId: string,
-    loggerOptions: LoggerOptions,
-  ): pino.Logger {
-    return pino(loggerOptions).child({
-      worker: 'collector-wormhole-message-sniffer',
-      chain: chainId,
-    });
-  }
-
-  private initializeProvider(rpc: string): JsonRpcProvider {
-    return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
-  }
-
-  private initializeWormholeContract(
-    wormholeAddress: string,
-    provider: JsonRpcProvider,
-  ): IWormhole {
-    return IWormhole__factory.connect(wormholeAddress, provider);
-  }
-
-  private initializeMessageEscrowContract(
-    incentivesAddress: string,
-    provider: JsonRpcProvider,
-  ): IncentivizedMessageEscrow {
-    return IncentivizedMessageEscrow__factory.connect(
-      incentivesAddress,
-      provider,
-    );
-  }
-
-  // Main handler
-  // ********************************************************************************************
-  async run(): Promise<void> {
-    this.logger.info(
-      { wormholeAddress: this.config.wormholeAddress },
-      `Wormhole worker started.`,
-    );
-
-    let startBlock =
-      this.config.startingBlock ?? (await this.provider.getBlockNumber());
-    await wait(this.config.interval);
-
-    while (true) {
-      let endBlock: number;
-      try {
-        endBlock = await this.provider.getBlockNumber();
-      } catch (error) {
-        this.logger.error(
-          error,
-          `Failed to get the current block number on the Wormhole collector service.`,
+        this.store = new Store(this.chainId);
+        this.logger = this.initializeLogger(
+            this.chainId,
+            this.config.loggerOptions,
         );
-        await wait(this.config.interval);
-        continue;
-      }
+        this.provider = this.initializeProvider(this.config.rpc);
 
-      if (!endBlock || startBlock > endBlock) {
-        await wait(this.config.interval);
-        continue;
-      }
+        this.wormholeContract = this.initializeWormholeContract(
+            this.config.wormholeAddress,
+            this.provider,
+        );
 
-      const blocksToProcess = endBlock - startBlock;
-      if (
-        this.config.maxBlocks != null &&
-        blocksToProcess > this.config.maxBlocks
-      ) {
-        endBlock = startBlock + this.config.maxBlocks;
-      }
+        this.messageEscrowContract = this.initializeMessageEscrowContract(
+            this.config.incentivesAddress,
+            this.provider,
+        );
 
-      this.logger.info(
-        {
-          startBlock,
-          endBlock,
-        },
-        `Scanning wormhole messages.`,
-      );
+        this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+    }
 
-      const logs = await this.queryLogs(startBlock, endBlock);
+    // Initialization helpers
+    // ********************************************************************************************
 
-      for (const log of logs) {
-        try {
-          await this.handleLogMessagedPublishedEvent(log);
-        } catch (error) {
-          this.logger.error(
-            { log, error },
-            'Failed to process LogMessagePublishedEvent on Wormhole sniffer worker.',
-          );
+    private initializeLogger(
+        chainId: string,
+        loggerOptions: LoggerOptions,
+    ): pino.Logger {
+        return pino(loggerOptions).child({
+            worker: 'collector-wormhole-message-sniffer',
+            chain: chainId,
+        });
+    }
+
+    private initializeProvider(rpc: string): JsonRpcProvider {
+        return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
+    }
+
+    private initializeWormholeContract(
+        wormholeAddress: string,
+        provider: JsonRpcProvider,
+    ): IWormhole {
+        return IWormhole__factory.connect(wormholeAddress, provider);
+    }
+
+    private initializeMessageEscrowContract(
+        incentivesAddress: string,
+        provider: JsonRpcProvider,
+    ): IncentivizedMessageEscrow {
+        return IncentivizedMessageEscrow__factory.connect(
+            incentivesAddress,
+            provider,
+        );
+    }
+
+    private startListeningToMonitor(port: MessagePort): MonitorInterface {
+        const monitor = new MonitorInterface(port);
+
+        monitor.addListener((status: MonitorStatus) => {
+            this.currentStatus = status;
+        });
+
+        return monitor;
+    }
+
+    // Main handler
+    // ********************************************************************************************
+    async run(): Promise<void> {
+        this.logger.info(
+            { wormholeAddress: this.config.wormholeAddress },
+            `Wormhole worker started.`,
+        );
+
+        let startBlock = null;
+        while (startBlock == null) {
+            // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus != null) {
+                startBlock = (
+                    this.config.startingBlock ?? this.currentStatus.blockNumber
+                );
+            }
+
+            await wait(this.config.processingInterval);
         }
-      }
+        const stopBlock = this.config.stoppingBlock ?? Infinity;
 
-      startBlock = endBlock + 1;
-      await wait(this.config.interval);
+        while (true) {
+            let endBlock = this.currentStatus?.blockNumber;
+            if (!endBlock || startBlock > endBlock) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (endBlock > stopBlock) {
+                endBlock = stopBlock;
+            }
+
+            const blocksToProcess = endBlock - startBlock;
+            if (
+                this.config.maxBlocks != null &&
+                blocksToProcess > this.config.maxBlocks
+            ) {
+                endBlock = startBlock + this.config.maxBlocks;
+            }
+
+            this.logger.info(
+                {
+                    startBlock,
+                    endBlock,
+                },
+                `Scanning wormhole messages.`,
+            );
+
+            const logs = await this.queryLogs(startBlock, endBlock);
+
+            for (const log of logs) {
+                try {
+                    await this.handleLogMessagedPublishedEvent(log);
+                } catch (error) {
+                    this.logger.error(
+                        { log, error },
+                        'Failed to process LogMessagePublishedEvent on Wormhole sniffer worker.',
+                    );
+                }
+            }
+
+            if (endBlock >= stopBlock) {
+                this.logger.info(
+                    { endBlock },
+                    `Finished processing blocks. Exiting worker.`,
+                );
+                break;
+            }
+
+            startBlock = endBlock + 1;
+
+            await wait(this.config.processingInterval);
+        }
+
+        // Cleanup worker
+        this.monitor.close();
+        await this.store.quit();
     }
-  }
 
-  private async queryLogs(
-    fromBlock: number,
-    toBlock: number,
-  ): Promise<LogMessagePublishedEvent.Log[]> {
-    const filter = this.wormholeContract.filters.LogMessagePublished(
-      this.config.incentivesAddress,
-    );
-
-    let logs: LogMessagePublishedEvent.Log[] | undefined;
-    let i = 0;
-    while (logs == undefined) {
-      try {
-        logs = await this.wormholeContract.queryFilter(
-          filter,
-          fromBlock,
-          toBlock,
+    private async queryLogs(
+        fromBlock: number,
+        toBlock: number,
+    ): Promise<LogMessagePublishedEvent.Log[]> {
+        const filter = this.wormholeContract.filters.LogMessagePublished(
+            this.config.incentivesAddress,
         );
-      } catch (error) {
-        i++;
-        this.logger.warn(
-          { ...filter, error: tryErrorToString(error), try: i },
-          `Failed to get 'LogMessagePublished' events on WormholeMessageSnifferWorker. Worker blocked until successful query.`,
+
+        let logs: LogMessagePublishedEvent.Log[] | undefined;
+        let i = 0;
+        while (logs == undefined) {
+            try {
+                logs = await this.wormholeContract.queryFilter(
+                    filter,
+                    fromBlock,
+                    toBlock,
+                );
+            } catch (error) {
+                i++;
+                this.logger.warn(
+                    { ...filter, error: tryErrorToString(error), try: i },
+                    `Failed to get 'LogMessagePublished' events on WormholeMessageSnifferWorker. Worker blocked until successful query.`,
+                );
+                await wait(this.config.retryInterval);
+            }
+        }
+
+        return logs;
+    }
+
+    private async handleLogMessagedPublishedEvent(
+        log: LogMessagePublishedEvent.Log,
+    ): Promise<void> {
+        const payload = log.args.payload;
+        const decodedWormholeMessage = decodeWormholeMessage(payload);
+
+        this.logger.info(
+            { messageIdentifier: decodedWormholeMessage.messageIdentifier },
+            `Collected message.`,
         );
-        await wait(this.config.interval);
-      }
+
+        const destinationWormholeChainId = decodedWormholeMessage.destinationWormholeChainId;
+        const destinationChain = this.config.wormholeChainIdMap.get(destinationWormholeChainId);
+
+        if (destinationChain == undefined) {
+            this.logger.info(
+                {
+                    messageIdentifier: decodedWormholeMessage.messageIdentifier,
+                    destinationWormholeChainId
+                },
+                `Unable to determine the destination chain id. Skipping message.`
+            );
+            return;
+        }
+
+        await this.store.setAmb(
+            {
+                messageIdentifier: decodedWormholeMessage.messageIdentifier,
+                amb: 'wormhole',
+                sourceChain: this.chainId,
+                destinationChain,
+                sourceEscrow: log.args.sender,
+                payload: decodedWormholeMessage.payload,
+                recoveryContext: log.args.sequence.toString(),
+                blockNumber: log.blockNumber,
+                blockHash: log.blockHash,
+                transactionHash: log.transactionHash,
+            },
+            log.transactionHash,
+        );
+
+        // Decode payload
+        const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
+        if (decodedPayload === undefined) {
+            this.logger.info('Could not decode payload.');
+            return;
+        }
+
+        // Set destination address for the bounty.
+        await this.store.registerDestinationAddress({
+            messageIdentifier: decodedWormholeMessage.messageIdentifier,
+            //TODO the following contract call could fail
+            destinationAddress:
+                await this.messageEscrowContract.implementationAddress(
+                    decodedPayload?.sourceApplicationAddress,
+                    defaultAbiCoder.encode(['uint256'], [destinationChain]),
+                ),
+        });
     }
-
-    return logs;
-  }
-
-  private async handleLogMessagedPublishedEvent(
-    log: LogMessagePublishedEvent.Log,
-  ): Promise<void> {
-    const payload = log.args.payload;
-    const decodedWormholeMessage = decodeWormholeMessage(payload);
-
-    this.logger.info(
-      { messageIdentifier: decodedWormholeMessage.messageIdentifier },
-      `Collected message.`,
-    );
-
-    const destinationWormholeChainId = decodedWormholeMessage.destinationWormholeChainId;
-    const destinationChain = this.config.wormholeChainIdMap.get(destinationWormholeChainId);
-
-    if (destinationChain == undefined) {
-      this.logger.info(
-        {
-          messageIdentifier: decodedWormholeMessage.messageIdentifier,
-          destinationWormholeChainId
-        },
-        `Unable to determine the destination chain id. Skipping message.`
-      );
-      return;
-    }
-
-    await this.store.setAmb(
-      {
-        messageIdentifier: decodedWormholeMessage.messageIdentifier,
-        amb: 'wormhole',
-        sourceChain: this.chainId,
-        destinationChain,
-        sourceEscrow: log.args.sender,
-        payload: decodedWormholeMessage.payload,
-        recoveryContext: log.args.sequence.toString(),
-        blockNumber: log.blockNumber,
-        blockHash: log.blockHash,
-        transactionHash: log.transactionHash,
-      },
-      log.transactionHash,
-    );
-
-    // Decode payload
-    const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
-    if (decodedPayload === undefined) {
-      this.logger.info('Could not decode payload.');
-      return;
-    }
-
-    // Set destination address for the bounty.
-    await this.store.registerDestinationAddress({
-      messageIdentifier: decodedWormholeMessage.messageIdentifier,
-      //TODO the following contract call could fail
-      destinationAddress:
-        await this.messageEscrowContract.implementationAddress(
-          decodedPayload?.sourceApplicationAddress,
-          defaultAbiCoder.encode(['uint256'], [destinationChain]),
-        ),
-    });
-  }
 }
 
 void new WormholeMessageSnifferWorker().run();

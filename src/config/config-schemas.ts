@@ -65,8 +65,8 @@ const GLOBAL_SCHEMA = {
             pattern: BYTES_32_HEX_EXPR,
         },
         logLevel: {$ref: "non-empty-string-schema"},
-        blockDelay: {$ref: "positive-number-schema"},
 
+        monitor: {$ref: "monitor-schema"},
         getter: {$ref: "getter-schema"},
         submitter: {$ref: "submitter-schema"},
         persister: {$ref: "persister-schema"},
@@ -76,16 +76,26 @@ const GLOBAL_SCHEMA = {
     additionalProperties: false
 }
 
-const GETTER_SCHEMA = {
-    $id: "getter-schema",
+const MONITOR_SCHEMA = {
+    $id: "monitor-schema",
     type: "object",
     properties: {
-        processingInterval: {$ref: "processing-interval-schema"},
         interval: {
             type: "number",
             minimum: 0,
             maximum: 120_000,   // 2 minutes
         },
+        blockDelay: {$ref: "positive-number-schema"},
+    },
+    additionalProperties: false
+}
+
+const GETTER_SCHEMA = {
+    $id: "getter-schema",
+    type: "object",
+    properties: {
+        retryInterval: {$ref: "positive-number-schema"},
+        processingInterval: {$ref: "processing-interval-schema"},
         maxBlocks: {
             type: "number",
             minimum: 0,
@@ -193,10 +203,10 @@ const CHAINS_SCHEMA = {
             name:  {$ref: "non-empty-string-schema"},
             rpc:  {$ref: "non-empty-string-schema"},
 
-            blockDelay: {$ref: "positive-number-schema"},
             startingBlock: {$ref: "positive-number-schema"},
             stoppingBlock: {$ref: "positive-number-schema"},
 
+            monitor: {$ref: "monitor-schema"},
             getter: {$ref: "getter-schema"},
             submitter: {$ref: "submitter-schema"},
             wallet: {$ref: "wallet-schema"},
@@ -217,6 +227,7 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(PROCESSING_INTERVAL_SCHEMA);
     ajv.addSchema(CONFIG_SCHEMA);
     ajv.addSchema(GLOBAL_SCHEMA);
+    ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
     ajv.addSchema(PERSISTER_SCHEMA);

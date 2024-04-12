@@ -3,17 +3,17 @@ import { LoggerOptions } from 'pino';
 import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import {
-  DEFAULT_GETTER_BLOCK_DELAY,
-  DEFAULT_GETTER_INTERVAL,
+  DEFAULT_GETTER_RETRY_INTERVAL,
+  DEFAULT_GETTER_PROCESSING_INTERVAL,
   DEFAULT_GETTER_MAX_BLOCKS,
 } from 'src/getter/getter.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { Worker } from 'worker_threads';
+import { Worker, MessagePort } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';
 
 interface GlobalPolymerConfig {
-  blockDelay: number;
-  interval: number;
+  retryInterval: number;
+  processingInterval: number;
   maxBlocks: number | null;
 }
 
@@ -22,10 +22,11 @@ export interface PolymerWorkerData {
   rpc: string;
   startingBlock?: number;
   stoppingBlock?: number;
-  blockDelay: number;
-  interval: number;
+  retryInterval: number;
+  processingInterval: number;
   maxBlocks: number | null;
   incentivesAddress: string;
+  monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
   polymerAddress: string;
 }
@@ -40,26 +41,24 @@ function loadGlobalPolymerConfig(
     );
   }
 
-  const blockDelay =
-    configService.globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
-
   const getterConfig = configService.globalConfig.getter;
-  const interval = getterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
+  const retryInterval = getterConfig.retryInterval ?? DEFAULT_GETTER_RETRY_INTERVAL;
+  const processingInterval = getterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
   const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
   return {
-    blockDelay,
-    interval,
+    retryInterval,
+    processingInterval,
     maxBlocks,
   };
 }
 
-function loadWorkerData(
+async function loadWorkerData(
   configService: ConfigService,
   loggerService: LoggerService,
   chainConfig: ChainConfig,
   globalConfig: GlobalPolymerConfig,
-): PolymerWorkerData | null {
+): Promise<PolymerWorkerData | null> {
   const chainId = chainConfig.chainId;
   const rpc = chainConfig.rpc;
 
@@ -87,24 +86,25 @@ function loadWorkerData(
     rpc,
     startingBlock: chainConfig.startingBlock,
     stoppingBlock: chainConfig.stoppingBlock,
-    blockDelay: chainConfig.blockDelay ?? globalConfig.blockDelay,
-    interval: chainConfig.getter.interval ?? globalConfig.interval,
+    retryInterval: chainConfig.getter.retryInterval ?? globalConfig.retryInterval,
+    processingInterval: chainConfig.getter.processingInterval ?? globalConfig.processingInterval,
     maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
     incentivesAddress,
     polymerAddress,
+    monitorPort: await this.monitorService.attachToMonitor(chainId),
     loggerOptions: loggerService.loggerOptions,
   };
 }
 
-export default (moduleInterface: CollectorModuleInterface) => {
+export default async (moduleInterface: CollectorModuleInterface) => {
   const { configService, loggerService } = moduleInterface;
 
   const globalPolymerConfig = loadGlobalPolymerConfig(configService);
 
   const workers: Record<string, Worker | null> = {};
 
-  configService.chainsConfig.forEach((chainConfig) => {
-    const workerData = loadWorkerData(
+  for (const [chainId, chainConfig] of configService.chainsConfig) {
+    const workerData = await loadWorkerData(
       configService,
       loggerService,
       chainConfig,
@@ -114,6 +114,7 @@ export default (moduleInterface: CollectorModuleInterface) => {
     if (workerData) {
       const worker = new Worker(join(__dirname, 'polymer.worker.js'), {
         workerData,
+        transferList: [workerData.monitorPort]
       });
       workers[workerData.chainId] = worker;
 
@@ -125,19 +126,19 @@ export default (moduleInterface: CollectorModuleInterface) => {
       );
 
       worker.on('exit', (exitCode) => {
-        workers[chainConfig.chainId] = null;
+        workers[chainId] = null;
         loggerService.info(
-          { exitCode, chainId: chainConfig.chainId },
+          { exitCode, chainId },
           `Polymer collector service worker exited.`,
         );
       });
     } else {
       loggerService.info(
-        { chainId: chainConfig.chainId },
+        { chainId },
         `Polymer configuration for chain not found or incomplete.`,
       );
     }
-  });
+  };
 
   // Initiate status log interval
   const logStatus = () => {

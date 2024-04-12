@@ -2,10 +2,13 @@
 global:
   privateKey: ''                        # The privateKey of the account that will be submitting the packet relays
   logLevel: 'info'
-  blockDelay: 1                         # Delay with which to process the chain blocks
+
+  monitor:
+    interval: 5000                      # Interval at which to poll the chains RPCs for new blocks
+    blockDelay: 1                       # Delay with which to process the chain blocks
 
   getter:
-    interval: 5000                      # Interval at which to poll the chains RPCs for new events
+    retryInterval: 5000                 # Time to wait before retrying a failed query
     maxBlocks: 1000                     # Maximum number of blocks to query in a single call
 
   submitter:
@@ -75,12 +78,12 @@ chains:
   - chainId: 80001
     name: 'Mumbai'
     rpc: 'https://polygon-mumbai-pokt.nodies.app'
-
-    blockDelay: 2
     # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
     # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
 
     # Overrides
+    monitor:
+      blockDelay: 2
     getter:
       interval: 3000
     submitter:
@@ -101,9 +104,10 @@ chains:
   - chainId: 421614
     name: 'Arbitrum Sepolia'
     rpc: 'https://sepolia-rollup.arbitrum.io/rpc' # NOTE: This rpc errors easily with a 'requests rate too high' error
-    blockDelay: 5
-    getter:
+    monitor:
       interval: 2000
+      blockDelay: 5
+    getter:
       maxBlocks: 5000
     wormhole:
       wormholeChainId: 10003

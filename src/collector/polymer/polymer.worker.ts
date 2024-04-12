@@ -3,10 +3,11 @@ import { tryErrorToString, wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
-import { workerData } from 'worker_threads';
+import { workerData, MessagePort } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
 import { AbiCoder, JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
+import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 
 const abi = AbiCoder.defaultAbiCoder();
 
@@ -25,6 +26,9 @@ class PolymerCollectorSnifferWorker {
     readonly provider: JsonRpcProvider;
     readonly logger: pino.Logger;
 
+    private currentStatus: MonitorStatus | null;
+    private monitor: MonitorInterface;
+
 
     constructor() {
         this.config = workerData as PolymerWorkerData;
@@ -40,6 +44,8 @@ class PolymerCollectorSnifferWorker {
         this.polymerAddress = this.config.polymerAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
         this.filterTopics = [[this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash]];
+
+        this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
 
@@ -62,6 +68,16 @@ class PolymerCollectorSnifferWorker {
         )
     }
 
+    private startListeningToMonitor(port: MessagePort): MonitorInterface {
+        const monitor = new MonitorInterface(port);
+
+        monitor.addListener((status: MonitorStatus) => {
+            this.currentStatus = status;
+        });
+
+        return monitor;
+    }
+
 
 
     // Main handler
@@ -72,29 +88,25 @@ class PolymerCollectorSnifferWorker {
             `Polymer collector sniffer worker started.`,
         );
 
-        // Get the effective starting and stopping blocks.
-        let startBlock = this.config.startingBlock
-            ?? (await this.provider.getBlockNumber()) - this.config.blockDelay;
+        let startBlock = null;
+        while (startBlock == null) {
+            // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus != null) {
+                startBlock = (
+                    this.config.startingBlock ?? this.currentStatus.blockNumber
+                );
+            }
+            
+            await wait(this.config.processingInterval);
+        }
         const stopBlock = this.config.stoppingBlock ?? Infinity;
-
-        await wait(this.config.interval);
 
         while (true) {
             try {
-                let endBlock: number;
-                try {
-                    endBlock = (await this.provider.getBlockNumber()) - this.config.blockDelay;
-                } catch (error) {
-                    this.logger.error(
-                        error,
-                        `Failed to get the current block on the 'polymer' collector service.`,
-                    );
-                    await wait(this.config.interval);
-                    continue;
-                }
-
+                let endBlock = this.currentStatus?.blockNumber;
                 if (!endBlock || startBlock > endBlock) {
-                    await wait(this.config.interval);
+                    await wait(this.config.processingInterval);
                     continue;
                 }
 
@@ -129,13 +141,14 @@ class PolymerCollectorSnifferWorker {
             }
             catch (error) {
                 this.logger.error(error, `Error on polymer.worker`);
-                await wait(this.config.interval)
+                await wait(this.config.retryInterval)
             }
 
-            await wait(this.config.interval);
+            await wait(this.config.processingInterval);
         }
 
         // Cleanup worker
+        this.monitor.close();
         await this.store.quit();
     }
 
@@ -180,7 +193,7 @@ class PolymerCollectorSnifferWorker {
                     { ...filter, error: tryErrorToString(error), try: i },
                     `Failed to 'getLogs' on polymer collector sniffer. Worker blocked until successful query.`
                 );
-                await wait(this.config.interval);
+                await wait(this.config.retryInterval);
             }
         }
 

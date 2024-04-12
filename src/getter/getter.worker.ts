@@ -1,13 +1,12 @@
 import { tryErrorToString, wait } from 'src/common/utils';
 import pino from 'pino';
-import { workerData } from 'worker_threads';
+import { workerData, MessagePort } from 'worker_threads';
 import { IMessageEscrowEvents__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { GetterWorkerData } from './getter.service';
 import { JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { BountyClaimedEvent, BountyIncreasedEvent, BountyPlacedEvent, IMessageEscrowEventsInterface, MessageDeliveredEvent } from 'src/contracts/IMessageEscrowEvents';
-
-const GET_LOGS_RETRY_INTERVAL = 2000;
+import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 
 class GetterWorker {
 
@@ -23,6 +22,9 @@ class GetterWorker {
     readonly provider: JsonRpcProvider;
     readonly logger: pino.Logger;
 
+    private currentStatus: MonitorStatus | null;
+    private monitor: MonitorInterface;
+
 
     constructor() {
         this.config = workerData as GetterWorkerData;
@@ -36,6 +38,8 @@ class GetterWorker {
         const contractTypes = this.initializeContractTypes();
         this.incentivesEscrowInterface = contractTypes.chainInterfaceInterface;
         this.topics = contractTypes.topics;
+
+        this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
 
@@ -79,6 +83,16 @@ class GetterWorker {
         }
     }
 
+    private startListeningToMonitor(port: MessagePort): MonitorInterface {
+        const monitor = new MonitorInterface(port);
+
+        monitor.addListener((status: MonitorStatus) => {
+            this.currentStatus = status;
+        });
+
+        return monitor;
+    }
+
 
 
     // Main handler
@@ -89,29 +103,26 @@ class GetterWorker {
             `Getter worker started.`,
         );
 
-        let startBlock = this.config.startingBlock
-            ?? (await this.provider.getBlockNumber()) - this.config.blockDelay;
+        let startBlock = null;
+        while (startBlock == null) {
+            // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus != null) {
+                startBlock = (
+                    this.config.startingBlock ?? this.currentStatus.blockNumber
+                );
+            }
+            
+            await wait(this.config.processingInterval);
+        }
 
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
-        await wait(this.config.interval);
-
         while (true) {
             try {
-                let endBlock: number;
-                try {
-                    endBlock = (await this.provider.getBlockNumber()) - this.config.blockDelay;
-                } catch (error) {
-                    this.logger.error(
-                        error,
-                        `Failed to get the current block number on the getter.`,
-                    );
-                    await wait(GET_LOGS_RETRY_INTERVAL);
-                    continue;
-                }
-
+                let endBlock = this.currentStatus?.blockNumber;
                 if (!endBlock || startBlock > endBlock) {
-                    await wait(this.config.interval);
+                    await wait(this.config.processingInterval);
                     continue;
                 }
 
@@ -126,8 +137,8 @@ class GetterWorker {
 
                 this.logger.info(
                     {
-                      startBlock,
-                      endBlock,
+                        startBlock,
+                        endBlock,
                     },
                     `Scanning bounties.`,
                 );
@@ -146,13 +157,14 @@ class GetterWorker {
             }
             catch (error) {
                 this.logger.error(error, `Failed on getter.worker`);
-                await wait(GET_LOGS_RETRY_INTERVAL)
+                await wait(this.config.retryInterval)
             }
 
-            await wait(this.config.interval);
+            await wait(this.config.processingInterval);
         }
 
         // Cleanup worker
+        this.monitor.close();
         await this.store.quit();
     }
 
@@ -197,7 +209,7 @@ class GetterWorker {
                     { ...filter, error: tryErrorToString(error), try: i },
                     `Failed to 'getLogs' on getter. Worker blocked until successful query.`
                 );
-                await wait(GET_LOGS_RETRY_INTERVAL);
+                await wait(this.config.retryInterval);
             }
         }
 

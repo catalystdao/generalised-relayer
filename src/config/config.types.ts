@@ -2,15 +2,23 @@ export interface GlobalConfig {
   port: number;
   privateKey: string;
   logLevel?: string;
-  blockDelay?: number;
+  monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
   wallet: WalletGlobalConfig;
 }
 
-export interface GetterGlobalConfig {
+export interface MonitorGlobalConfig {
   interval?: number;
+  blockDelay?: number;
+}
+
+export interface MonitorConfig extends MonitorGlobalConfig {}
+
+export interface GetterGlobalConfig {
+  retryInterval?: number;
+  processingInterval?: number;
   maxBlocks?: number;
 }
 
@@ -67,7 +75,7 @@ export interface ChainConfig {
   rpc: string;
   startingBlock?: number;
   stoppingBlock?: number;
-  blockDelay?: number;
+  monitor: MonitorConfig;
   getter: GetterConfig;
   submitter: SubmitterConfig;
   wallet: WalletConfig;

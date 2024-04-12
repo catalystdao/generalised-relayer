@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { getConfigValidator } from './config-schemas';
-import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig } from './config.types';
+import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig } from './config.types';
 
 @Injectable()
 export class ConfigService {
@@ -85,7 +85,7 @@ export class ConfigService {
       port: parseInt(process.env.RELAYER_PORT),
       privateKey: rawGlobalConfig.privateKey,
       logLevel: rawGlobalConfig.logLevel,
-      blockDelay: rawGlobalConfig.blockDelay,
+      monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
       getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
       submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
       persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
@@ -103,7 +103,7 @@ export class ConfigService {
         rpc: rawChainConfig.rpc,
         startingBlock: rawChainConfig.startingBlock,
         stoppingBlock: rawChainConfig.stoppingBlock,
-        blockDelay: rawChainConfig.blockDelay,
+        monitor: this.formatMonitorConfig(rawChainConfig.monitor),
         getter: this.formatGetterConfig(rawChainConfig.getter),
         submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
         wallet: this.formatWalletConfig(rawChainConfig.wallet),
@@ -153,6 +153,11 @@ export class ConfigService {
 
   // Formatting helpers
   // ********************************************************************************************
+
+  private formatMonitorGlobalConfig(rawConfig: any): MonitorGlobalConfig {
+    return {...rawConfig} as MonitorGlobalConfig;
+  }
+
   private formatGetterGlobalConfig(rawConfig: any): GetterGlobalConfig {
     return {...rawConfig} as GetterGlobalConfig;
   }
@@ -182,6 +187,10 @@ export class ConfigService {
     return config as WalletGlobalConfig;
   }
 
+
+  private formatMonitorConfig(rawConfig: any): MonitorConfig {
+    return this.formatMonitorGlobalConfig(rawConfig);
+  }
 
   private formatGetterConfig(rawConfig: any): GetterConfig {
     return this.formatGetterGlobalConfig(rawConfig);

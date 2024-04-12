@@ -7,11 +7,13 @@ import { LoggerModule } from './logger/logger.module';
 import { SubmitterModule } from './submitter/submitter.module';
 import { PersisterModule } from './store/persister/persister.module';
 import { StoreModule } from './store/store.module';
+import { MonitorModule } from './monitor/monitor.module';
 
 @Module({
   imports: [
     ConfigModule,
     LoggerModule,
+    MonitorModule,
     GetterModule,
     EvaluatorModule,
     CollectorModule,

@@ -4,7 +4,7 @@ import { convertHexToDecimal, tryErrorToString, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
-import { workerData } from 'worker_threads';
+import { workerData, MessagePort } from 'worker_threads';
 import {
     decodeMockMessage,
     encodeMessage,
@@ -12,6 +12,7 @@ import {
 } from './mock.utils';
 import { MockWorkerData } from './mock';
 import { IncentivizedMockEscrowInterface, MessageEvent } from 'src/contracts/IncentivizedMockEscrow';
+import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 
 
 /**
@@ -19,13 +20,14 @@ import { IncentivizedMockEscrowInterface, MessageEvent } from 'src/contracts/Inc
  * This example worker service is provided with the following parameters:
  * @param workerData.chainId The id of the chain the worker runs for.
  * @param workerData.rpc The RPC to use for the chain.
- * @param startingBlock The block from which to start processing events (optional).
- * @param stoppingBlock The block at which to stop processing events (optional).
- * @param workerData.blockDelay Some RPCs struggle to index events/logs for very recent transactions. As a result, there are some advantages to running slighly behind. If this is set, look at events which are 'blockDelay' behind the latest block.
- * @param workerData.interval Interval of when to scan for events.
+ * @param workerData.startingBlock The block from which to start processing events (optional).
+ * @param workerData.stoppingBlock The block at which to stop processing events (optional).
+ * @param workerData.retryInterval Time to wait before retrying failed logic.
+ * @param processingInterval Throttle of the main 'run' loop
  * @param workerData.maxBlocks Max number of blocks to scan at a time.
  * @param workerData.incentivesAddress The address of the Generalised Incentive implementation for the AMB.
  * @param workerData.privateKey The key used to sign the relayed messages.
+ * @param workerData.monitorPort Port for communication with the 'monitor' service.
  * @param workerData.loggerOptions Logger related config to spawn a pino logger with.
  * @dev Custom additional configuration parameters should be set on config.example.yaml for future reference.
  */
@@ -45,6 +47,9 @@ class MockCollectorWorker {
     readonly store: Store;
     readonly provider: JsonRpcProvider;
     readonly logger: pino.Logger;
+
+    private currentStatus: MonitorStatus | null;
+    private monitor: MonitorInterface;
 
 
     constructor() {
@@ -70,6 +75,9 @@ class MockCollectorWorker {
         this.incentivesAddressBytes32 = zeroPadValue(this.incentivesAddress, 32);
         this.incentivesEscrowInterface = IncentivizedMockEscrow__factory.createInterface();
         this.filterTopics = [[this.incentivesEscrowInterface.getEvent('Message').topicHash]];
+
+        // Start listening to the monitor service (get the latest block data).
+        this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
 
@@ -96,6 +104,16 @@ class MockCollectorWorker {
         return new Wallet(privateKey).signingKey;
     }
 
+    private startListeningToMonitor(port: MessagePort): MonitorInterface {
+        const monitor = new MonitorInterface(port);
+
+        monitor.addListener((status: MonitorStatus) => {
+            this.currentStatus = status;
+        });
+
+        return monitor;
+    }
+
 
 
     // Main handler
@@ -107,29 +125,26 @@ class MockCollectorWorker {
         );
 
         // Get the effective starting and stopping blocks.
-        let startBlock = this.config.startingBlock
-            ?? (await this.provider.getBlockNumber()) - this.config.blockDelay;
-        const stopBlock = this.config.stoppingBlock ?? Infinity;
+        let startBlock = null;
+        while (startBlock == null) {
+            // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus != null) {
+                startBlock = (
+                    this.config.startingBlock ?? this.currentStatus.blockNumber
+                );
+            }
+            
+            await wait(this.config.processingInterval);
+        }
 
-        await wait(this.config.interval);
+        const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
             try {
-                let endBlock: number;
-                try {
-                    endBlock = (await this.provider.getBlockNumber()) - this.config.blockDelay;
-                } catch (error) {
-                    this.logger.error(
-                        error,
-                        `Failed to get the current block on the 'mock' collector service.`,
-                    );
-                    await wait(this.config.interval);
-                    continue;
-                }
-
-                // If there has been no new block, wait.
+                let endBlock = this.currentStatus?.blockNumber;
                 if (!endBlock || startBlock > endBlock) {
-                    await wait(this.config.interval);
+                    await wait(this.config.processingInterval);
                     continue;
                 }
 
@@ -166,13 +181,14 @@ class MockCollectorWorker {
             }
             catch (error) {
                 this.logger.error(error, `Error on mock.worker`);
-                await wait(this.config.interval)
+                await wait(this.config.retryInterval)
             }
 
-            await wait(this.config.interval);
+            await wait(this.config.processingInterval);
         }
 
         // Cleanup worker
+        this.monitor.close();
         await this.store.quit();
     }
 
@@ -217,7 +233,7 @@ class MockCollectorWorker {
                     { ...filter, error: tryErrorToString(error), try: i },
                     `Failed to 'getLogs' on mock collector. Worker blocked until successful query.`
                 );
-                await wait(this.config.interval);
+                await wait(this.config.retryInterval);
             }
         }
 

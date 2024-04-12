@@ -97,7 +97,7 @@ class WormholeRecoveryWorker {
       timestamps.stoppingTimestamp,
       this.config.wormholeChainId,
       this.config.incentivesAddress,
-      1000,
+      this.config.processingInterval,
     );
 
     // Store VAAs oldest to newest
@@ -329,7 +329,7 @@ class WormholeRecoveryWorker {
           `Error on VAAs query.`,
         );
 
-        await wait(this.config.interval);
+        await wait(this.config.retryInterval);
       }
     }
 

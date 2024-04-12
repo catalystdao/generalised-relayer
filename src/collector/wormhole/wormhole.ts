@@ -7,8 +7,8 @@ import { WormholeChainConfig, WormholeConfig } from './wormhole.types';
 import { LoggerService } from 'src/logger/logger.service';
 import { ChainConfig } from 'src/config/config.types';
 import {
-  DEFAULT_GETTER_BLOCK_DELAY,
-  DEFAULT_GETTER_INTERVAL,
+  DEFAULT_GETTER_RETRY_INTERVAL,
+  DEFAULT_GETTER_PROCESSING_INTERVAL,
   DEFAULT_GETTER_MAX_BLOCKS,
 } from 'src/getter/getter.service';
 import { loadWormholeChainIdMap } from './wormhole.utils';
@@ -96,14 +96,14 @@ function loadWormholeChainConfig(
   const stoppingBlock = chainConfig.stoppingBlock;
 
   const globalConfig = configService.globalConfig;
-  const blockDelay =
-    chainConfig.blockDelay ??
-    globalConfig.blockDelay ??
-    DEFAULT_GETTER_BLOCK_DELAY;
-  const interval =
-    chainConfig.getter.interval ??
-    globalConfig.getter.interval ??
-    DEFAULT_GETTER_INTERVAL;
+  const retryInterval =
+    chainConfig.getter.retryInterval ??
+    globalConfig.getter.retryInterval ??
+    DEFAULT_GETTER_RETRY_INTERVAL;
+  const processingInterval =
+    chainConfig.getter.processingInterval ??
+    globalConfig.getter.processingInterval ??
+    DEFAULT_GETTER_PROCESSING_INTERVAL;
   const maxBlocks =
     chainConfig.getter.maxBlocks ??
     globalConfig.getter.maxBlocks ??
@@ -114,8 +114,8 @@ function loadWormholeChainConfig(
     rpc,
     startingBlock,
     stoppingBlock,
-    blockDelay,
-    interval,
+    retryInterval,
+    processingInterval,
     maxBlocks,
     wormholeChainId,
     incentivesAddress,
@@ -123,14 +123,14 @@ function loadWormholeChainConfig(
   };
 }
 
-export default (moduleInterface: CollectorModuleInterface) => {
-  const { configService, loggerService } = moduleInterface;
+export default async (moduleInterface: CollectorModuleInterface) => {
+  const { configService, monitorService, loggerService } = moduleInterface;
 
   const wormholeConfig = loadWormholeConfig(configService, loggerService);
 
   initiateRelayerEngineWorker(wormholeConfig, loggerService);
 
-  initiateMessageSnifferWorkers(wormholeConfig, loggerService);
+  await initiateMessageSnifferWorkers(wormholeConfig, monitorService, loggerService);
 
   initiateRecoveryWorkers(wormholeConfig, loggerService);
 };

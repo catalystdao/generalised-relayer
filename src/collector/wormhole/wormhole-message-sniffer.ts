@@ -6,40 +6,51 @@ import {
   WormholeMessageSnifferWorkerData,
 } from './wormhole.types';
 import { tryErrorToString } from 'src/common/utils';
+import { MonitorService } from 'src/monitor/monitor.service';
 
-function loadMessageSnifferWorkerData(
+async function loadMessageSnifferWorkerData(
   chainId: string,
   wormholeConfig: WormholeConfig,
-): WormholeMessageSnifferWorkerData | null {
+  monitorService: MonitorService,
+): Promise<WormholeMessageSnifferWorkerData | null> {
   const wormholeChainConfig = wormholeConfig.wormholeChainConfigs.get(chainId);
   if (wormholeChainConfig == undefined) {
     return null;
   }
 
+  const monitorPort = await monitorService.attachToMonitor(chainId);
+
   return {
     ...wormholeChainConfig,
     wormholeChainIdMap: wormholeConfig.wormholeChainIdMap,
+    monitorPort,
     loggerOptions: wormholeConfig.loggerOptions,
   };
 }
 
-export function initiateMessageSnifferWorkers(
+export async function initiateMessageSnifferWorkers(
   wormholeConfig: WormholeConfig,
+  monitorService: MonitorService,
   loggerService: LoggerService,
-): void {
+): Promise<void> {
   loggerService.info('Starting the wormhole message sniffer workers...');
 
   const workers: Record<string, Worker | null> = {};
 
   for (const [chainId] of wormholeConfig.wormholeChainConfigs) {
     // Spawn a worker for every Wormhole implementation
-    const workerData = loadMessageSnifferWorkerData(chainId, wormholeConfig);
+    const workerData = await loadMessageSnifferWorkerData(
+      chainId,
+      wormholeConfig,
+      monitorService
+    );
 
     if (workerData) {
       const worker = new Worker(
         join(__dirname, 'wormhole-message-sniffer.worker.js'),
         {
           workerData,
+          transferList: [workerData.monitorPort]
         },
       );
       workers[chainId] = worker;

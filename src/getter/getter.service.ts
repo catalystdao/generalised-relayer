@@ -1,20 +1,21 @@
 import { OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 // import { bountyToDTO } from 'src/common/utils';
-import { Worker } from 'worker_threads';
+import { Worker, MessagePort } from 'worker_threads';
 import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { LoggerOptions } from 'pino';
 import { tryErrorToString } from 'src/common/utils';
+import { MonitorService } from 'src/monitor/monitor.service';
 
-export const DEFAULT_GETTER_INTERVAL = 5000;
-export const DEFAULT_GETTER_BLOCK_DELAY = 0;
+export const DEFAULT_GETTER_RETRY_INTERVAL = 2000;
+export const DEFAULT_GETTER_PROCESSING_INTERVAL = 100;
 export const DEFAULT_GETTER_MAX_BLOCKS = null;
 
 interface GlobalGetterConfig {
-  blockDelay: number;
-  interval: number;
+  retryInterval: number;
+  processingInterval: number;
   maxBlocks: number | null;
 }
 
@@ -23,10 +24,11 @@ export interface GetterWorkerData {
   rpc: string;
   startingBlock?: number;
   stoppingBlock?: number;
-  blockDelay: number;
-  interval: number;
+  retryInterval: number;
+  processingInterval: number;
   maxBlocks: number | null;
   incentivesAddresses: string[];
+  monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
 }
 
@@ -35,23 +37,23 @@ export class GetterService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly monitorService: MonitorService,
     private readonly loggerService: LoggerService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.loggerService.info(`Starting Bounty Collection on all chains...`);
 
-    this.initializeWorkers();
+    await this.initializeWorkers();
 
     this.initiateIntervalStatusLog();
   }
 
-  private initializeWorkers(): void {
+  private async initializeWorkers(): Promise<void> {
     const globalGetterConfig = this.loadGlobalGetterConfig();
 
-    this.configService.chainsConfig.forEach((chainConfig) => {
-      const chainId = chainConfig.chainId;
-      const workerData = this.loadWorkerData(chainConfig, globalGetterConfig);
+    for (const [chainId, chainConfig] of this.configService.chainsConfig) {
+      const workerData = await this.loadWorkerData(chainConfig, globalGetterConfig);
 
       if (workerData.incentivesAddresses.length == 0) {
         this.loggerService.info(
@@ -63,6 +65,7 @@ export class GetterService implements OnModuleInit {
 
       const worker = new Worker(join(__dirname, 'getter.worker.js'), {
         workerData,
+        transferList: [workerData.monitorPort]
       });
       this.workers[chainId] = worker;
 
@@ -80,28 +83,28 @@ export class GetterService implements OnModuleInit {
           `Getter worker exited.`,
         );
       });
-    });
+    };
   }
 
   private loadGlobalGetterConfig(): GlobalGetterConfig {
     const globalConfig = this.configService.globalConfig;
     const globalGetterConfig = globalConfig.getter;
 
-    const blockDelay = globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
-    const interval = globalGetterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
+    const retryInterval = globalGetterConfig.retryInterval ?? DEFAULT_GETTER_RETRY_INTERVAL;
+    const processingInterval = globalGetterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
     const maxBlocks = globalGetterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
     return {
-      interval,
-      blockDelay,
-      maxBlocks,
+      retryInterval,
+      processingInterval,
+      maxBlocks
     };
   }
 
-  private loadWorkerData(
+  private async loadWorkerData(
     chainConfig: ChainConfig,
     defaultConfig: GlobalGetterConfig,
-  ): GetterWorkerData {
+  ): Promise<GetterWorkerData> {
     const chainId = chainConfig.chainId;
 
     const incentivesAddresses = Array.from(
@@ -115,10 +118,11 @@ export class GetterService implements OnModuleInit {
       rpc: chainConfig.rpc,
       startingBlock: chainConfig.startingBlock,
       stoppingBlock: chainConfig.stoppingBlock,
-      blockDelay: chainConfig.blockDelay ?? defaultConfig.blockDelay,
-      interval: chainConfig.getter.interval ?? defaultConfig.interval,
+      retryInterval: chainConfig.getter.retryInterval ?? defaultConfig.retryInterval,
+      processingInterval: chainConfig.getter.processingInterval ?? defaultConfig.processingInterval,
       maxBlocks: chainConfig.getter.maxBlocks ?? defaultConfig.maxBlocks,
       incentivesAddresses,
+      monitorPort: await this.monitorService.attachToMonitor(chainId),
       loggerOptions: this.loggerService.loggerOptions,
     };
   }

@@ -1,4 +1,5 @@
 import { LoggerOptions } from 'pino';
+import { MessagePort } from 'worker_threads';
 
 export type WormholeChainId = number;
 
@@ -16,8 +17,8 @@ export interface WormholeChainConfig {
   rpc: string;
   startingBlock?: number;
   stoppingBlock?: number;
-  blockDelay: number;
-  interval: number;
+  retryInterval: number;
+  processingInterval: number;
   maxBlocks: number | null;
   wormholeChainId: WormholeChainId;
   incentivesAddress: string;
@@ -28,6 +29,7 @@ export interface WormholeRelayerEngineWorkerData extends WormholeConfig {}
 
 export interface WormholeMessageSnifferWorkerData extends WormholeChainConfig {
   wormholeChainIdMap: Map<WormholeChainId, string>;
+  monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
 }
 
