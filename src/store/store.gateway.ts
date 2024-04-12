@@ -6,8 +6,6 @@ import { Store } from "./store.lib";
 
 const newAMBMessageEventName = 'ambMessage';
 
-//TODO this is currently on the main thread. Move to worker?
-
 @WebSocketGateway()
 export class StoreGateway implements OnGatewayInit {
 
