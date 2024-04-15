@@ -10,6 +10,7 @@ import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
 import { LoggerOptions } from 'pino';
+import { MonitorService } from 'src/monitor/monitor.service';
 
 interface GlobalMockConfig {
   retryInterval: number;
@@ -58,6 +59,7 @@ function loadGlobalMockConfig(configService: ConfigService): GlobalMockConfig {
 
 async function loadWorkerData(
   configService: ConfigService,
+  monitorService: MonitorService,
   loggerService: LoggerService,
   chainConfig: ChainConfig,
   globalConfig: GlobalMockConfig,
@@ -82,13 +84,13 @@ async function loadWorkerData(
     maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
     incentivesAddress,
     privateKey: globalConfig.privateKey,
-    monitorPort: await this.monitorService.attachToMonitor(chainId),
+    monitorPort: await monitorService.attachToMonitor(chainId),
     loggerOptions: loggerService.loggerOptions,
   };
 }
 
 export default async (moduleInterface: CollectorModuleInterface) => {
-  const { configService, loggerService } = moduleInterface;
+  const { configService, monitorService, loggerService } = moduleInterface;
 
   const globalMockConfig = loadGlobalMockConfig(configService);
 
@@ -97,6 +99,7 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const workerData = await loadWorkerData(
       configService,
+      monitorService,
       loggerService,
       chainConfig,
       globalMockConfig,

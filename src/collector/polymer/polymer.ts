@@ -10,6 +10,7 @@ import {
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { Worker, MessagePort } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';
+import { MonitorService } from 'src/monitor/monitor.service';
 
 interface GlobalPolymerConfig {
   retryInterval: number;
@@ -55,6 +56,7 @@ function loadGlobalPolymerConfig(
 
 async function loadWorkerData(
   configService: ConfigService,
+  monitorService: MonitorService,
   loggerService: LoggerService,
   chainConfig: ChainConfig,
   globalConfig: GlobalPolymerConfig,
@@ -91,13 +93,13 @@ async function loadWorkerData(
     maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
     incentivesAddress,
     polymerAddress,
-    monitorPort: await this.monitorService.attachToMonitor(chainId),
+    monitorPort: await monitorService.attachToMonitor(chainId),
     loggerOptions: loggerService.loggerOptions,
   };
 }
 
 export default async (moduleInterface: CollectorModuleInterface) => {
-  const { configService, loggerService } = moduleInterface;
+  const { configService, monitorService, loggerService } = moduleInterface;
 
   const globalPolymerConfig = loadGlobalPolymerConfig(configService);
 
@@ -106,6 +108,7 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const workerData = await loadWorkerData(
       configService,
+      monitorService,
       loggerService,
       chainConfig,
       globalPolymerConfig,
