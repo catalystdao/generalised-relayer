@@ -6,7 +6,7 @@ import {
   parseVaaWithBytes,
 } from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from './wormhole.utils';
-import { add0X, wait } from 'src/common/utils';
+import { add0X } from 'src/common/utils';
 import { AmbPayload } from 'src/store/types/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
 import {
@@ -15,10 +15,10 @@ import {
 } from 'src/contracts';
 import { WormholeRecoveryWorkerData } from './wormhole.types';
 import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { fetchVAAs } from './api-utils';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
-const WORMHOLESCAN_API_ENDPOINT = 'https://api.testnet.wormholescan.io';
 
 class WormholeRecoveryWorker {
   readonly store: Store;
@@ -265,10 +265,11 @@ class WormholeRecoveryWorker {
 
     let pageIndex = 0;
     while (true) {
-      const pageVAAs: any[] = await this.fetchVAAs(
+      const pageVAAs: any[] = await fetchVAAs(
         womrholeChainId,
         emitterAddress,
         pageIndex,
+        this.logger,
         pageSize,
       );
 
@@ -300,41 +301,6 @@ class WormholeRecoveryWorker {
     return foundVAAs;
   }
 
-  private async fetchVAAs(
-    womrholeChainId: number,
-    emitterAddress: string,
-    pageIndex: number,
-    pageSize = 1000,
-    maxTries = 20,
-  ): Promise<any[]> {
-    for (let tryCount = 0; tryCount < maxTries; tryCount++) {
-      try {
-        const response = await fetch(
-          `${WORMHOLESCAN_API_ENDPOINT}/api/v1/vaas/${womrholeChainId}/${emitterAddress}?page=${pageIndex}&pageSize=${pageSize}`,
-        );
-
-        const body = await response.text();
-
-        return JSON.parse(body).data;
-      } catch (error) {
-        this.logger.warn(
-          {
-            womrholeChainId,
-            emitterAddress,
-            pageIndex,
-            pageSize,
-            maxTries,
-            try: tryCount,
-          },
-          `Error on VAAs query.`,
-        );
-
-        await wait(this.config.retryInterval);
-      }
-    }
-
-    throw new Error(`Failed to query VAAs: max tries reached.`);
-  }
 }
 
 void new WormholeRecoveryWorker().run();
