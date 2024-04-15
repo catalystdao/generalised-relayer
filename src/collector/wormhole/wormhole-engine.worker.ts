@@ -15,11 +15,16 @@ import {
   WormholeChainId,
   WormholeRelayerEngineWorkerData,
 } from './wormhole.types';
+import { fetchVAAs } from './api-utils';
+import { Redis } from 'ioredis';
 
 // NOTE: the Wormhole relayer engine is only able of scanning new VAAs. For old VAA recovery
 // the 'wormhole-recovery' worker is used.
 
 //TODO implement stopping block
+
+const REDIS_PORT = 6379;  //TODO this should be loaded from the config
+const WORMHOLE_ENGINE_NAMESPACE = "wormholeEngine";
 
 class WormholeEngineWorker {
   readonly config: WormholeRelayerEngineWorkerData;
@@ -27,15 +32,11 @@ class WormholeEngineWorker {
   readonly logger: pino.Logger;
   readonly stores: Map<WormholeChainId, Store>;
 
-  readonly engine: StandardRelayerApp<StandardRelayerContext>;
-
   constructor() {
     this.config = workerData as WormholeRelayerEngineWorkerData;
 
     this.logger = this.initializeLogger(this.config.loggerOptions);
     this.stores = this.loadStores(this.config.wormholeChainConfigs);
-
-    this.engine = this.loadWormholeRelayerEngine();
   }
 
   // Initialization helpers
@@ -58,8 +59,7 @@ class WormholeEngineWorker {
     return stores;
   }
 
-  private loadWormholeRelayerEngine(): StandardRelayerApp<StandardRelayerContext> {
-    const namespace = 'wormhole relayer';
+  private async loadWormholeRelayerEngine(): Promise<StandardRelayerApp<StandardRelayerContext>> {
     const enviroment = this.config.isTestnet
       ? Environment.TESTNET
       : Environment.MAINNET;
@@ -73,29 +73,16 @@ class WormholeEngineWorker {
     }
     const concurrency = this.config.wormholeChainConfigs.size;
 
-    // Starting sequence is used for debugging purposes.
-    // If provided, it will try to do a better job of discovering vaas. If not set, I have no
-    // idea what it does but I don't think it does any kind of searching.
-    // For development:
-    // 1. Ensure the spy is running
-    // 2. Emit a wormhole message
-    // 3. Get the sequence from the wormhole event. (manually, get the txid and to go explorer)
-    // 4. Set the sequence-1 manually here and uncomment the relevant code.
-    // 5. Wait 15 minutes.
-    const missedVaaOptions = undefined;
-    // const startingSequenceConfig: Record<number, bigint> = {};
-    // this.config.wormholeChainConfig.forEach(
-    //   (wormholeConfig) =>
-    //     (startingSequenceConfig[wormholeConfig.wormholeChainId] = BigInt(0)),
-    // );
-    // const missedVaaOptions = {
-    //   startingSequenceConfig,
-    //   forceSeenKeysReindex: true, // Make the search aggressive.
-    // };
+    // Set the starting sequences to prevent the relayer-engine from recovering past VAAs.
+    // NOTE: The 'starting sequences' should be set via the `missedVaaOptions', however as of
+    // relayer-engine v0.3.2 the sequence configuration does not seem to work. Furthermore, the
+    // `startingSequenceConfig` does not allow to specify the sequences according to the 'emitter'
+    // addresses.
+    // TODO this should be done via the `missedVaaOption` configuration of the relayer-engine.
+    await this.setStartingSequences();
 
     const app = new StandardRelayerApp<StandardRelayerContext>(enviroment, {
-      name: namespace,
-      missedVaaOptions,
+      name: WORMHOLE_ENGINE_NAMESPACE,
       redis: useDocker
         ? {
             host: 'redis',
@@ -112,14 +99,16 @@ class WormholeEngineWorker {
   // ********************************************************************************************
   async run(): Promise<void> {
     //Listening to multiple chains for messages
+    const engine = await this.loadWormholeRelayerEngine();
     const chainsAndAddresses = this.getChainsAndAddresses();
-    this.engine.multiple(chainsAndAddresses, async (ctx) => {
+
+    engine.multiple(chainsAndAddresses, async (ctx) => {
       if (ctx.vaa != undefined) {
         await this.processVAA(ctx.vaa!);
       }
     });
 
-    await this.engine.listen();
+    await engine.listen();
   }
 
   // Helpers
@@ -132,6 +121,65 @@ class WormholeEngineWorker {
           wormholeConfig.incentivesAddress),
     );
     return chainsAndAddresses;
+  }
+
+  // Workaround to get the 'starting sequences' set by directly writing to the Redis database used
+  // by the Wormhole relayer-engine.
+  private async setStartingSequences(): Promise<void> {
+
+    const redis = new Redis(
+      REDIS_PORT,
+      {
+        host: this.config.useDocker ? 'redis' : undefined //TODO this shouldn't be done this way
+      }
+    );
+
+    for (const [, wormholeConfig] of this.config.wormholeChainConfigs) {
+
+      const wormholeChainId = wormholeConfig.wormholeChainId;
+
+      // Get the most recent VAA for the chainId-emitterAddress combination
+      const mostRecentVAAs = await fetchVAAs(
+        wormholeChainId,
+        wormholeConfig.incentivesAddress,
+        0,
+        this.logger,
+        1,
+      );
+      const mostRecentVAA = mostRecentVAAs[0];
+      const mostRecentSequence = mostRecentVAA?.sequence ?? 0;
+
+      const redisKey = this.getSafeSequenceKey(
+        WORMHOLE_ENGINE_NAMESPACE,
+        wormholeChainId,
+        wormholeConfig.incentivesAddress
+      );
+
+      await redis.set(redisKey, mostRecentSequence);
+
+      this.logger.debug(
+        {
+          wormholeChainId,
+          startingSequence: mostRecentSequence,
+        },
+        "Wormhole VAA starting sequence set."
+      );
+    }
+  }
+
+  // Get the Redis key used by the Wormhole relayer-engine to store the sequence after which to
+  // recover any missed VAAs.
+  private getSafeSequenceKey(
+    namespace: string,
+    wormholeChainId: number,
+    emitterAddress: string,
+  ): string {
+    const paddedAddress = emitterAddress
+      .toLowerCase()
+      .replace('0x', '')
+      .padStart(64, '0');
+
+    return `{${namespace}}:${namespace}-relays:missedVaasV3:safeSequence:${wormholeChainId}:${paddedAddress}`
   }
 
   private async processVAA(vaa: ParsedVaaWithBytes): Promise<void> {
