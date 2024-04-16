@@ -2,9 +2,8 @@ services:
   redis:
     image: redis:latest
     container_name: redis-docker
-    expose:
+    ports:
       - ${REDIS_PORT}:${REDIS_PORT}
-    attach: false
     logging:
       options:
         max-size: 5m
@@ -13,7 +12,7 @@ services:
     image: ghcr.io/wormhole-foundation/guardiand:latest
     platform: linux/amd64
     container_name: spy
-    expose:
+    ports:
       - ${SPY_PORT}:${SPY_PORT}
     entrypoint: /guardiand
     command:
@@ -26,7 +25,6 @@ services:
       - /wormhole/testnet/2/1
       - --bootstrap
       - '/dns4/t-guardian-01.nodes.stable.io/udp/8999/quic/p2p/12D3KooWCW3LGUtkCVkHZmVSZHzL3C4WRKWfqAiJPz1NR7dT9Bxh,/dns4/t-guardian-02.nodes.stable.io/udp/8999/quic/p2p/12D3KooWJXA6goBCiWM8ucjzc4jVUBSqL9Rri6UpjHbkMPErz5zK'
-    attach: false
     profiles: ['wormhole']
     logging:
       options:
@@ -43,7 +41,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - USE_DOCKER=true
-    expose:
+    ports:
       - ${RELAYER_PORT}:${RELAYER_PORT}
     container_name: relayer
     restart: unless-stopped
