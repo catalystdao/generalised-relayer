@@ -1,6 +1,5 @@
 import { AbiCoder, Signature, solidityPacked } from 'ethers6';
-import { add0X, getSwapIdentifier } from 'src/common/utils';
-import { AmbMessage } from 'src/store/types/store.types';
+import { add0X } from 'src/common/utils';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 

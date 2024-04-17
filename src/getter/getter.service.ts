@@ -1,6 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
-// import { bountyToDTO } from 'src/common/utils';
 import { Worker, MessagePort } from 'worker_threads';
 import { ConfigService } from 'src/config/config.service';
 import { ChainConfig } from 'src/config/config.types';
