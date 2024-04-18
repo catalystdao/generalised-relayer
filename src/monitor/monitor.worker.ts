@@ -18,7 +18,7 @@ class MonitorWorker {
     private portsCount = 0;
     private readonly ports: Record<number, MessagePort> = {};
 
-    private lastBroadcastObservedBlockNumber = -1;
+    private lastBroadcastBlockNumber = -1;
     private latestBlock: Block | null;
 
 
@@ -94,7 +94,7 @@ class MonitorWorker {
         while (true) {
             try {
                 const newBlock = await this.provider.getBlock(-this.config.blockDelay);
-                if (!newBlock || newBlock.number <= this.lastBroadcastObservedBlockNumber) {
+                if (!newBlock || newBlock.number <= this.lastBroadcastBlockNumber) {
                     await wait(this.config.interval);
                     continue;
                 }
@@ -121,7 +121,7 @@ class MonitorWorker {
         }
 
         const status: MonitorStatusMessage = {
-            observedBlockNumber: this.latestBlock.number,
+            blockNumber: this.latestBlock.number,
             blockHash: this.latestBlock.hash,
             timestamp: this.latestBlock.timestamp
         };
@@ -130,7 +130,7 @@ class MonitorWorker {
             port.postMessage(status);
         }
 
-        this.lastBroadcastObservedBlockNumber = status.observedBlockNumber;
+        this.lastBroadcastBlockNumber = status.blockNumber;
     }
 
 }

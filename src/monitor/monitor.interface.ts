@@ -1,7 +1,7 @@
 import { MessagePort } from 'worker_threads';
 
 export interface MonitorStatus {
-    observedBlockNumber: number;
+    blockNumber: number;
     blockHash: string | null;
     timestamp: number;
 }

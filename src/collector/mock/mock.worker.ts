@@ -148,7 +148,7 @@ class MockCollectorWorker {
             // 'startingBlock' is specified.
             if (this.currentStatus != null) {
                 fromBlock = (
-                    this.config.startingBlock ?? this.currentStatus.observedBlockNumber
+                    this.config.startingBlock ?? this.currentStatus.blockNumber
                 );
             }
             
@@ -159,7 +159,7 @@ class MockCollectorWorker {
 
         while (true) {
             try {
-                let toBlock = this.currentStatus?.observedBlockNumber;
+                let toBlock = this.currentStatus?.blockNumber;
                 if (!toBlock || fromBlock > toBlock) {
                     await wait(this.config.processingInterval);
                     continue;
