@@ -8,6 +8,7 @@ import { PolymerWorkerData } from './polymer';
 import { AbiCoder, JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
 
 const abi = AbiCoder.defaultAbiCoder();
 
@@ -22,6 +23,7 @@ class PolymerCollectorSnifferWorker {
     readonly ibcEventEmitterInterface: IbcEventEmitterInterface;
     readonly filterTopics: string[][];
 
+    readonly resolver: Resolver;
     readonly store: Store;
     readonly provider: JsonRpcProvider;
     readonly logger: pino.Logger;
@@ -38,6 +40,11 @@ class PolymerCollectorSnifferWorker {
         this.store = new Store(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
+        this.resolver = this.loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
 
         // Define the parameters for the rpc logs queries
         this.incentivesAddress = this.config.incentivesAddress;
@@ -66,6 +73,14 @@ class PolymerCollectorSnifferWorker {
             undefined,
             { staticNetwork: true }
         )
+    }
+
+    private loadResolver(
+        resolver: string | null,
+        provider: JsonRpcProvider,
+        logger: pino.Logger
+    ): Resolver {
+        return loadResolver(resolver, provider, logger);
     }
 
     private startListeningToMonitor(port: MessagePort): MonitorInterface {
@@ -269,6 +284,10 @@ class PolymerCollectorSnifferWorker {
         const messageIdentifier = '0x' + params[3]
             .replaceAll('0x', '').slice(1 * 2, 1 * 2 + 32 * 2);
 
+        const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
+            log.blockNumber
+        );
+
         const amb: AmbMessage = {
             messageIdentifier,
             amb: 'polymer',
@@ -276,7 +295,8 @@ class PolymerCollectorSnifferWorker {
             destinationChain,
             sourceEscrow: "", // ! TODO implement (important for underwriting)
             payload: params[3],
-            blockNumber: log.blockNumber,   //TODO resolve block number
+            blockNumber: log.blockNumber,
+            transactionBlockNumber,
             blockHash: log.blockHash,
             transactionHash: log.transactionHash
         };

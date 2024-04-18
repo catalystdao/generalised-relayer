@@ -102,6 +102,7 @@ export class ConfigService {
         chainId,
         name: rawChainConfig.name,
         rpc: rawChainConfig.rpc,
+        resolver: rawChainConfig.resolver ?? null,
         startingBlock: rawChainConfig.startingBlock,
         stoppingBlock: rawChainConfig.stoppingBlock,
         monitor: this.formatMonitorConfig(rawChainConfig.monitor),

@@ -15,6 +15,7 @@ export interface WormholeConfig {
 export interface WormholeChainConfig {
   chainId: string;
   rpc: string;
+  resolver: string | null;
   startingBlock?: number;
   stoppingBlock?: number;
   retryInterval: number;

@@ -14,6 +14,7 @@ import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
 import { AbiCoder, JsonRpcProvider } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
@@ -30,6 +31,8 @@ class WormholeMessageSnifferWorker {
     readonly wormholeContract: IWormhole;
     readonly messageEscrowContract: IncentivizedMessageEscrow;
 
+    readonly resolver: Resolver;
+
     private currentStatus: MonitorStatus | null;
     private monitor: MonitorInterface;
 
@@ -45,6 +48,11 @@ class WormholeMessageSnifferWorker {
             this.config.loggerOptions,
         );
         this.provider = this.initializeProvider(this.config.rpc);
+        this.resolver = this.loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
 
         this.wormholeContract = this.initializeWormholeContract(
             this.config.wormholeAddress,
@@ -74,6 +82,14 @@ class WormholeMessageSnifferWorker {
 
     private initializeProvider(rpc: string): JsonRpcProvider {
         return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
+    }
+
+    private loadResolver(
+        resolver: string | null,
+        provider: JsonRpcProvider,
+        logger: pino.Logger
+    ): Resolver {
+        return loadResolver(resolver, provider, logger);
     }
 
     private initializeWormholeContract(
@@ -238,6 +254,10 @@ class WormholeMessageSnifferWorker {
             return;
         }
 
+        const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
+            log.blockNumber
+        );
+
         await this.store.setAmb(
             {
                 messageIdentifier: decodedWormholeMessage.messageIdentifier,
@@ -247,7 +267,8 @@ class WormholeMessageSnifferWorker {
                 sourceEscrow: log.args.sender,
                 payload: decodedWormholeMessage.payload,
                 recoveryContext: log.args.sequence.toString(),
-                blockNumber: log.blockNumber,   //TODO resolve block number
+                blockNumber: log.blockNumber,
+                transactionBlockNumber,
                 blockHash: log.blockHash,
                 transactionHash: log.transactionHash,
             },

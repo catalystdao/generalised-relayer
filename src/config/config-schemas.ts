@@ -202,6 +202,7 @@ const CHAINS_SCHEMA = {
             chainId: {$ref: "chain-id-schema"},
             name:  {$ref: "non-empty-string-schema"},
             rpc:  {$ref: "non-empty-string-schema"},
+            resolver: {$ref: "non-empty-string-schema"},
 
             startingBlock: {$ref: "positive-number-schema"},
             stoppingBlock: {$ref: "positive-number-schema"},

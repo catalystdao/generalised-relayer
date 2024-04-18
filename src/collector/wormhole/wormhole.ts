@@ -91,6 +91,7 @@ function loadWormholeChainConfig(
   }
 
   const rpc = chainConfig.rpc;
+  const resolver = chainConfig.resolver;
 
   const startingBlock = chainConfig.startingBlock;
   const stoppingBlock = chainConfig.stoppingBlock;
@@ -112,6 +113,7 @@ function loadWormholeChainConfig(
   return {
     chainId,
     rpc,
+    resolver,
     startingBlock,
     stoppingBlock,
     retryInterval,

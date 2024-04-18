@@ -104,6 +104,7 @@ chains:
   - chainId: 421614
     name: 'Arbitrum Sepolia'
     rpc: 'https://sepolia-rollup.arbitrum.io/rpc' # NOTE: This rpc errors easily with a 'requests rate too high' error
+    resolver: 'arbitrum'
     monitor:
       interval: 2000
       blockDelay: 5

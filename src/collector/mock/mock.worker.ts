@@ -13,6 +13,7 @@ import {
 import { MockWorkerData } from './mock';
 import { IncentivizedMockEscrowInterface, MessageEvent } from 'src/contracts/IncentivizedMockEscrow';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
 
 
 /**
@@ -44,6 +45,7 @@ class MockCollectorWorker {
     readonly incentivesEscrowInterface: IncentivizedMockEscrowInterface;
     readonly filterTopics: string[][];
 
+    readonly resolver: Resolver;
     readonly store: Store;
     readonly provider: JsonRpcProvider;
     readonly logger: pino.Logger;
@@ -69,6 +71,13 @@ class MockCollectorWorker {
         this.signingKey = this.initializeSigningKey(this.config.privateKey);
 
         this.logger = this.initializeLogger(this.chainId);
+
+        // Load a helper to perform chain-type specific operations (e.g. query the l2 -> l1BlockNumber for arbitrum)
+        this.resolver = this.loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
 
         // Define the parameters for the rpc logs queries and message signing.
         this.incentivesAddress = this.config.incentivesAddress;
@@ -98,6 +107,14 @@ class MockCollectorWorker {
             undefined,
             { staticNetwork: true }
         )
+    }
+
+    private loadResolver(
+        resolver: string | null,
+        provider: JsonRpcProvider,
+        logger: pino.Logger
+    ): Resolver {
+        return loadResolver(resolver, provider, logger);
     }
 
     private initializeSigningKey(privateKey: string): SigningKey {
@@ -275,11 +292,17 @@ class MockCollectorWorker {
 
         // Derive the message identifier
         const decodedMessage = decodeMockMessage(message);
+
+        const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
+            log.blockNumber
+        );
+
         const amb: AmbMessage = {
             ...decodedMessage,
             amb: 'mock',
             sourceEscrow: this.config.incentivesAddress,
-            blockNumber: log.blockNumber,   //TODO resolve block number
+            blockNumber: log.blockNumber,
+            transactionBlockNumber,
             blockHash: log.blockHash,
             transactionHash: log.transactionHash
         }

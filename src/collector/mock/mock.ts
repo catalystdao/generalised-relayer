@@ -22,6 +22,7 @@ interface GlobalMockConfig {
 export interface MockWorkerData {
   chainId: string;
   rpc: string;
+  resolver: string | null;
   startingBlock?: number;
   stoppingBlock?: number;
   retryInterval: number;
@@ -77,6 +78,7 @@ async function loadWorkerData(
   return {
     chainId,
     rpc,
+    resolver: chainConfig.resolver,
     startingBlock: chainConfig.startingBlock,
     stoppingBlock: chainConfig.stoppingBlock,
     retryInterval: chainConfig.getter.retryInterval ?? globalConfig.retryInterval,

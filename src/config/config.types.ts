@@ -73,6 +73,7 @@ export interface ChainConfig {
   chainId: string;
   name: string;
   rpc: string;
+  resolver: string | null;
   startingBlock?: number;
   stoppingBlock?: number;
   monitor: MonitorConfig;
