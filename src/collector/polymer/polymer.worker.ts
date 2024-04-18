@@ -105,7 +105,7 @@ class PolymerCollectorSnifferWorker {
 
         let fromBlock = null;
         while (fromBlock == null) {
-            // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
             // 'startingBlock' is specified.
             if (this.currentStatus != null) {
                 fromBlock = (
