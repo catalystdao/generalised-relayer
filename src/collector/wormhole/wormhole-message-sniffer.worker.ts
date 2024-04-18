@@ -111,13 +111,13 @@ class WormholeMessageSnifferWorker {
             `Wormhole worker started.`,
         );
 
-        let startBlock = null;
-        while (startBlock == null) {
+        let fromBlock = null;
+        while (fromBlock == null) {
             // Do not initialize 'startBlock' whilst 'currentStatus' is null, even if
             // 'startingBlock' is specified.
             if (this.currentStatus != null) {
-                startBlock = (
-                    this.config.startingBlock ?? this.currentStatus.blockNumber
+                fromBlock = (
+                    this.config.startingBlock ?? this.currentStatus.observedBlockNumber
                 );
             }
 
@@ -126,33 +126,33 @@ class WormholeMessageSnifferWorker {
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
-            let endBlock = this.currentStatus?.blockNumber;
-            if (!endBlock || startBlock > endBlock) {
+            let toBlock = this.currentStatus?.observedBlockNumber;
+            if (!toBlock || fromBlock > toBlock) {
                 await wait(this.config.processingInterval);
                 continue;
             }
 
-            if (endBlock > stopBlock) {
-                endBlock = stopBlock;
+            if (toBlock > stopBlock) {
+                toBlock = stopBlock;
             }
 
-            const blocksToProcess = endBlock - startBlock;
+            const blocksToProcess = toBlock - fromBlock;
             if (
                 this.config.maxBlocks != null &&
                 blocksToProcess > this.config.maxBlocks
             ) {
-                endBlock = startBlock + this.config.maxBlocks;
+                toBlock = fromBlock + this.config.maxBlocks;
             }
 
             this.logger.info(
                 {
-                    startBlock,
-                    endBlock,
+                    fromBlock,
+                    toBlock,
                 },
                 `Scanning wormhole messages.`,
             );
 
-            const logs = await this.queryLogs(startBlock, endBlock);
+            const logs = await this.queryLogs(fromBlock, toBlock);
 
             for (const log of logs) {
                 try {
@@ -165,15 +165,15 @@ class WormholeMessageSnifferWorker {
                 }
             }
 
-            if (endBlock >= stopBlock) {
+            if (toBlock >= stopBlock) {
                 this.logger.info(
-                    { endBlock },
+                    { stopBlock: toBlock },
                     `Finished processing blocks. Exiting worker.`,
                 );
                 break;
             }
 
-            startBlock = endBlock + 1;
+            fromBlock = toBlock + 1;
 
             await wait(this.config.processingInterval);
         }
@@ -247,7 +247,7 @@ class WormholeMessageSnifferWorker {
                 sourceEscrow: log.args.sender,
                 payload: decodedWormholeMessage.payload,
                 recoveryContext: log.args.sequence.toString(),
-                blockNumber: log.blockNumber,
+                blockNumber: log.blockNumber,   //TODO resolve block number
                 blockHash: log.blockHash,
                 transactionHash: log.transactionHash,
             },
