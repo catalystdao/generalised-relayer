@@ -5,8 +5,11 @@ export type WormholeChainId = number;
 
 export interface WormholeConfig {
   isTestnet: boolean;
-  useDocker: boolean;
-  spyPort: string;
+  redisHost?: string;
+  redisPort: number;
+  redisDBIndex?: number;
+  spyHost?: string;
+  spyPort: number;
   wormholeChainConfigs: Map<string, WormholeChainConfig>;
   wormholeChainIdMap: Map<WormholeChainId, string>;
   loggerOptions: LoggerOptions;

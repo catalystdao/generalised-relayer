@@ -23,7 +23,10 @@ import { Redis } from 'ioredis';
 
 //TODO implement stopping block
 
-const REDIS_PORT = 6379;  //TODO this should be loaded from the config
+const DEFAULT_WORMHOLE_ENGINE_REDIS_DB_INDEX = 0;
+
+const DEFAULT_SPY_HOST = '127.0.0.1';
+
 const WORMHOLE_ENGINE_NAMESPACE = "wormholeEngine";
 
 class WormholeEngineWorker {
@@ -63,8 +66,6 @@ class WormholeEngineWorker {
     const enviroment = this.config.isTestnet
       ? Environment.TESTNET
       : Environment.MAINNET;
-    const useDocker = this.config.useDocker;
-    const spyPort = this.config.spyPort;
 
     if (this.config.wormholeChainConfigs.size == 0) {
       throw new Error(
@@ -83,12 +84,12 @@ class WormholeEngineWorker {
 
     const app = new StandardRelayerApp<StandardRelayerContext>(enviroment, {
       name: WORMHOLE_ENGINE_NAMESPACE,
-      redis: useDocker
-        ? {
-            host: 'redis',
-          }
-        : undefined,
-      spyEndpoint: `${useDocker ? 'spy' : 'localhost'}:${spyPort}`,
+      redis: {
+        host: this.config.redisHost,
+        port: this.config.redisPort,
+        db: this.config.redisDBIndex ?? DEFAULT_WORMHOLE_ENGINE_REDIS_DB_INDEX
+      },
+      spyEndpoint: `${this.config.spyHost ?? DEFAULT_SPY_HOST}:${this.config.spyPort}`,
       concurrency,
     });
 
@@ -128,9 +129,10 @@ class WormholeEngineWorker {
   private async setStartingSequences(): Promise<void> {
 
     const redis = new Redis(
-      REDIS_PORT,
+      this.config.redisPort,
       {
-        host: this.config.useDocker ? 'redis' : undefined //TODO this shouldn't be done this way
+        host: this.config.redisHost,
+        db: this.config.redisDBIndex ?? DEFAULT_WORMHOLE_ENGINE_REDIS_DB_INDEX
       }
     );
 

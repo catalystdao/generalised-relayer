@@ -13,8 +13,8 @@ import {
   return this.toString();
 };
 
-const redis_port = 6379;
-const DB_INDEX = 4;
+const DEFAULT_REDIS_PORT = 6379;
+const DEFAULT_REDIS_DB_INDEX = 4;
 
 //---------- STORE LAYOUT ----------//
 // The redis store is used for 2 things:
@@ -57,6 +57,10 @@ const DB_INDEX = 4;
 
 export class Store {
   readonly redis: Redis;
+  readonly redisHost: string | undefined;
+  readonly redisPort: number;
+  readonly redisDBIndex: number;
+
   // When a redis connection is used to listen for subscriptions, it cannot be
   // used for anything except to modify the subscription set which is being listened
   // to. As a result, we need a dedicated connection if we ever decide to listen to
@@ -81,11 +85,27 @@ export class Store {
   // If chainId is set to null, this should only be used for reading.
   constructor(chainId: string | null = null) {
     this.chainId = chainId;
-    this.host = process.env.USE_DOCKER ? 'redis' : undefined;
-    this.redis = new Redis(redis_port, {
-      db: DB_INDEX,
+
+    this.redisHost = this.loadRedisHost();
+    this.redisPort = this.loadRedisPort();
+    this.redisDBIndex = this.loadRedisDBIndex();
+
+    this.redis = new Redis(this.redisPort, {
+      db: this.redisDBIndex,
       host: this.host,
     });
+  }
+
+  private loadRedisHost(): string | undefined {
+    return process.env.REDIS_HOST;
+  }
+
+  private loadRedisPort(): number {
+    return process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : DEFAULT_REDIS_PORT;
+  }
+
+  private loadRedisDBIndex(): number {
+    return process.env.REDIS_DB_INDEX ? parseInt(process.env.REDIS_DB_INDEX) : DEFAULT_REDIS_DB_INDEX;
   }
 
   async quit(): Promise<void> {
@@ -133,9 +153,9 @@ export class Store {
    */
   getOrOpenSubscription(): Redis {
     if (!this.redisSubscriptions) {
-      this.redisSubscriptions = new Redis(redis_port, {
-        db: DB_INDEX,
-        host: this.host,
+      this.redisSubscriptions = new Redis(this.redisPort, {
+        db: this.redisDBIndex,
+        host: this.redisHost,
       });
     }
     return this.redisSubscriptions;

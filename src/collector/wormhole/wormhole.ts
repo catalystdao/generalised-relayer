@@ -48,10 +48,27 @@ function loadWormholeConfig(
 
   const wormholeChainIdMap = loadWormholeChainIdMap(wormholeChainConfigs);
 
+  if (process.env.REDIS_PORT == undefined) {
+    throw new Error(`Failed to load environment variable 'REDIS_PORT'`)
+  }
+  const redisPort = parseInt(process.env.REDIS_PORT);
+
+  if (process.env.SPY_PORT == undefined) {
+    throw new Error(`Failed to load environment variable 'SPY_PORT'`)
+  }
+  const spyPort = parseInt(process.env.SPY_PORT);
+
+  const redisDBIndex = process.env.REDIS_WORMHOLE_DB_INDEX != undefined
+    ? parseInt(process.env.REDIS_WORMHOLE_DB_INDEX)
+    : undefined;
+
   return {
     isTestnet: globalWormholeConfig.globalProperties['isTestnet'],
-    useDocker: process.env.USE_DOCKER == 'true', //TODO this should be loaded from the configService
-    spyPort: process.env.SPY_PORT ?? '', //TODO this should be loaded from the configService
+    redisHost: process.env.REDIS_HOST,
+    redisPort,
+    redisDBIndex,
+    spyHost: process.env.SPY_HOST,
+    spyPort,
     wormholeChainConfigs,
     wormholeChainIdMap,
     loggerOptions: loggerService.loggerOptions,

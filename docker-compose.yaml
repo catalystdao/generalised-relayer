@@ -42,7 +42,8 @@ services:
       - ./.env:/usr/catalyst-relayer/.env
     environment:
       - NODE_ENV=${NODE_ENV}
-      - USE_DOCKER=true
+      - REDIS_HOST=redis
+      - SPY_HOST=spy
     expose:
       - ${RELAYER_PORT}:${RELAYER_PORT}
     container_name: relayer
