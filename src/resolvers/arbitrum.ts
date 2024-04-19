@@ -22,6 +22,7 @@ export class ArbitrumResolver extends Resolver {
         this.resolverType = RESOLVER_TYPE_ARBITRUM;
     }
 
+    //TODO implement block number caching?
     async getTransactionBlockNumber(
         observedBlockNumber: number
     ): Promise<number> {
