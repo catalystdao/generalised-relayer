@@ -67,8 +67,6 @@ export class Store {
   // subscriptions.
   redisSubscriptions: Redis | undefined;
 
-  readonly host: string | undefined;
-
   static readonly relayerStorePrefix: string = 'relayer';
   static readonly bountyMidfix: string = 'bounty';
   static readonly ambMidfix: string = 'amb';
@@ -92,7 +90,7 @@ export class Store {
 
     this.redis = new Redis(this.redisPort, {
       db: this.redisDBIndex,
-      host: this.host,
+      host: this.redisHost,
     });
   }
 
