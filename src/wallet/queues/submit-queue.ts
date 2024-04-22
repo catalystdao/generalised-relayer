@@ -8,8 +8,8 @@ import { tryErrorToString } from "src/common/utils";
 export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, PendingTransaction> {
 
     constructor(
-        readonly retryInterval: number,
-        readonly maxTries: number,
+        retryInterval: number,
+        maxTries: number,
         private readonly transactionHelper: TransactionHelper,
         private readonly signer: Wallet,
         private readonly logger: pino.Logger
@@ -21,7 +21,7 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
         );
     }
 
-    protected async onProcessOrders(): Promise<void> {
+    protected override async onProcessOrders(): Promise<void> {
         await this.transactionHelper.updateFeeData();
         await this.transactionHelper.runBalanceCheck();
     }
@@ -88,7 +88,7 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
 
     }
 
-    protected async onOrderCompletion(
+    protected override async onOrderCompletion(
         order: WalletTransactionRequest,
         success: boolean,
         result: PendingTransaction | null,

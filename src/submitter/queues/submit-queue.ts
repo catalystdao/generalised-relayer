@@ -16,8 +16,8 @@ export class SubmitQueue extends ProcessingQueue<
     readonly relayerAddress: string;
 
     constructor(
-        readonly retryInterval: number,
-        readonly maxTries: number,
+        retryInterval: number,
+        maxTries: number,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         relayerAddress: string,
         private readonly wallet: WalletInterface,
@@ -120,7 +120,7 @@ export class SubmitQueue extends ProcessingQueue<
         return true;
     }
 
-    protected async onOrderCompletion(
+    protected override async onOrderCompletion(
         order: SubmitOrder,
         success: boolean,
         result: SubmitOrderResult | null,

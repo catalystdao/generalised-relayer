@@ -15,6 +15,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
+    "noImplicitOverride": true,
     "noImplicitReturns": true,
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true,

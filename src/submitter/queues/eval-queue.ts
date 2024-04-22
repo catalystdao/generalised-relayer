@@ -15,8 +15,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     readonly relayerAddress: string;
 
     constructor(
-        readonly retryInterval: number,
-        readonly maxTries: number,
+        retryInterval: number,
+        maxTries: number,
         private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         private readonly chainId: string,
@@ -67,7 +67,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         return true;
     }
 
-    protected async onOrderCompletion(
+    protected override async onOrderCompletion(
         order: EvalOrder,
         success: boolean,
         result: SubmitOrder | null,

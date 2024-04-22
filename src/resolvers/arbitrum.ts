@@ -6,7 +6,7 @@ import { tryErrorToString, wait } from "src/common/utils";
 export const RESOLVER_TYPE_ARBITRUM = 'arbitrum';
 
 export class ArbitrumResolver extends Resolver {
-    readonly resolverType;
+    override readonly resolverType;
 
     constructor(
         config: ResolverConfig,
@@ -23,7 +23,7 @@ export class ArbitrumResolver extends Resolver {
     }
 
     //TODO implement block number caching?
-    async getTransactionBlockNumber(
+    override async getTransactionBlockNumber(
         observedBlockNumber: number
     ): Promise<number> {
 

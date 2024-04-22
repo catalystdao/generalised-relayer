@@ -9,8 +9,8 @@ import { tryErrorToString } from 'src/common/utils';
 export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedTransaction> {
 
     constructor(
-        readonly retryInterval: number,
-        readonly maxTries: number,
+        retryInterval: number,
+        maxTries: number,
         private readonly confirmations: number,
         private readonly transactionHelper: TransactionHelper,
         private readonly confirmationTimeout: number,
@@ -29,10 +29,7 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
         }
     }
 
-    async init(): Promise<void> {
-    }
-
-    protected async onOrderInit(order: PendingTransaction): Promise<void> {
+    protected override async onOrderInit(order: PendingTransaction): Promise<void> {
         order.txReplacement = undefined;
         order.confirmationError = undefined;
     }
@@ -196,7 +193,7 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
         return true;
     }
 
-    protected async onOrderCompletion(
+    protected override async onOrderCompletion(
         order: PendingTransaction,
         success: boolean,
         result: null,
