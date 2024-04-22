@@ -9,10 +9,10 @@ export const DEFAULT_PRIORITY_ADJUSTMENT_FACTOR = 1.1;
 export const MAX_GAS_PRICE_ADJUSTMENT_FACTOR = 5;
 
 export class TransactionHelper {
-    private transactionNonce: number;
+    private transactionNonce: number = -1;
     private feeData: FeeData | undefined;
 
-    private priorityAdjustmentFactor: bigint;
+    private priorityAdjustmentFactor: bigint = 0n;
 
     // Config for legacy transactions
     private gasPriceAdjustmentFactor: bigint | undefined;
@@ -24,12 +24,12 @@ export class TransactionHelper {
     private maxAllowedPriorityFeePerGas: bigint | undefined;
 
     // Balance config
-    private walletBalance: bigint;
+    private walletBalance: bigint = 0n;
     private transactionsSinceLastBalanceUpdate: number = 0;
     private isBalanceLow: boolean = false;
 
     private lowBalanceWarning: bigint | undefined;
-    private balanceUpdateInterval: number;
+    private balanceUpdateInterval: number = -1;
 
     constructor(
         gasFeeConfig: GasFeeConfig,

@@ -79,6 +79,7 @@ class PersisterWorker {
     async queueGet(): Promise<StoreUpdate[] | undefined> {
         const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
         if (queue) return JSON.parse(queue);
+        return undefined;
     }
 
     async queueShift(): Promise<StoreUpdate | undefined> {
@@ -91,6 +92,7 @@ class PersisterWorker {
 
             return returnElement;
         }
+        return undefined;
     }
 
     async queuePush(message: StoreUpdate) {
@@ -128,7 +130,10 @@ class PersisterWorker {
 
         // Listen for key updates.
         this.logger.info(`Persister listening on on ${'key'}`);
-        await this.store.on('key', (message: StoreUpdate) => {
+        await this.store.on('key', (event: any) => {
+
+            //TODO verify event format
+            const message = event as StoreUpdate;
             void this.queuePush(message);
         });
     // Listen for proofs. Notice that proofs aren't submitted so we need to listen seperately.
@@ -325,6 +330,7 @@ class PersisterWorker {
         } else if (keyKeys.includes(Store.proofMidfix)) {
             this.logger.debug(`${key}, proof`);
         }
+        return undefined;
     }
 
     // examineProof(): (message: AmbPayload) => void {

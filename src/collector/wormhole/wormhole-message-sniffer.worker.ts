@@ -33,7 +33,7 @@ class WormholeMessageSnifferWorker {
 
     private readonly resolver: Resolver;
 
-    private currentStatus: MonitorStatus | null;
+    private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
 

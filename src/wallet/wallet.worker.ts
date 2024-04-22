@@ -3,7 +3,6 @@ import pino, { LoggerOptions } from "pino";
 import { workerData, parentPort, MessageChannel, MessagePort } from 'worker_threads';
 import { tryErrorToString, wait } from "src/common/utils";
 import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
-import { Store } from "src/store/store.lib";
 import { TransactionHelper } from "./transaction-helper";
 import { ConfirmQueue } from "./queues/confirm-queue";
 import { WalletWorkerData } from "./wallet.service";
@@ -12,7 +11,6 @@ import { SubmitQueue } from "./queues/submit-queue";
 
 
 class WalletWorker {
-    private readonly store: Store;
     private readonly logger: pino.Logger;
 
     private readonly config: WalletWorkerData;

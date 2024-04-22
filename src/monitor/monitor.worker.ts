@@ -19,7 +19,7 @@ class MonitorWorker {
     private readonly ports: Record<number, MessagePort> = {};
 
     private lastBroadcastBlockNumber = -1;
-    private latestBlock: Block | null;
+    private latestBlock: Block | null = null;
 
 
     constructor() {

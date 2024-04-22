@@ -190,7 +190,11 @@ class SubmitterWorker {
             `Listing for messages to submit.`,
         );
 
-        await this.store.on(listenToChannel, (message: AmbPayload) => {
+        await this.store.on(listenToChannel, (event: any) => {
+
+            //TODO verify event format
+            const message = event as AmbPayload;
+
             void this.store.getAmb(message.messageIdentifier)
                 .then(ambMessage => {
                     if (ambMessage == null) {

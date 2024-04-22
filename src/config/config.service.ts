@@ -48,10 +48,10 @@ export class ConfigService {
         let rawConfig;
         try {
             rawConfig = readFileSync(configFileName, 'utf-8');
-        } catch (error) {
+        } catch (error: any) {
             throw new Error(
                 'Unable to load the relayer configuration file ${configFileName}. Cause: ' +
-          error.message,
+                error?.message,
             );
         }
 

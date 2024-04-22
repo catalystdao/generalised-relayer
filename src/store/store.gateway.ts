@@ -28,7 +28,10 @@ export class StoreGateway implements OnGatewayInit {
     private async listenForNewAMBMessages(): Promise<void> {
         this.loggerService.info(`Listening for new AMB messages to broadcast.`);
 
-        await this.store.on(Store.newAMBChannel, (message: AmbMessage) => {
+        await this.store.on(Store.newAMBChannel, (event: any) => {
+            
+            //TODO verify event format
+            const message = event as AmbMessage;
             this.onAMBMessageObservable.next({
                 event: newAMBMessageEventName,
                 data: message

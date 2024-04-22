@@ -6,9 +6,9 @@ import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class PersisterService {
-    private worker: Worker;
+    private worker?: Worker;
 
-    private chains: string[];
+    private chains: string[] = [];
 
     constructor(
         private readonly configService: ConfigService,

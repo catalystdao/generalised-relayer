@@ -28,7 +28,7 @@ class PolymerCollectorSnifferWorker {
     private readonly provider: JsonRpcProvider;
     private readonly logger: pino.Logger;
 
-    private currentStatus: MonitorStatus | null;
+    private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
 
