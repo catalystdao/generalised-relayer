@@ -10,17 +10,17 @@ import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 
 class GetterWorker {
 
-    readonly config: GetterWorkerData;
+    private readonly config: GetterWorkerData;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
-    readonly incentivesEscrowInterface: IMessageEscrowEventsInterface;
-    readonly incentiveAddresses: string[];
-    readonly topics: string[][];
+    private readonly incentivesEscrowInterface: IMessageEscrowEventsInterface;
+    private readonly incentiveAddresses: string[];
+    private readonly topics: string[][];
 
-    readonly store: Store;
-    readonly provider: JsonRpcProvider;
-    readonly logger: pino.Logger;
+    private readonly store: Store;
+    private readonly provider: JsonRpcProvider;
+    private readonly logger: pino.Logger;
 
     private currentStatus: MonitorStatus | null;
     private monitor: MonitorInterface;

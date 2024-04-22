@@ -18,21 +18,21 @@ import { SubmitterWorkerData } from './submitter.service';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 
 class SubmitterWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
+    private readonly store: Store;
+    private readonly logger: pino.Logger;
 
-    readonly config: SubmitterWorkerData;
+    private readonly config: SubmitterWorkerData;
 
-    readonly provider: JsonRpcProvider;
-    readonly signer: Wallet;
+    private readonly provider: JsonRpcProvider;
+    private readonly signer: Wallet;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
-    readonly wallet: WalletInterface;
+    private readonly wallet: WalletInterface;
 
-    readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
-    readonly evalQueue: EvalQueue;
-    readonly submitQueue: SubmitQueue;
+    private readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
+    private readonly evalQueue: EvalQueue;
+    private readonly submitQueue: SubmitQueue;
 
     private isStalled = false;
 

@@ -21,17 +21,17 @@ type StoreUpdate = {
 const REDIS_QUEUE_KEY = 'relayer:presister:queue';
 
 class PersisterWorker {
-    readonly logger: pino.Logger;
+    private readonly logger: pino.Logger;
 
-    readonly postgresConnectionString: string;
+    private readonly postgresConnectionString: string;
 
-    readonly store: Store;
-    readonly client: Client;
-    readonly db: NodePgDatabase;
+    private readonly store: Store;
+    private readonly client: Client;
+    private readonly db: NodePgDatabase;
 
-    readonly chains: string[];
+    private readonly chains: string[];
 
-    readonly processingDelay = 200;
+    private readonly processingDelay = 200;
 
     constructor() {
         this.postgresConnectionString = workerData.postgresConnectionString;

@@ -19,19 +19,19 @@ import { Resolver, loadResolver } from 'src/resolvers/resolver';
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 class WormholeMessageSnifferWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
+    private readonly store: Store;
+    private readonly logger: pino.Logger;
 
-    readonly config: WormholeMessageSnifferWorkerData;
+    private readonly config: WormholeMessageSnifferWorkerData;
 
-    readonly provider: JsonRpcProvider;
+    private readonly provider: JsonRpcProvider;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
-    readonly wormholeContract: IWormhole;
-    readonly messageEscrowContract: IncentivizedMessageEscrow;
+    private readonly wormholeContract: IWormhole;
+    private readonly messageEscrowContract: IncentivizedMessageEscrow;
 
-    readonly resolver: Resolver;
+    private readonly resolver: Resolver;
 
     private currentStatus: MonitorStatus | null;
     private monitor: MonitorInterface;

@@ -12,27 +12,27 @@ import { SubmitQueue } from "./queues/submit-queue";
 
 
 class WalletWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
+    private readonly store: Store;
+    private readonly logger: pino.Logger;
 
-    readonly config: WalletWorkerData;
+    private readonly config: WalletWorkerData;
 
-    readonly provider: JsonRpcProvider;
-    readonly signer: Wallet;
+    private readonly provider: JsonRpcProvider;
+    private readonly signer: Wallet;
 
-    readonly chainId: string;
-    readonly chainName: string;
+    private readonly chainId: string;
+    private readonly chainName: string;
 
-    readonly transactionHelper: TransactionHelper;
+    private readonly transactionHelper: TransactionHelper;
 
-    readonly submitQueue: SubmitQueue;
-    readonly confirmQueue: ConfirmQueue;
-    readonly newRequestsQueue: WalletTransactionRequest[] = [];
+    private readonly submitQueue: SubmitQueue;
+    private readonly confirmQueue: ConfirmQueue;
+    private readonly newRequestsQueue: WalletTransactionRequest[] = [];
 
     private isStalled = false;
 
     private portsCount = 0;
-    readonly ports: Record<number, MessagePort> = {};
+    private readonly ports: Record<number, MessagePort> = {};
 
 
     constructor() {

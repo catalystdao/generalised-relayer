@@ -21,16 +21,16 @@ const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 
 class WormholeRecoveryWorker {
-    readonly store: Store;
-    readonly logger: pino.Logger;
+    private readonly store: Store;
+    private readonly logger: pino.Logger;
 
-    readonly config: WormholeRecoveryWorkerData;
+    private readonly config: WormholeRecoveryWorkerData;
 
-    readonly provider: JsonRpcProvider;
+    private readonly provider: JsonRpcProvider;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
-    readonly messageEscrowContract: IncentivizedMessageEscrow;
+    private readonly messageEscrowContract: IncentivizedMessageEscrow;
 
     constructor() {
         this.config = workerData as WormholeRecoveryWorkerData;

@@ -14,19 +14,19 @@ const abi = AbiCoder.defaultAbiCoder();
 
 class PolymerCollectorSnifferWorker {
 
-    readonly config: PolymerWorkerData;
+    private readonly config: PolymerWorkerData;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
-    readonly incentivesAddress: string;
-    readonly polymerAddress: string;
-    readonly ibcEventEmitterInterface: IbcEventEmitterInterface;
-    readonly filterTopics: string[][];
+    private readonly incentivesAddress: string;
+    private readonly polymerAddress: string;
+    private readonly ibcEventEmitterInterface: IbcEventEmitterInterface;
+    private readonly filterTopics: string[][];
 
-    readonly resolver: Resolver;
-    readonly store: Store;
-    readonly provider: JsonRpcProvider;
-    readonly logger: pino.Logger;
+    private readonly resolver: Resolver;
+    private readonly store: Store;
+    private readonly provider: JsonRpcProvider;
+    private readonly logger: pino.Logger;
 
     private currentStatus: MonitorStatus | null;
     private monitor: MonitorInterface;

@@ -30,10 +30,10 @@ const DEFAULT_SPY_HOST = '127.0.0.1';
 const WORMHOLE_ENGINE_NAMESPACE = "wormholeEngine";
 
 class WormholeEngineWorker {
-    readonly config: WormholeRelayerEngineWorkerData;
+    private readonly config: WormholeRelayerEngineWorkerData;
 
-    readonly logger: pino.Logger;
-    readonly stores: Map<WormholeChainId, Store>;
+    private readonly logger: pino.Logger;
+    private readonly stores: Map<WormholeChainId, Store>;
 
     constructor() {
         this.config = workerData as WormholeRelayerEngineWorkerData;

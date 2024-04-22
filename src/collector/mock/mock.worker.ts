@@ -34,21 +34,21 @@ import { Resolver, loadResolver } from 'src/resolvers/resolver';
  */
 class MockCollectorWorker {
 
-    readonly config: MockWorkerData;
+    private readonly config: MockWorkerData;
 
-    readonly chainId: string;
+    private readonly chainId: string;
 
     private readonly signingKey: SigningKey;
 
-    readonly incentivesAddress: string;
-    readonly incentivesAddressBytes32: string;
-    readonly incentivesEscrowInterface: IncentivizedMockEscrowInterface;
-    readonly filterTopics: string[][];
+    private readonly incentivesAddress: string;
+    private readonly incentivesAddressBytes32: string;
+    private readonly incentivesEscrowInterface: IncentivizedMockEscrowInterface;
+    private readonly filterTopics: string[][];
 
-    readonly resolver: Resolver;
-    readonly store: Store;
-    readonly provider: JsonRpcProvider;
-    readonly logger: pino.Logger;
+    private readonly resolver: Resolver;
+    private readonly store: Store;
+    private readonly provider: JsonRpcProvider;
+    private readonly logger: pino.Logger;
 
     private currentStatus: MonitorStatus | null;
     private monitor: MonitorInterface;
