@@ -479,7 +479,8 @@ class WalletWorker {
 
         const port = this.ports[request.portId];
         if (port == undefined) {
-            this.logger.error({ request }, 'Failed to send transaction result: invalid portId.')
+            this.logger.error({ request }, 'Failed to send transaction result: invalid portId.');
+            return;
         }
 
         const response: WalletTransactionRequestResponse = {
