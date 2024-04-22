@@ -7,10 +7,10 @@ import { PrioritiseMessage } from './types/store.types';
 @Controller()
 export class StoreController {
     constructor(
-      private readonly loggerService: LoggerService,
+        private readonly loggerService: LoggerService,
     ) {}
 
-  @Get('getAMBMessages')
+    @Get('getAMBMessages')
     async getAMBMessages(@Query() query: any): Promise<any | undefined> {
         const chainId = query.chainId;
         const txHash = query.txHash;
@@ -24,24 +24,24 @@ export class StoreController {
         if (amb != null) return JSON.stringify(amb);
     }
 
-  @Post('prioritiseAMBMessage')
-  async prioritiseAMBMessage(@Body() body: PrioritiseMessage) {
-      //TODO schema validate request
+    @Post('prioritiseAMBMessage')
+    async prioritiseAMBMessage(@Body() body: PrioritiseMessage) {
+        //TODO schema validate request
 
-      this.loggerService.info(
-          {
-              messageIdentifier: body.messageIdentifier,
-              amb: body.amb,
-              sourceChainId: body.sourceChainId,
-              destinationChainId: body.destinationChainId,
-          },
-          `Message prioritisation requested.`
-      )
+        this.loggerService.info(
+            {
+                messageIdentifier: body.messageIdentifier,
+                amb: body.amb,
+                sourceChainId: body.sourceChainId,
+                destinationChainId: body.destinationChainId,
+            },
+            `Message prioritisation requested.`
+        )
 
-      const store = new Store();
-      await store.setAmbPriority(
-          body.messageIdentifier,
-          true,
-      );
-  }
+        const store = new Store();
+        await store.setAmbPriority(
+            body.messageIdentifier,
+            true,
+        );
+    }
 }

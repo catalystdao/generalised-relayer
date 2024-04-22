@@ -10,8 +10,8 @@ import { IncentivizedMessageEscrow } from 'src/contracts';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
-  SubmitOrder,
-  SubmitOrderResult
+    SubmitOrder,
+    SubmitOrderResult
 > {
     readonly relayerAddress: string;
 

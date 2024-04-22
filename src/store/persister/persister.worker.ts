@@ -14,8 +14,8 @@ import { bountyFromJson } from '../postgres/postgres.transformer';
 import { and, eq } from 'drizzle-orm';
 
 type StoreUpdate = {
-  key: string;
-  action: 'set' | 'del';
+    key: string;
+    action: 'set' | 'del';
 };
 
 const REDIS_QUEUE_KEY = 'relayer:presister:queue';
@@ -56,7 +56,7 @@ class PersisterWorker {
     }
 
     async run(): Promise<void> {
-    // Run migration
+        // Run migration
         this.logger.info(`Running migrations...`);
         const migrationPromise = migrate(this.db, { migrationsFolder: 'drizzle' });
         this.logger.info(`Migrations finished.`);
@@ -108,7 +108,7 @@ class PersisterWorker {
     }
 
     async consumeQueue() {
-    // Copy queue to memory.
+        // Copy queue to memory.
 
         while (((await this.queueGet())?.length ?? 0) > 0) {
             const message = await this.queueShift();
@@ -126,7 +126,7 @@ class PersisterWorker {
     // }
 
     async listen() {
-    // Get a constant reference to the queue.
+        // Get a constant reference to the queue.
 
         // Listen for key updates.
         this.logger.info(`Persister listening on on ${'key'}`);
@@ -136,14 +136,14 @@ class PersisterWorker {
             const message = event as StoreUpdate;
             void this.queuePush(message);
         });
-    // Listen for proofs. Notice that proofs aren't submitted so we need to listen seperately.
-    // We need to iter over each key seperately.
-    // const chains = this.chains;
-    // for (const chain of chains) {
-    //   const channel = Store.combineString('submit', chain);
-    //   this.logger.info(`Persister listening on on ${channel}`);
-    //   this.store.on(channel, this.examineProof());
-    // }
+        // Listen for proofs. Notice that proofs aren't submitted so we need to listen seperately.
+        // We need to iter over each key seperately.
+        // const chains = this.chains;
+        // for (const chain of chains) {
+        //   const channel = Store.combineString('submit', chain);
+        //   this.logger.info(`Persister listening on on ${channel}`);
+        //   this.store.on(channel, this.examineProof());
+        // }
     }
 
     // I don't know why, but without the function factory, 'this' is empty and we cannot use this.store or this.logger.

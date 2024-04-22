@@ -129,8 +129,8 @@ export class Store {
     }
 
     async set(key: string, value: string) {
-    // We want to notify a potential subscribed that there has been a change to this key.
-    // Lets set the key first.
+        // We want to notify a potential subscribed that there has been a change to this key.
+        // Lets set the key first.
         await this.redis.set(key, value);
         // Then post that message.
         await this.postMessage('key', { key, action: 'set' });
@@ -204,12 +204,12 @@ export class Store {
             ),
         );
         const bounty: Bounty | null =
-      query === null ? undefined : JSON.parse(query);
+            query === null ? undefined : JSON.parse(query);
         if (
             bounty != null &&
-      bounty.priceOfDeliveryGas &&
-      bounty.priceOfAckGas &&
-      bounty.targetDelta
+            bounty.priceOfDeliveryGas &&
+            bounty.priceOfAckGas &&
+            bounty.targetDelta
         ) {
             bounty.priceOfDeliveryGas = BigInt(bounty.priceOfDeliveryGas);
             bounty.priceOfAckGas = BigInt(bounty.priceOfAckGas);
@@ -227,11 +227,11 @@ export class Store {
      * AFTER it has already been stored. (say the relayer is rerun from scratch on an already populated redis store)
      */
     async registerBountyPlaced(event: {
-    messageIdentifier: string;
-    incentive: any;
-    incentivesAddress: string;
-    transactionHash: string;
-  }) {
+        messageIdentifier: string;
+        incentive: any;
+        incentivesAddress: string;
+        transactionHash: string;
+    }) {
         const chainId = this.chainId;
         if (chainId === null)
             throw new Error('ChainId is not set: This connection is readonly');
@@ -280,9 +280,9 @@ export class Store {
      * Register the destination address of a bounty.
      */
     async registerDestinationAddress(event: {
-    messageIdentifier: string;
-    destinationAddress: string;
-  }) {
+        messageIdentifier: string;
+        destinationAddress: string;
+    }) {
         const chainId = this.chainId;
         if (chainId === null)
             throw new Error('ChainId is not set: This connection is readonly');
@@ -310,10 +310,10 @@ export class Store {
      * it is the first time the bounty has been seen.
      */
     async registerMessageDelivered(event: {
-    messageIdentifier: string;
-    incentivesAddress: string;
-    transactionHash: string;
-  }) {
+        messageIdentifier: string;
+        incentivesAddress: string;
+        transactionHash: string;
+    }) {
         const chainId = this.chainId;
         if (chainId === null)
             throw new Error('ChainId is not set: This connection is readonly');
@@ -355,10 +355,10 @@ export class Store {
      * it is the first time the bounty has been seen.
      */
     async registerBountyClaimed(event: {
-    messageIdentifier: string;
-    incentivesAddress: string;
-    transactionHash: string;
-  }) {
+        messageIdentifier: string;
+        incentivesAddress: string;
+        transactionHash: string;
+    }) {
         const chainId = this.chainId;
         if (chainId === null)
             throw new Error('ChainId is not set: This connection is readonly');
@@ -400,12 +400,12 @@ export class Store {
      * This function cannot handle the case where it is the first time that the bounty is seen.
      */
     async registerBountyIncreased(event: {
-    messageIdentifier: string;
-    newDeliveryGasPrice: bigint;
-    newAckGasPrice: bigint;
-    incentivesAddress: string;
-    transactionHash: string;
-  }) {
+        messageIdentifier: string;
+        newDeliveryGasPrice: bigint;
+        newAckGasPrice: bigint;
+        incentivesAddress: string;
+        transactionHash: string;
+    }) {
         const chainId = this.chainId;
         if (chainId === null)
             throw new Error('ChainId is not set: This connection is readonly');
@@ -440,7 +440,7 @@ export class Store {
         const currentAckGasPrice = BigInt(bountyAsRead.priceOfAckGas ?? '0');
         // Otherwise we need to check get the maximums of current and observed new values.
         const hasDeliveryGasPriceIncreased =
-      currentDeliveryGasPrice < newDeliveryGasPrice;
+            currentDeliveryGasPrice < newDeliveryGasPrice;
         const hasAckGasPriceIncreased = currentAckGasPrice < newAckGasPrice;
         const hasChanged = hasDeliveryGasPriceIncreased || hasAckGasPriceIncreased;
         // If hasChanged is false, then we don't need to do anything.
@@ -471,7 +471,7 @@ export class Store {
             ),
         );
         const amb: AmbMessage | null =
-      query === null ? undefined : JSON.parse(query);
+            query === null ? undefined : JSON.parse(query);
 
         return amb;
     }
@@ -489,7 +489,7 @@ export class Store {
             ),
         );
         const amb: AmbPayload | null =
-      query === null ? undefined : JSON.parse(query);
+            query === null ? undefined : JSON.parse(query);
 
         return amb;
     }
@@ -508,7 +508,7 @@ export class Store {
         );
 
         const messageIdentifiers: string[] =
-      query === null ? [] : JSON.parse(query);
+            query === null ? [] : JSON.parse(query);
 
         const ambs: Promise<AmbMessage | null>[] = [];
         for (const messageId of messageIdentifiers) {
@@ -546,7 +546,7 @@ export class Store {
             Store.ambMidfix,
             messageIdentifier,
         );
-    
+
         const query: string | null = await this.redis.get(key);
 
         if (query == null) {

@@ -151,7 +151,7 @@ class MockCollectorWorker {
                     this.config.startingBlock ?? this.currentStatus.blockNumber
                 );
             }
-            
+
             await wait(this.config.processingInterval);
         }
 

@@ -13,24 +13,24 @@ import { CollectorModuleInterface } from '../collector.controller';
 import { MonitorService } from 'src/monitor/monitor.service';
 
 interface GlobalPolymerConfig {
-  retryInterval: number;
-  processingInterval: number;
-  maxBlocks: number | null;
+    retryInterval: number;
+    processingInterval: number;
+    maxBlocks: number | null;
 }
 
 export interface PolymerWorkerData {
-  chainId: string;
-  rpc: string;
-  resolver: string | null;
-  startingBlock?: number;
-  stoppingBlock?: number;
-  retryInterval: number;
-  processingInterval: number;
-  maxBlocks: number | null;
-  incentivesAddress: string;
-  monitorPort: MessagePort;
-  loggerOptions: LoggerOptions;
-  polymerAddress: string;
+    chainId: string;
+    rpc: string;
+    resolver: string | null;
+    startingBlock?: number;
+    stoppingBlock?: number;
+    retryInterval: number;
+    processingInterval: number;
+    maxBlocks: number | null;
+    incentivesAddress: string;
+    monitorPort: MessagePort;
+    loggerOptions: LoggerOptions;
+    polymerAddress: string;
 }
 
 function loadGlobalPolymerConfig(
@@ -79,7 +79,7 @@ async function loadWorkerData(
 
     if (
         incentivesAddress == undefined ||
-    polymerAddress == undefined
+        polymerAddress == undefined
     ) {
         return null;
     };

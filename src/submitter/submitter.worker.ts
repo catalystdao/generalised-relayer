@@ -54,17 +54,17 @@ class SubmitterWorker {
         this.wallet = new WalletInterface(this.config.walletPort);
 
         [this.evalQueue, this.submitQueue] =
-      this.initializeQueues(
-          this.config.retryInterval,
-          this.config.maxTries,
-          this.store,
-          this.loadIncentivesContracts(this.config.incentivesAddresses),
-          this.config.chainId,
-          this.config.gasLimitBuffer,
-          this.config.walletPublicKey,
-          this.wallet,
-          this.logger,
-      );
+            this.initializeQueues(
+                this.config.retryInterval,
+                this.config.maxTries,
+                this.store,
+                this.loadIncentivesContracts(this.config.incentivesAddresses),
+                this.config.chainId,
+                this.config.gasLimitBuffer,
+                this.config.walletPublicKey,
+                this.wallet,
+                this.logger,
+            );
 
         this.initiateIntervalStatusLog();
     }
@@ -283,8 +283,8 @@ class SubmitterWorker {
         return Math.max(
             0,
             this.config.maxPendingTransactions -
-        this.evalQueue.size -
-        this.submitQueue.size
+            this.evalQueue.size -
+            this.submitQueue.size
         );
     }
 }

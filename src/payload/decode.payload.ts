@@ -40,38 +40,38 @@ export function encodeRelayerAddress(relayerAddress: string): string {
  */
 
 export enum MessageContext {
-  CTX_SOURCE_TO_DESTINATION,
-  CTX_DESTINATION_TO_SOURCE,
+    CTX_SOURCE_TO_DESTINATION,
+    CTX_DESTINATION_TO_SOURCE,
 }
 
 type COMMON_MESSAGE = {
-  context: MessageContext;
-  messageIdentifier: string;
-  rawSourceApplicationAddress: string;
-  sourceApplicationAddress: string;
-  message: string;
+    context: MessageContext;
+    messageIdentifier: string;
+    rawSourceApplicationAddress: string;
+    sourceApplicationAddress: string;
+    message: string;
 };
 
 export type SOURCE_TO_DESTINATION = COMMON_MESSAGE & {
-  context: MessageContext.CTX_SOURCE_TO_DESTINATION;
-  messageIdentifier: string;
-  rawToApplication: string;
-  toApplication: string;
-  deadline: bigint;
-  maxGasLimit: bigint;
+    context: MessageContext.CTX_SOURCE_TO_DESTINATION;
+    messageIdentifier: string;
+    rawToApplication: string;
+    toApplication: string;
+    deadline: bigint;
+    maxGasLimit: bigint;
 };
 export type DESTINATION_TO_SOURCE = COMMON_MESSAGE & {
-  context: MessageContext.CTX_DESTINATION_TO_SOURCE;
-  messageIdentifier: string;
-  relayerRecipient: string;
-  gasSpent: bigint;
-  executionTime: number;
-  rawMessage: string;
+    context: MessageContext.CTX_DESTINATION_TO_SOURCE;
+    messageIdentifier: string;
+    relayerRecipient: string;
+    gasSpent: bigint;
+    executionTime: number;
+    rawMessage: string;
 };
 
 export type GeneralisedIncentiveMessage =
-  | SOURCE_TO_DESTINATION
-  | DESTINATION_TO_SOURCE;
+    | SOURCE_TO_DESTINATION
+    | DESTINATION_TO_SOURCE;
 
 export function ParsePayload(
     payload: string,
@@ -150,6 +150,6 @@ export function ParsePayload(
             `Context not found: ${context}, ${generalisedIncentiveMessage} parsing as undefiend`,
         );
         return undefined;
-    // throw Error(`Context not found? Could be incorrectly decoded message. Context: ${context}`)
+        // throw Error(`Context not found? Could be incorrectly decoded message. Context: ${context}`)
     }
 }

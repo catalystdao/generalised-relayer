@@ -48,7 +48,7 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
 
         this.transactionHelper.increaseTransactionNonce();
 
-        return { result: { ...order, tx} };
+        return { result: { ...order, tx } };
     }
 
     protected async handleFailedOrder(order: WalletTransactionRequest, retryCount: number, error: any): Promise<boolean> {

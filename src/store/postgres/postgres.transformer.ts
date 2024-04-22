@@ -4,9 +4,9 @@ import { bounties } from './postgres.schema';
 export function bountyFromJson(
     bounty: BountyJson,
 ): typeof bounties.$inferInsert & {
-  submitTransactionHash?: string;
-  execTransactionHash?: string;
-  ackTransactionHash?: string;
+    submitTransactionHash?: string;
+    execTransactionHash?: string;
+    ackTransactionHash?: string;
 } {
     return {
         bountyIdentifier: bounty.messageIdentifier,

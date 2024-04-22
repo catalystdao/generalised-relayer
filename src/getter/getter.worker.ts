@@ -66,7 +66,7 @@ class GetterWorker {
     private initializeContractTypes(): {
         chainInterfaceInterface: IMessageEscrowEventsInterface,
         topics: string[][]
-        } {
+    } {
 
         const chainInterfaceInterface = IMessageEscrowEvents__factory.createInterface();
         const topics = [
@@ -113,7 +113,7 @@ class GetterWorker {
                     this.config.startingBlock ?? this.currentStatus.blockNumber
                 );
             }
-            
+
             await wait(this.config.processingInterval);
         }
 
@@ -145,7 +145,7 @@ class GetterWorker {
                 );
 
                 await this.queryAndProcessEvents(fromBlock, toBlock);
-                
+
                 if (toBlock >= stopBlock) {
                     this.logger.info(
                         { stopBlock: toBlock },
@@ -235,15 +235,15 @@ class GetterWorker {
             case 'BountyPlaced':
                 await this.handleBountyPlacedEvent(log, parsedLog);
                 break;
-  
+
             case 'BountyClaimed':
                 await this.handleBountyClaimedEvent(log, parsedLog);
                 break;
-  
+
             case 'MessageDelivered':
                 await this.handleMessageDeliveredEvent(log, parsedLog);
                 break;
-  
+
             case 'BountyIncreased':
                 await this.handleBountyIncreasedEvent(log, parsedLog);
                 break;
@@ -267,9 +267,9 @@ class GetterWorker {
 
         const messageIdentifier = event.messageIdentifier;
         const incentive = event.incentive;
-    
+
         this.logger.info({ messageIdentifier }, `BountyPlaced event found.`);
-    
+
         await this.store.registerBountyPlaced({
             messageIdentifier,
             incentive,
@@ -277,7 +277,7 @@ class GetterWorker {
             transactionHash: log.transactionHash,
         });
     };
-    
+
     private async handleBountyClaimedEvent(
         log: Log,
         parsedLog: LogDescription
@@ -286,16 +286,16 @@ class GetterWorker {
         const event = parsedLog.args as unknown as BountyClaimedEvent.OutputObject;
 
         const messageIdentifier = event.uniqueIdentifier;
-    
+
         this.logger.info({ messageIdentifier }, `BountyClaimed event found.`);
-    
+
         await this.store.registerBountyClaimed({
             messageIdentifier,
             incentivesAddress: log.address,
             transactionHash: log.transactionHash,
         });
     };
-    
+
     private async handleMessageDeliveredEvent(
         log: Log,
         parsedLog: LogDescription
@@ -304,16 +304,16 @@ class GetterWorker {
         const event = parsedLog.args as unknown as MessageDeliveredEvent.OutputObject;
 
         const messageIdentifier = event.messageIdentifier;
-    
+
         this.logger.info({ messageIdentifier }, `MessageDelivered event found.`);
-    
+
         await this.store.registerMessageDelivered({
             messageIdentifier,
             incentivesAddress: log.address,
             transactionHash: log.transactionHash,
         });
     };
-    
+
     private async handleBountyIncreasedEvent(
         log: Log,
         parsedLog: LogDescription
@@ -322,9 +322,9 @@ class GetterWorker {
         const event = parsedLog.args as unknown as BountyIncreasedEvent.OutputObject;
 
         const messageIdentifier = event.messageIdentifier;
-    
+
         this.logger.info({ messageIdentifier }, `BountyIncreased event found.`);
-    
+
         await this.store.registerBountyIncreased({
             messageIdentifier,
             newDeliveryGasPrice: event.newDeliveryGasPrice,

@@ -9,7 +9,7 @@ const newAMBMessageEventName = 'ambMessage';
 @WebSocketGateway()
 export class StoreGateway implements OnGatewayInit {
 
-    constructor(private readonly loggerService: LoggerService) { }
+    constructor(private readonly loggerService: LoggerService) {}
 
     private store = new Store();
     private onAMBMessageObservable = new Subject<WsResponse<AmbMessage>>();
@@ -29,7 +29,7 @@ export class StoreGateway implements OnGatewayInit {
         this.loggerService.info(`Listening for new AMB messages to broadcast.`);
 
         await this.store.on(Store.newAMBChannel, (event: any) => {
-            
+
             //TODO verify event format
             const message = event as AmbMessage;
             this.onAMBMessageObservable.next({

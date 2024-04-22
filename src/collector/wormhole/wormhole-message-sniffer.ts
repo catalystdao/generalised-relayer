@@ -38,7 +38,7 @@ export async function initiateMessageSnifferWorkers(
     const workers: Record<string, Worker | null> = {};
 
     for (const [chainId] of wormholeConfig.wormholeChainConfigs) {
-    // Spawn a worker for every Wormhole implementation
+        // Spawn a worker for every Wormhole implementation
         const workerData = await loadMessageSnifferWorkerData(
             chainId,
             wormholeConfig,

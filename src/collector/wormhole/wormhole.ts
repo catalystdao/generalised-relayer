@@ -101,8 +101,8 @@ function loadWormholeChainConfig(
 
     if (
         wormholeChainId == undefined ||
-    wormholeAddress == undefined ||
-    incentivesAddress == undefined
+        wormholeAddress == undefined ||
+        incentivesAddress == undefined
     ) {
         return null;
     }

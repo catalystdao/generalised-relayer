@@ -1,9 +1,9 @@
 import { WormholeChainConfig, WormholeChainId } from './wormhole.types';
 
 export interface DecodedWormholeMessage {
-  messageIdentifier: string;
-  destinationWormholeChainId: WormholeChainId;
-  payload: string;
+    messageIdentifier: string;
+    destinationWormholeChainId: WormholeChainId;
+    payload: string;
 }
 
 export function decodeWormholeMessage(

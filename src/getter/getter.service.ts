@@ -13,22 +13,22 @@ export const DEFAULT_GETTER_PROCESSING_INTERVAL = 100;
 export const DEFAULT_GETTER_MAX_BLOCKS = null;
 
 interface GlobalGetterConfig {
-  retryInterval: number;
-  processingInterval: number;
-  maxBlocks: number | null;
+    retryInterval: number;
+    processingInterval: number;
+    maxBlocks: number | null;
 }
 
 export interface GetterWorkerData {
-  chainId: string;
-  rpc: string;
-  startingBlock?: number;
-  stoppingBlock?: number;
-  retryInterval: number;
-  processingInterval: number;
-  maxBlocks: number | null;
-  incentivesAddresses: string[];
-  monitorPort: MessagePort;
-  loggerOptions: LoggerOptions;
+    chainId: string;
+    rpc: string;
+    startingBlock?: number;
+    stoppingBlock?: number;
+    retryInterval: number;
+    processingInterval: number;
+    maxBlocks: number | null;
+    incentivesAddresses: string[];
+    monitorPort: MessagePort;
+    loggerOptions: LoggerOptions;
 }
 
 @Injectable()

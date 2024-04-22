@@ -16,7 +16,7 @@ export class PersisterService {
     ) {}
 
     async onModuleInit(): Promise<void> {
-    // Do we need to start persister?
+        // Do we need to start persister?
         const startPersister = this.configService.globalConfig.persister.enabled;
         this.loggerService.info(
             `Persister is ${startPersister ? 'enabled' : 'disabled'}`,
@@ -34,7 +34,7 @@ export class PersisterService {
         const worker = new Worker(join(__dirname, 'persister.worker.js'), {
             workerData: {
                 postgresConnectionString:
-          this.configService.globalConfig.persister.postgresString,
+                    this.configService.globalConfig.persister.postgresString,
                 chains: chains,
                 loggerOptions: this.loggerService.loggerOptions,
             },
@@ -59,7 +59,7 @@ export class PersisterService {
                     const newWorker = new Worker(join(__dirname, 'persister.worker.js'), {
                         workerData: {
                             postgresConnectionString:
-                this.configService.globalConfig.persister.postgresString,
+                                this.configService.globalConfig.persister.postgresString,
                             chains: this.chains,
                             loggerOptions: this.loggerService.loggerOptions,
                         },

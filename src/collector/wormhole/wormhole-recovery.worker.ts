@@ -119,9 +119,9 @@ class WormholeRecoveryWorker {
     }
 
     private async processVAAMessage(vaa: ParsedVaaWithBytes): Promise<void> {
-    // The following effectively runs the same logic as the 'wormhole.service.ts' worker. When
-    // recovering VAAs, both this and the 'wormhole.service.ts' are executed to prevent VAAs from
-    // being missed in some edge cases (when recovering right before the latest blocks).
+        // The following effectively runs the same logic as the 'wormhole.service.ts' worker. When
+        // recovering VAAs, both this and the 'wormhole.service.ts' are executed to prevent VAAs from
+        // being missed in some edge cases (when recovering right before the latest blocks).
         const decodedWormholeMessage = decodeWormholeMessage(
             vaa.payload.toString('hex'),
         );
@@ -173,14 +173,14 @@ class WormholeRecoveryWorker {
         await this.store.registerDestinationAddress({
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
             destinationAddress:
-        //TODO the following contract call could fail
-        await this.messageEscrowContract.implementationAddress(
-            decodedPayload?.sourceApplicationAddress,
-            defaultAbiCoder.encode(
-                ['uint256'],
-                [decodedWormholeMessage.destinationWormholeChainId],
-            ),
-        ),
+                //TODO the following contract call could fail
+                await this.messageEscrowContract.implementationAddress(
+                    decodedPayload?.sourceApplicationAddress,
+                    defaultAbiCoder.encode(
+                        ['uint256'],
+                        [decodedWormholeMessage.destinationWormholeChainId],
+                    ),
+                ),
         });
     }
 
@@ -217,7 +217,7 @@ class WormholeRecoveryWorker {
         startingBlock: number,
         stoppingBlock: number | undefined,
     ): Promise<{ startingTimestamp: number; stoppingTimestamp: number }> {
-    // This recovery worker does not work for blocks that are in the future.
+        // This recovery worker does not work for blocks that are in the future.
         const currentBlock = await this.provider.getBlock('latest');
 
         if (currentBlock == null) {
@@ -241,10 +241,9 @@ class WormholeRecoveryWorker {
             // Wormhole collector workers.
             stoppingTimestamp = currentBlock.timestamp;
         } else {
-            stoppingTimestamp =
-        stoppingBlock == undefined
-            ? currentBlock.timestamp
-            : (await this.provider.getBlock(stoppingBlock))!.timestamp;
+            stoppingTimestamp = stoppingBlock == undefined
+                ? currentBlock.timestamp
+                : (await this.provider.getBlock(stoppingBlock))!.timestamp;
         }
 
         return {

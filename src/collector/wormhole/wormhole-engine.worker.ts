@@ -99,7 +99,7 @@ class WormholeEngineWorker {
     // Main handler
     // ********************************************************************************************
     async run(): Promise<void> {
-    //Listening to multiple chains for messages
+        //Listening to multiple chains for messages
         const engine = await this.loadWormholeRelayerEngine();
         const chainsAndAddresses = this.getChainsAndAddresses();
 
@@ -117,9 +117,8 @@ class WormholeEngineWorker {
     private getChainsAndAddresses(): Record<WormholeChainId, string | string[]> {
         const chainsAndAddresses: Record<number, string | string[]> = {};
         this.config.wormholeChainConfigs.forEach(
-            (wormholeConfig) =>
-                (chainsAndAddresses[wormholeConfig.wormholeChainId] =
-          wormholeConfig.incentivesAddress),
+            (wormholeConfig) => (chainsAndAddresses[wormholeConfig.wormholeChainId] =
+                wormholeConfig.incentivesAddress),
         );
         return chainsAndAddresses;
     }

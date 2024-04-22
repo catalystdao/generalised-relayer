@@ -112,7 +112,7 @@ class PolymerCollectorSnifferWorker {
                     this.config.startingBlock ?? this.currentStatus.blockNumber
                 );
             }
-            
+
             await wait(this.config.processingInterval);
         }
         const stopBlock = this.config.stoppingBlock ?? Infinity;

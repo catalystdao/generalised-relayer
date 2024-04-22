@@ -139,7 +139,7 @@ export class ConfigService {
     }
 
     getAMBConfig<T = unknown>(amb: string, key: string, chainId?: string): T {
-    // Find if there is a chain-specific override for the AMB property.
+        // Find if there is a chain-specific override for the AMB property.
         if (chainId != undefined) {
             const chainOverride = this.rawConfig['chains'].find(
                 (rawChainConfig: any) => rawChainConfig.chainId.toString() == chainId,
@@ -157,23 +157,23 @@ export class ConfigService {
     // ********************************************************************************************
 
     private formatMonitorGlobalConfig(rawConfig: any): MonitorGlobalConfig {
-        return {...rawConfig} as MonitorGlobalConfig;
+        return { ...rawConfig } as MonitorGlobalConfig;
     }
 
     private formatGetterGlobalConfig(rawConfig: any): GetterGlobalConfig {
-        return {...rawConfig} as GetterGlobalConfig;
+        return { ...rawConfig } as GetterGlobalConfig;
     }
 
     private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
-        return {...rawConfig} as SubmitterGlobalConfig;
+        return { ...rawConfig } as SubmitterGlobalConfig;
     }
 
     private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {
-        return {...rawConfig} as PersisterConfig;
+        return { ...rawConfig } as PersisterConfig;
     }
 
     private formatWalletGlobalConfig(rawConfig: any): WalletGlobalConfig {
-        const config = {...rawConfig};
+        const config = { ...rawConfig };
         if (config.lowGasBalanceWarning != undefined) {
             config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
         }

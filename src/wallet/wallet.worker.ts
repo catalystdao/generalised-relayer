@@ -108,7 +108,7 @@ class WalletWorker {
         signer: Wallet,
         logger: pino.Logger,
     ): [SubmitQueue, ConfirmQueue] {
-        
+
         const submitQueue = new SubmitQueue(
             retryInterval,
             maxTries,
@@ -366,16 +366,16 @@ class WalletWorker {
                     txRequest: transaction.txRequest,
                     metadata: transaction.metadata,
                     options: transaction.options,
-                    requeueCount: transaction.requeueCount+1,
+                    requeueCount: transaction.requeueCount + 1,
                 };
-                
+
                 await this.submitQueue.addOrders(requeueRequest);
             } else {
                 this.logger.debug(
                     logDescription,
                     `Unsuccessful transaction processing: transaction rejected.`,
                 );
-    
+
                 this.sendResult(transaction, transaction.tx, undefined, undefined, transaction.confirmationError);
             }
         }
@@ -402,7 +402,7 @@ class WalletWorker {
                 // NOTE: cannot use the 'transactionHelper' for querying of the transaction nonce, as the
                 // helper takes into account the 'pending' transactions.
                 const latestNonce = await this.signer.getNonce('latest');
-    
+
                 if (latestNonce > cancelTxNonce) {
                     return null;
                 }

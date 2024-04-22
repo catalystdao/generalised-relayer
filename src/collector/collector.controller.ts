@@ -5,10 +5,10 @@ import { MonitorService } from 'src/monitor/monitor.service';
 import { SubmitterService } from 'src/submitter/submitter.service';
 
 export interface CollectorModuleInterface {
-  configService: ConfigService;
-  monitorService: MonitorService;
-  loggerService: LoggerService;
-  submitterService: SubmitterService;
+    configService: ConfigService;
+    monitorService: MonitorService;
+    loggerService: LoggerService;
+    submitterService: SubmitterService;
 }
 
 @Controller()

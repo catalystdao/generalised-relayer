@@ -16,30 +16,30 @@ const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
 
 interface GlobalSubmitterConfig {
-  enabled: boolean;
-  newOrdersDelay: number;
-  retryInterval: number;
-  processingInterval: number;
-  maxTries: number;
-  maxPendingTransactions: number;
-  gasLimitBuffer: Record<string, number> & { default?: number };
-  walletPublicKey: string;
+    enabled: boolean;
+    newOrdersDelay: number;
+    retryInterval: number;
+    processingInterval: number;
+    maxTries: number;
+    maxPendingTransactions: number;
+    gasLimitBuffer: Record<string, number> & { default?: number };
+    walletPublicKey: string;
 }
 
 export interface SubmitterWorkerData {
-  chainId: string;
-  rpc: string;
-  relayerPrivateKey: string;
-  incentivesAddresses: Map<string, string>;
-  newOrdersDelay: number;
-  retryInterval: number;
-  processingInterval: number;
-  maxTries: number;
-  maxPendingTransactions: number;
-  gasLimitBuffer: Record<string, number>;
-  walletPublicKey: string;
-  walletPort: MessagePort;
-  loggerOptions: LoggerOptions;
+    chainId: string;
+    rpc: string;
+    relayerPrivateKey: string;
+    incentivesAddresses: Map<string, string>;
+    newOrdersDelay: number;
+    retryInterval: number;
+    processingInterval: number;
+    maxTries: number;
+    maxPendingTransactions: number;
+    gasLimitBuffer: Record<string, number>;
+    walletPublicKey: string;
+    walletPort: MessagePort;
+    loggerOptions: LoggerOptions;
 }
 
 @Injectable()
@@ -117,7 +117,7 @@ export class SubmitterService {
         if (!('default' in gasLimitBuffer)) {
             gasLimitBuffer['default'] = 0;
         }
-  
+
         const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
 
         return {
