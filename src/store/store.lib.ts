@@ -95,15 +95,15 @@ export class Store {
     }
 
     private loadRedisHost(): string | undefined {
-        return process.env.REDIS_HOST;
+        return process.env['REDIS_HOST'];
     }
 
     private loadRedisPort(): number {
-        return process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : DEFAULT_REDIS_PORT;
+        return process.env['REDIS_PORT'] ? parseInt(process.env['REDIS_PORT']) : DEFAULT_REDIS_PORT;
     }
 
     private loadRedisDBIndex(): number {
-        return process.env.REDIS_DB_INDEX ? parseInt(process.env.REDIS_DB_INDEX) : DEFAULT_REDIS_DB_INDEX;
+        return process.env['REDIS_DB_INDEX'] ? parseInt(process.env['REDIS_DB_INDEX']) : DEFAULT_REDIS_DB_INDEX;
     }
 
     async quit(): Promise<void> {

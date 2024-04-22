@@ -16,6 +16,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true,
