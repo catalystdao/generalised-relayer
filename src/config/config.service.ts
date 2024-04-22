@@ -7,203 +7,203 @@ import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlob
 
 @Injectable()
 export class ConfigService {
-  private readonly rawConfig: Record<string, any>;
+    private readonly rawConfig: Record<string, any>;
 
-  readonly nodeEnv: string;
+    readonly nodeEnv: string;
 
-  readonly globalConfig: GlobalConfig;
-  readonly chainsConfig: Map<string, ChainConfig>;
-  readonly ambsConfig: Map<string, AMBConfig>;
+    readonly globalConfig: GlobalConfig;
+    readonly chainsConfig: Map<string, ChainConfig>;
+    readonly ambsConfig: Map<string, AMBConfig>;
 
-  constructor() {
-    this.nodeEnv = this.loadNodeEnv();
+    constructor() {
+        this.nodeEnv = this.loadNodeEnv();
 
-    this.loadEnvFile();
-    this.rawConfig = this.loadConfigFile();
+        this.loadEnvFile();
+        this.rawConfig = this.loadConfigFile();
 
-    this.globalConfig = this.loadGlobalConfig();
-    this.chainsConfig = this.loadChainsConfig();
-    this.ambsConfig = this.loadAMBsConfig();
-  }
-
-  private loadNodeEnv(): string {
-    const nodeEnv = process.env.NODE_ENV;
-
-    if (nodeEnv == undefined) {
-      throw new Error(
-        'Unable to load the relayer configuration, `NODE_ENV` environment variable is not set.',
-      );
+        this.globalConfig = this.loadGlobalConfig();
+        this.chainsConfig = this.loadChainsConfig();
+        this.ambsConfig = this.loadAMBsConfig();
     }
 
-    return nodeEnv;
-  }
+    private loadNodeEnv(): string {
+        const nodeEnv = process.env.NODE_ENV;
 
-  private loadEnvFile(): void {
-    dotenv.config();
-  }
+        if (nodeEnv == undefined) {
+            throw new Error(
+                'Unable to load the relayer configuration, `NODE_ENV` environment variable is not set.',
+            );
+        }
 
-  private loadConfigFile(): Record<string, any> {
-    const configFileName = `config.${this.nodeEnv}.yaml`;
+        return nodeEnv;
+    }
 
-    let rawConfig;
-    try {
-      rawConfig = readFileSync(configFileName, 'utf-8');
-    } catch (error) {
-      throw new Error(
-        'Unable to load the relayer configuration file ${configFileName}. Cause: ' +
+    private loadEnvFile(): void {
+        dotenv.config();
+    }
+
+    private loadConfigFile(): Record<string, any> {
+        const configFileName = `config.${this.nodeEnv}.yaml`;
+
+        let rawConfig;
+        try {
+            rawConfig = readFileSync(configFileName, 'utf-8');
+        } catch (error) {
+            throw new Error(
+                'Unable to load the relayer configuration file ${configFileName}. Cause: ' +
           error.message,
-      );
+            );
+        }
+
+        const config = yaml.load(rawConfig) as Record<string, any>;
+
+        this.validateConfig(config);
+        return config;
     }
 
-    const config = yaml.load(rawConfig) as Record<string, any>;
+    private validateConfig(config: any): void {
+        const validator = getConfigValidator();
+        const isConfigValid = validator(config);
 
-    this.validateConfig(config);
-    return config;
-  }
-
-  private validateConfig(config: any): void {
-    const validator = getConfigValidator();
-    const isConfigValid = validator(config);
-
-    if (!isConfigValid) {
-      const error = validator.errors;
-      console.error('Config validation failed:', error);
-      throw new Error('Config validation failed.');
-    }
-  }
-
-  private loadGlobalConfig(): GlobalConfig {
-    const rawGlobalConfig = this.rawConfig.global;
-
-    if (process.env.RELAYER_PORT == undefined) {
-      throw new Error(
-        "Invalid configuration: environment variable 'RELAYER_PORT' missing",
-      );
+        if (!isConfigValid) {
+            const error = validator.errors;
+            console.error('Config validation failed:', error);
+            throw new Error('Config validation failed.');
+        }
     }
 
-    return {
-      port: parseInt(process.env.RELAYER_PORT),
-      privateKey: rawGlobalConfig.privateKey,
-      logLevel: rawGlobalConfig.logLevel,
-      monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
-      getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
-      submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
-      persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
-      wallet: this.formatWalletGlobalConfig(rawGlobalConfig.wallet),
-    };
-  }
+    private loadGlobalConfig(): GlobalConfig {
+        const rawGlobalConfig = this.rawConfig.global;
 
-  private loadChainsConfig(): Map<string, ChainConfig> {
-    const chainConfig = new Map<string, ChainConfig>();
+        if (process.env.RELAYER_PORT == undefined) {
+            throw new Error(
+                "Invalid configuration: environment variable 'RELAYER_PORT' missing",
+            );
+        }
 
-    for (const rawChainConfig of this.rawConfig.chains) {
-      const chainId = rawChainConfig.chainId.toString();
-      chainConfig.set(chainId, {
-        chainId,
-        name: rawChainConfig.name,
-        rpc: rawChainConfig.rpc,
-        resolver: rawChainConfig.resolver ?? null,
-        startingBlock: rawChainConfig.startingBlock,
-        stoppingBlock: rawChainConfig.stoppingBlock,
-        monitor: this.formatMonitorConfig(rawChainConfig.monitor),
-        getter: this.formatGetterConfig(rawChainConfig.getter),
-        submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
-        wallet: this.formatWalletConfig(rawChainConfig.wallet),
-      });
+        return {
+            port: parseInt(process.env.RELAYER_PORT),
+            privateKey: rawGlobalConfig.privateKey,
+            logLevel: rawGlobalConfig.logLevel,
+            monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
+            getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
+            submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
+            persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
+            wallet: this.formatWalletGlobalConfig(rawGlobalConfig.wallet),
+        };
     }
 
-    return chainConfig;
-  }
+    private loadChainsConfig(): Map<string, ChainConfig> {
+        const chainConfig = new Map<string, ChainConfig>();
 
-  private loadAMBsConfig(): Map<string, AMBConfig> {
-    const ambConfig = new Map<string, AMBConfig>();
+        for (const rawChainConfig of this.rawConfig.chains) {
+            const chainId = rawChainConfig.chainId.toString();
+            chainConfig.set(chainId, {
+                chainId,
+                name: rawChainConfig.name,
+                rpc: rawChainConfig.rpc,
+                resolver: rawChainConfig.resolver ?? null,
+                startingBlock: rawChainConfig.startingBlock,
+                stoppingBlock: rawChainConfig.stoppingBlock,
+                monitor: this.formatMonitorConfig(rawChainConfig.monitor),
+                getter: this.formatGetterConfig(rawChainConfig.getter),
+                submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
+                wallet: this.formatWalletConfig(rawChainConfig.wallet),
+            });
+        }
 
-    for (const rawAMBConfig of this.rawConfig.ambs) {
-      if (rawAMBConfig.enabled == false) {
-        continue;
-      }
-
-      const ambName = rawAMBConfig.name;
-      const globalProperties = rawAMBConfig;
-
-      ambConfig.set(ambName, {
-        name: ambName,
-        globalProperties,
-        getIncentivesAddress: (chainId: string) => {
-          return this.getAMBConfig(ambName, 'incentivesAddress', chainId);
-        },
-      });
+        return chainConfig;
     }
 
-    return ambConfig;
-  }
+    private loadAMBsConfig(): Map<string, AMBConfig> {
+        const ambConfig = new Map<string, AMBConfig>();
 
-  getAMBConfig<T = unknown>(amb: string, key: string, chainId?: string): T {
+        for (const rawAMBConfig of this.rawConfig.ambs) {
+            if (rawAMBConfig.enabled == false) {
+                continue;
+            }
+
+            const ambName = rawAMBConfig.name;
+            const globalProperties = rawAMBConfig;
+
+            ambConfig.set(ambName, {
+                name: ambName,
+                globalProperties,
+                getIncentivesAddress: (chainId: string) => {
+                    return this.getAMBConfig(ambName, 'incentivesAddress', chainId);
+                },
+            });
+        }
+
+        return ambConfig;
+    }
+
+    getAMBConfig<T = unknown>(amb: string, key: string, chainId?: string): T {
     // Find if there is a chain-specific override for the AMB property.
-    if (chainId != undefined) {
-      const chainOverride = this.rawConfig.chains.find(
-        (rawChainConfig: any) => rawChainConfig.chainId.toString() == chainId,
-      )?.[amb]?.[key];
+        if (chainId != undefined) {
+            const chainOverride = this.rawConfig.chains.find(
+                (rawChainConfig: any) => rawChainConfig.chainId.toString() == chainId,
+            )?.[amb]?.[key];
 
-      if (chainOverride != undefined) return chainOverride;
+            if (chainOverride != undefined) return chainOverride;
+        }
+
+        // If there is no chain-specific override, return the default value for the property.
+        return this.ambsConfig.get(amb)?.globalProperties[key];
     }
 
-    // If there is no chain-specific override, return the default value for the property.
-    return this.ambsConfig.get(amb)?.globalProperties[key];
-  }
 
+    // Formatting helpers
+    // ********************************************************************************************
 
-  // Formatting helpers
-  // ********************************************************************************************
-
-  private formatMonitorGlobalConfig(rawConfig: any): MonitorGlobalConfig {
-    return {...rawConfig} as MonitorGlobalConfig;
-  }
-
-  private formatGetterGlobalConfig(rawConfig: any): GetterGlobalConfig {
-    return {...rawConfig} as GetterGlobalConfig;
-  }
-
-  private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
-    return {...rawConfig} as SubmitterGlobalConfig;
-  }
-
-  private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {
-    return {...rawConfig} as PersisterConfig;
-  }
-
-  private formatWalletGlobalConfig(rawConfig: any): WalletGlobalConfig {
-    const config = {...rawConfig};
-    if (config.lowGasBalanceWarning != undefined) {
-      config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
+    private formatMonitorGlobalConfig(rawConfig: any): MonitorGlobalConfig {
+        return {...rawConfig} as MonitorGlobalConfig;
     }
-    if (config.maxFeePerGas != undefined) {
-      config.maxFeePerGas = BigInt(config.maxFeePerGas);
+
+    private formatGetterGlobalConfig(rawConfig: any): GetterGlobalConfig {
+        return {...rawConfig} as GetterGlobalConfig;
     }
-    if (config.maxAllowedPriorityFeePerGas != undefined) {
-      config.maxAllowedPriorityFeePerGas = BigInt(config.maxAllowedPriorityFeePerGas);
+
+    private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
+        return {...rawConfig} as SubmitterGlobalConfig;
     }
-    if (config.maxAllowedGasPrice != undefined) {
-      config.maxAllowedGasPrice = BigInt(config.maxAllowedGasPrice);
+
+    private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {
+        return {...rawConfig} as PersisterConfig;
     }
-    return config as WalletGlobalConfig;
-  }
+
+    private formatWalletGlobalConfig(rawConfig: any): WalletGlobalConfig {
+        const config = {...rawConfig};
+        if (config.lowGasBalanceWarning != undefined) {
+            config.lowGasBalanceWarning = BigInt(config.lowGasBalanceWarning);
+        }
+        if (config.maxFeePerGas != undefined) {
+            config.maxFeePerGas = BigInt(config.maxFeePerGas);
+        }
+        if (config.maxAllowedPriorityFeePerGas != undefined) {
+            config.maxAllowedPriorityFeePerGas = BigInt(config.maxAllowedPriorityFeePerGas);
+        }
+        if (config.maxAllowedGasPrice != undefined) {
+            config.maxAllowedGasPrice = BigInt(config.maxAllowedGasPrice);
+        }
+        return config as WalletGlobalConfig;
+    }
 
 
-  private formatMonitorConfig(rawConfig: any): MonitorConfig {
-    return this.formatMonitorGlobalConfig(rawConfig);
-  }
+    private formatMonitorConfig(rawConfig: any): MonitorConfig {
+        return this.formatMonitorGlobalConfig(rawConfig);
+    }
 
-  private formatGetterConfig(rawConfig: any): GetterConfig {
-    return this.formatGetterGlobalConfig(rawConfig);
-  }
+    private formatGetterConfig(rawConfig: any): GetterConfig {
+        return this.formatGetterGlobalConfig(rawConfig);
+    }
 
-  private formatSubmitterConfig(rawConfig: any): SubmitterConfig {
-    return this.formatSubmitterGlobalConfig(rawConfig);
-  }
+    private formatSubmitterConfig(rawConfig: any): SubmitterConfig {
+        return this.formatSubmitterGlobalConfig(rawConfig);
+    }
 
-  private formatWalletConfig(rawConfig: any): WalletConfig {
-    return this.formatWalletGlobalConfig(rawConfig);
-  }
+    private formatWalletConfig(rawConfig: any): WalletConfig {
+        return this.formatWalletGlobalConfig(rawConfig);
+    }
 
 }

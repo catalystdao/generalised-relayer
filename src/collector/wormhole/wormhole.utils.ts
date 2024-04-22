@@ -7,37 +7,36 @@ export interface DecodedWormholeMessage {
 }
 
 export function decodeWormholeMessage(
-  rawWormholePayload: string,
+    rawWormholePayload: string,
 ): DecodedWormholeMessage {
-  let counter = rawWormholePayload.includes('0x') ? 2 : 0;
+    let counter = rawWormholePayload.includes('0x') ? 2 : 0;
 
-  // The destination chain identifier is the first 32 bytes.
-  const destinationWormholeChainId = Number(
-    BigInt('0x' + rawWormholePayload.slice(counter, (counter += 32 * 2))),
-  );
+    // The destination chain identifier is the first 32 bytes.
+    const destinationWormholeChainId = Number(
+        BigInt('0x' + rawWormholePayload.slice(counter, (counter += 32 * 2))),
+    );
 
-  const payload = rawWormholePayload.slice(counter);
+    const payload = rawWormholePayload.slice(counter);
 
-  // Skip the context
-  counter += 1 * 2;
+    // Skip the context
+    counter += 1 * 2;
 
-  const messageIdentifier =
-    '0x' + rawWormholePayload.slice(counter, counter + 32 * 2);
+    const messageIdentifier = '0x' + rawWormholePayload.slice(counter, counter + 32 * 2);
 
-  return {
-    messageIdentifier,
-    destinationWormholeChainId,
-    payload,
-  };
+    return {
+        messageIdentifier,
+        destinationWormholeChainId,
+        payload,
+    };
 }
 
 export function loadWormholeChainIdMap(
-  wormholeChainConfigs: Map<string, WormholeChainConfig>,
+    wormholeChainConfigs: Map<string, WormholeChainConfig>,
 ) {
-  const wormholeChainIdMap = new Map<WormholeChainId, string>();
-  for (const [chainId, wormholeChainConfig] of wormholeChainConfigs) {
-    wormholeChainIdMap.set(wormholeChainConfig.wormholeChainId, chainId);
-  }
+    const wormholeChainIdMap = new Map<WormholeChainId, string>();
+    for (const [chainId, wormholeChainConfig] of wormholeChainConfigs) {
+        wormholeChainIdMap.set(wormholeChainConfig.wormholeChainId, chainId);
+    }
 
-  return wormholeChainIdMap;
+    return wormholeChainIdMap;
 }

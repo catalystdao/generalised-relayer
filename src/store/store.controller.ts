@@ -6,42 +6,42 @@ import { PrioritiseMessage } from './types/store.types';
 
 @Controller()
 export class StoreController {
-  constructor(
-    private readonly loggerService: LoggerService,
-  ) {}
+    constructor(
+      private readonly loggerService: LoggerService,
+    ) {}
 
   @Get('getAMBMessages')
-  async getAMBMessages(@Query() query: any): Promise<any | undefined> {
-    const chainId = query.chainId;
-    const txHash = query.txHash;
+    async getAMBMessages(@Query() query: any): Promise<any | undefined> {
+        const chainId = query.chainId;
+        const txHash = query.txHash;
 
-    if (chainId == undefined || txHash == undefined) {
-      return undefined; //TODO return error
+        if (chainId == undefined || txHash == undefined) {
+            return undefined; //TODO return error
+        }
+
+        const store = new Store(chainId);
+        const amb = await store.getAMBsByTxHash(chainId, txHash);
+        if (amb != null) return JSON.stringify(amb);
     }
-
-    const store = new Store(chainId);
-    const amb = await store.getAMBsByTxHash(chainId, txHash);
-    if (amb != null) return JSON.stringify(amb);
-  }
 
   @Post('prioritiseAMBMessage')
   async prioritiseAMBMessage(@Body() body: PrioritiseMessage) {
-    //TODO schema validate request
+      //TODO schema validate request
 
-    this.loggerService.info(
-      {
-        messageIdentifier: body.messageIdentifier,
-        amb: body.amb,
-        sourceChainId: body.sourceChainId,
-        destinationChainId: body.destinationChainId,
-      },
-      `Message prioritisation requested.`
-    )
+      this.loggerService.info(
+          {
+              messageIdentifier: body.messageIdentifier,
+              amb: body.amb,
+              sourceChainId: body.sourceChainId,
+              destinationChainId: body.destinationChainId,
+          },
+          `Message prioritisation requested.`
+      )
 
-    const store = new Store();
-    await store.setAmbPriority(
-      body.messageIdentifier,
-      true,
-    );
+      const store = new Store();
+      await store.setAmbPriority(
+          body.messageIdentifier,
+          true,
+      );
   }
 }

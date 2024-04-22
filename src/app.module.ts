@@ -10,16 +10,16 @@ import { StoreModule } from './store/store.module';
 import { MonitorModule } from './monitor/monitor.module';
 
 @Module({
-  imports: [
-    ConfigModule,
-    LoggerModule,
-    MonitorModule,
-    GetterModule,
-    EvaluatorModule,
-    CollectorModule,
-    SubmitterModule,
-    PersisterModule,
-    StoreModule,
-  ],
+    imports: [
+        ConfigModule,
+        LoggerModule,
+        MonitorModule,
+        GetterModule,
+        EvaluatorModule,
+        CollectorModule,
+        SubmitterModule,
+        PersisterModule,
+        StoreModule,
+    ],
 })
 export class AppModule {}

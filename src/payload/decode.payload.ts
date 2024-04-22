@@ -1,17 +1,17 @@
 export function decodeBytes65Address(addressBytes65: string): string {
-  let workingAddress = addressBytes65;
-  if (addressBytes65.slice(0, 2) === '0x')
-    workingAddress = addressBytes65.slice(2);
+    let workingAddress = addressBytes65;
+    if (addressBytes65.slice(0, 2) === '0x')
+        workingAddress = addressBytes65.slice(2);
 
-  const length = parseInt(workingAddress.slice(0, 2), 16);
+    const length = parseInt(workingAddress.slice(0, 2), 16);
 
-  const totalLength = 2 + 64 * 2;
-  const startingPoint = totalLength - length * 2;
-  return '0x' + workingAddress.slice(startingPoint);
+    const totalLength = 2 + 64 * 2;
+    const startingPoint = totalLength - length * 2;
+    return '0x' + workingAddress.slice(startingPoint);
 }
 
 export function encodeRelayerAddress(relayerAddress: string): string {
-  return '0x' + relayerAddress.slice(relayerAddress.length - 20 * 2);
+    return '0x' + relayerAddress.slice(relayerAddress.length - 20 * 2);
 }
 
 /* 
@@ -74,82 +74,82 @@ export type GeneralisedIncentiveMessage =
   | DESTINATION_TO_SOURCE;
 
 export function ParsePayload(
-  payload: string,
+    payload: string,
 ): GeneralisedIncentiveMessage | undefined {
-  const generalisedIncentiveMessage = payload.replaceAll('0x', '');
+    const generalisedIncentiveMessage = payload.replaceAll('0x', '');
 
-  let counter = 0;
-  const context: MessageContext = parseInt(
-    generalisedIncentiveMessage.slice(counter, (counter += 2)),
-    16,
-  );
-  const messageIdentifier = generalisedIncentiveMessage.slice(
-    counter,
-    (counter += 32 * 2),
-  );
-  const applicationAddress = generalisedIncentiveMessage.slice(
-    counter,
-    (counter += 32 * 2 * 2 + 2),
-  );
-  const common_message = {
-    messageIdentifier,
-    rawSourceApplicationAddress: applicationAddress,
-    sourceApplicationAddress: decodeBytes65Address(applicationAddress),
-  };
-  if (context === MessageContext.CTX_SOURCE_TO_DESTINATION) {
-    const toApplication = generalisedIncentiveMessage.slice(
-      counter,
-      (counter += 32 * 2 * 2 + 2),
+    let counter = 0;
+    const context: MessageContext = parseInt(
+        generalisedIncentiveMessage.slice(counter, (counter += 2)),
+        16,
     );
-    const deadline = BigInt(
-      '0x' + generalisedIncentiveMessage.slice(
+    const messageIdentifier = generalisedIncentiveMessage.slice(
         counter,
-        (counter += 8 * 2)
-      )
+        (counter += 32 * 2),
     );
-    const maxGasLimit = BigInt(
-      '0x' + generalisedIncentiveMessage.slice(counter, (counter += 6 * 2)),
+    const applicationAddress = generalisedIncentiveMessage.slice(
+        counter,
+        (counter += 32 * 2 * 2 + 2),
     );
-    const message = generalisedIncentiveMessage.slice(counter);
-    return {
-      ...common_message,
-      context: context,
-      rawToApplication: toApplication,
-      toApplication: decodeBytes65Address(toApplication),
-      deadline,
-      maxGasLimit,
-      message,
+    const common_message = {
+        messageIdentifier,
+        rawSourceApplicationAddress: applicationAddress,
+        sourceApplicationAddress: decodeBytes65Address(applicationAddress),
     };
-  } else if (context === MessageContext.CTX_DESTINATION_TO_SOURCE) {
-    const relayerRecipient = generalisedIncentiveMessage.slice(
-      counter,
-      (counter += 32 * 2),
-    );
-    const gasSpent = BigInt(
-      '0x' + generalisedIncentiveMessage.slice(counter, (counter += 6 * 2)),
-    );
-    const executionTime = parseInt(
-      generalisedIncentiveMessage.slice(counter, (counter += 8 * 2)),
-      16,
-    );
-    // The raw message also contains the generalised incentive status code.
-    // TODO: Take a second look at this. Currently it is not implemented correctly and it might cause issues in the future.
-    const rawMessage = generalisedIncentiveMessage.slice((counter += 2));
-    const message = generalisedIncentiveMessage.slice(counter);
-    return {
-      ...common_message,
-      context: context,
-      relayerRecipient,
-      gasSpent,
-      executionTime,
-      rawMessage,
-      message,
-    };
-  } else {
-    console.log(
-      `Context not found: ${context}, ${generalisedIncentiveMessage} parsing as undefiend`,
-    );
-    return undefined;
+    if (context === MessageContext.CTX_SOURCE_TO_DESTINATION) {
+        const toApplication = generalisedIncentiveMessage.slice(
+            counter,
+            (counter += 32 * 2 * 2 + 2),
+        );
+        const deadline = BigInt(
+            '0x' + generalisedIncentiveMessage.slice(
+                counter,
+                (counter += 8 * 2)
+            )
+        );
+        const maxGasLimit = BigInt(
+            '0x' + generalisedIncentiveMessage.slice(counter, (counter += 6 * 2)),
+        );
+        const message = generalisedIncentiveMessage.slice(counter);
+        return {
+            ...common_message,
+            context: context,
+            rawToApplication: toApplication,
+            toApplication: decodeBytes65Address(toApplication),
+            deadline,
+            maxGasLimit,
+            message,
+        };
+    } else if (context === MessageContext.CTX_DESTINATION_TO_SOURCE) {
+        const relayerRecipient = generalisedIncentiveMessage.slice(
+            counter,
+            (counter += 32 * 2),
+        );
+        const gasSpent = BigInt(
+            '0x' + generalisedIncentiveMessage.slice(counter, (counter += 6 * 2)),
+        );
+        const executionTime = parseInt(
+            generalisedIncentiveMessage.slice(counter, (counter += 8 * 2)),
+            16,
+        );
+        // The raw message also contains the generalised incentive status code.
+        // TODO: Take a second look at this. Currently it is not implemented correctly and it might cause issues in the future.
+        const rawMessage = generalisedIncentiveMessage.slice((counter += 2));
+        const message = generalisedIncentiveMessage.slice(counter);
+        return {
+            ...common_message,
+            context: context,
+            relayerRecipient,
+            gasSpent,
+            executionTime,
+            rawMessage,
+            message,
+        };
+    } else {
+        console.log(
+            `Context not found: ${context}, ${generalisedIncentiveMessage} parsing as undefiend`,
+        );
+        return undefined;
     // throw Error(`Context not found? Could be incorrectly decoded message. Context: ${context}`)
-  }
+    }
 }

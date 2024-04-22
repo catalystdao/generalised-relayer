@@ -4,22 +4,22 @@ import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class EvaluatorService {
-  constructor(private readonly logger: LoggerService) {}
+    constructor(private readonly logger: LoggerService) {}
 
-  /**
-   * Evaluates bounties to gauge their profitability
-   * @param bounty
-   * @param chain
-   * @param address
-   * @returns The bounty mutation with the evaluation parameters
-   */
-  async evaluateBounty(bounty: Bounty, _address: string): Promise<Bounty> {
-    this.logger.info(
-      `Checking gas price for bounty ${bounty.messageIdentifier}`,
-    );
+    /**
+     * Evaluates bounties to gauge their profitability
+     * @param bounty
+     * @param chain
+     * @param address
+     * @returns The bounty mutation with the evaluation parameters
+     */
+    async evaluateBounty(bounty: Bounty, _address: string): Promise<Bounty> {
+        this.logger.info(
+            `Checking gas price for bounty ${bounty.messageIdentifier}`,
+        );
 
-    //TODO implement evaluating currently it's just being forwarded
+        //TODO implement evaluating currently it's just being forwarded
 
-    return bounty;
-  }
+        return bounty;
+    }
 }

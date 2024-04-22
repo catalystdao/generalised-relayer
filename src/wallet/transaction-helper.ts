@@ -120,8 +120,8 @@ export class TransactionHelper {
     }
 
     /**
-   * Update the transaction nonce of the signer.
-   */
+     * Update the transaction nonce of the signer.
+     */
     async updateTransactionNonce(): Promise<void> {
         let i = 1;
         while (true) {

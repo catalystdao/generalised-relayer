@@ -11,15 +11,15 @@ export const add0X = (address: string): string => `0x${address}`;
 export const convertHexToDecimal = (hex: string) => BigInt(hex).toString();
 
 export const tryErrorToString = (error: any): string | undefined => {
-  if (error == undefined) {
-      return undefined;
-  }
-  if (typeof error == "string") {
-      return error;
-  }
-  try {
-      return error.toString();
-  } catch {
-      return 'Unable to stringify error.';
-  }
+    if (error == undefined) {
+        return undefined;
+    }
+    if (typeof error == "string") {
+        return error;
+    }
+    try {
+        return error.toString();
+    } catch {
+        return 'Unable to stringify error.';
+    }
 }

@@ -66,7 +66,7 @@ class GetterWorker {
     private initializeContractTypes(): {
         chainInterfaceInterface: IMessageEscrowEventsInterface,
         topics: string[][]
-    } {
+        } {
 
         const chainInterfaceInterface = IMessageEscrowEvents__factory.createInterface();
         const topics = [
@@ -148,8 +148,8 @@ class GetterWorker {
                 
                 if (toBlock >= stopBlock) {
                     this.logger.info(
-                    { stopBlock: toBlock },
-                    `Finished processing blocks. Exiting worker.`,
+                        { stopBlock: toBlock },
+                        `Finished processing blocks. Exiting worker.`,
                     );
                     break;
                 }

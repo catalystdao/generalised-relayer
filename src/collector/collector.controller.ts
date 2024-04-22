@@ -13,34 +13,34 @@ export interface CollectorModuleInterface {
 
 @Controller()
 export class CollectorController implements OnModuleInit {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly monitorService: MonitorService,
-    private readonly loggerService: LoggerService,
-    private readonly submitterService: SubmitterService,
-  ) {}
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly monitorService: MonitorService,
+        private readonly loggerService: LoggerService,
+        private readonly submitterService: SubmitterService,
+    ) {}
 
-  /**
-   * Starts all the different AMB's
-   */
-  async onModuleInit() {
-    await this.loadAMBModules();
-  }
-
-  async loadAMBModules() {
-    const ambs = Array.from(this.configService.ambsConfig.keys());
-
-    const moduleInterface: CollectorModuleInterface = {
-      configService: this.configService,
-      monitorService: this.monitorService,
-      loggerService: this.loggerService,
-      submitterService: this.submitterService,
-    };
-
-    for (const amb of ambs) {
-      const module = await import(`./${amb}/${amb}`);
-      await module.default(moduleInterface);
+    /**
+     * Starts all the different AMB's
+     */
+    async onModuleInit() {
+        await this.loadAMBModules();
     }
-  }
+
+    async loadAMBModules() {
+        const ambs = Array.from(this.configService.ambsConfig.keys());
+
+        const moduleInterface: CollectorModuleInterface = {
+            configService: this.configService,
+            monitorService: this.monitorService,
+            loggerService: this.loggerService,
+            submitterService: this.submitterService,
+        };
+
+        for (const amb of ambs) {
+            const module = await import(`./${amb}/${amb}`);
+            await module.default(moduleInterface);
+        }
+    }
 
 }
