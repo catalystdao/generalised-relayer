@@ -192,12 +192,12 @@ export class SubmitterService {
 
         // Apply defaults
         for (const key in defaultGasLimitBufferConfig) {
-            gasLimitBuffers[key] = defaultGasLimitBufferConfig[key];
+            gasLimitBuffers[key] = defaultGasLimitBufferConfig[key]!;
         }
 
         // Apply chain overrides
         for (const key in chainGasLimitBufferConfig) {
-            gasLimitBuffers[key] = chainGasLimitBufferConfig[key];
+            gasLimitBuffers[key] = chainGasLimitBufferConfig[key]!;
         }
 
         return gasLimitBuffers;

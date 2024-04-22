@@ -186,9 +186,9 @@ class PersisterWorker {
                                 chainId: fromChainId,
                             })
                             .returning({ id: transactions.id })
-                    )[0].id;
+                    )[0]!.id;
                 } else {
-                    submitTransactionId = submitTransactionQuery[0].id;
+                    submitTransactionId = submitTransactionQuery[0]!.id;
                 }
             }
             // execTransactionHash?: string;
@@ -212,9 +212,9 @@ class PersisterWorker {
                                 chainId: toChainId,
                             })
                             .returning({ id: transactions.id })
-                    )[0].id;
+                    )[0]!.id;
                 } else {
-                    execTransactionId = execTransactionQuery[0].id;
+                    execTransactionId = execTransactionQuery[0]!.id;
                 }
             }
             // ackTransactionHash?: string;
@@ -238,9 +238,9 @@ class PersisterWorker {
                                 chainId: fromChainId,
                             })
                             .returning({ id: transactions.id })
-                    )[0].id;
+                    )[0]!.id;
                 } else {
-                    ackTransactionId = ackTransactionQuery[0].id;
+                    ackTransactionId = ackTransactionQuery[0]!.id;
                 }
             }
 
@@ -293,10 +293,10 @@ class PersisterWorker {
                         .insert(bounties)
                         .values({ bountyIdentifier: parsedValue.messageIdentifier })
                         .returning({ id: bounties.id })
-                )[0].id;
+                )[0]!.id;
             } else {
                 // Set the bountyId based on the selected.
-                bountyId = bountiesSelected[0].id;
+                bountyId = bountiesSelected[0]!.id;
             }
 
             const sqlReadyBounty: typeof ambPayloads.$inferInsert = {

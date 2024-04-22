@@ -17,6 +17,7 @@
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true,

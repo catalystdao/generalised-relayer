@@ -260,7 +260,7 @@ class SubmitterWorker {
 
         let i;
         for (i = 0; i < this.newOrdersQueue.length; i++) {
-            const nextNewOrder = this.newOrdersQueue[i];
+            const nextNewOrder = this.newOrdersQueue[i]!;
 
             if (nextNewOrder.processAt > currentTimestamp || i + 1 > capacity) {
                 break;
