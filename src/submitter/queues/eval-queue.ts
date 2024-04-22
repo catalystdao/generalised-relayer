@@ -18,10 +18,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         readonly retryInterval: number,
         readonly maxTries: number,
         private readonly store: Store,
-        private readonly incentivesContracts: Map<
-        string,
-        IncentivizedMessageEscrow
-        >,
+        private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         private readonly chainId: string,
         private readonly gasLimitBuffer: Record<string, number>,
         relayerAddress: string,

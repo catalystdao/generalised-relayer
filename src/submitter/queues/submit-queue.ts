@@ -18,10 +18,7 @@ export class SubmitQueue extends ProcessingQueue<
     constructor(
         readonly retryInterval: number,
         readonly maxTries: number,
-        private readonly incentivesContracts: Map<
-        string,
-        IncentivizedMessageEscrow
-        >,
+        private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         relayerAddress: string,
         private readonly wallet: WalletInterface,
         private readonly logger: pino.Logger,
