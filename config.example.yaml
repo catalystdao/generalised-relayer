@@ -85,8 +85,6 @@ chains:
       blockDelay: 2
     getter:
       interval: 5000
-    submitter:
-      retryInterval: 30000
 
     # AMB configuration
     wormhole:
