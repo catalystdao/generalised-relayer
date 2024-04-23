@@ -118,7 +118,7 @@ chains:
 
   - chainId: 84532
     name: 'Base Sepolia'
-    rpc: 'https://rpc.notadegen.com/base/sepolia'
+    rpc: 'https://sepolia.base.org'
     polymer:
       incentivesAddress: '0x147d414F1964c94c4Ac7422aC148aBddb4BEdC82'
       bridgeAddress: '0xfC1d3E02e00e0077628e8Cc9edb6812F95Db05dC'
