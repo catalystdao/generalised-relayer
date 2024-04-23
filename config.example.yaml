@@ -75,9 +75,10 @@ ambs:
 
 # Chain configuration
 chains:
-  - chainId: 80001
-    name: 'Mumbai'
-    rpc: 'https://polygon-mumbai-pokt.nodies.app'
+  - chainId: 11155111
+    name: 'Sepolia'
+    rpc: 'https://eth-sepolia-public.unifra.io'
+
     # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
     # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
 
@@ -85,17 +86,11 @@ chains:
     monitor:
       blockDelay: 2
     getter:
-      interval: 3000
+      interval: 5000
     submitter:
-      retryInterval: 3000
+      retryInterval: 30000
 
     # AMB configuration
-    wormhole:
-      wormholeChainId: 5
-
-  - chainId: 11155111
-    name: 'Sepolia'
-    rpc: 'https://eth-sepolia-public.unifra.io'
     wormhole:
       wormholeChainId: 10002
       incentivesAddress: '0x45C140Dd2526E4bfD1c2A5Bb0Aa6aA1DB00b1744'
