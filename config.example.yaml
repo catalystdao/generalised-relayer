@@ -15,7 +15,6 @@ global:
     enabled: true
     newOrdersDelay: 1000                # Time to wait before processing new 'submission' orders
     retryInterval: 30000                # Time to wait before retrying a failed transaction
-    processingInterval: 100             # Throttle for the Submitter main 'run' loop
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
 
@@ -26,7 +25,6 @@ global:
 
   wallet:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
-    processingInterval: 100             # Throttle for the Wallet main 'run' loop
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline
     confirmations: 1                    # Number of confirmations to wait before accepting a transaction as 'completed'.
