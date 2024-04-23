@@ -2,14 +2,23 @@ export interface GlobalConfig {
   port: number;
   privateKey: string;
   logLevel?: string;
-  blockDelay?: number;
+  monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
+  wallet: WalletGlobalConfig;
 }
 
-export interface GetterGlobalConfig {
+export interface MonitorGlobalConfig {
   interval?: number;
+  blockDelay?: number;
+}
+
+export interface MonitorConfig extends MonitorGlobalConfig {}
+
+export interface GetterGlobalConfig {
+  retryInterval?: number;
+  processingInterval?: number;
   maxBlocks?: number;
 }
 
@@ -22,18 +31,8 @@ export interface SubmitterGlobalConfig {
   processingInterval?: number;
   maxTries?: number;
   maxPendingTransactions?: number;
-  confirmations?: number;
-  confirmationTimeout?: number;
-  lowBalanceWarning?: number;
-  balanceUpdateInterval?: number;
 
   gasLimitBuffer?: Record<string, number> & { default?: number };
-  maxFeePerGas?: number | string;
-  maxAllowedPriorityFeePerGas?: number | string;
-  maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number | string;
-  gasPriceAdjustmentFactor?: number;
-  priorityAdjustmentFactor?: number;
 }
 
 export interface SubmitterConfig extends SubmitterGlobalConfig {}
@@ -41,6 +40,27 @@ export interface SubmitterConfig extends SubmitterGlobalConfig {}
 export interface PersisterConfig {
   enabled: boolean;
   postgresString: string;
+}
+
+export interface WalletGlobalConfig {
+  retryInterval?: number;
+  processingInterval?: number;
+  maxTries?: number;
+  maxPendingTransactions?: number;
+  confirmations?: number;
+  confirmationTimeout?: number;
+  lowGasBalanceWarning?: bigint;
+  gasBalanceUpdateInterval?: number;
+  maxFeePerGas?: bigint;
+  maxAllowedPriorityFeePerGas?: bigint;
+  maxPriorityFeeAdjustmentFactor?: number;
+  maxAllowedGasPrice?: bigint;
+  gasPriceAdjustmentFactor?: number;
+  priorityAdjustmentFactor?: number;
+}
+
+export interface WalletConfig extends WalletGlobalConfig {
+  rpc?: string;
 }
 
 export interface AMBConfig {
@@ -53,9 +73,11 @@ export interface ChainConfig {
   chainId: string;
   name: string;
   rpc: string;
+  resolver: string | null;
   startingBlock?: number;
   stoppingBlock?: number;
-  blockDelay?: number;
+  monitor: MonitorConfig;
   getter: GetterConfig;
   submitter: SubmitterConfig;
+  wallet: WalletConfig;
 }

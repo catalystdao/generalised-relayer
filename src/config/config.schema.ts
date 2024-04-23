@@ -48,9 +48,9 @@ const CONFIG_SCHEMA = {
     $id: "config-schema",
     type: "object",
     properties: {
-        global: {$ref: "global-schema"},
-        ambs: {$ref: "ambs-schema"},
-        chains: {$ref: "chains-schema"},
+        global: { $ref: "global-schema" },
+        ambs: { $ref: "ambs-schema" },
+        chains: { $ref: "chains-schema" },
     },
     required: ["global", "ambs", "chains"],
     additionalProperties: false
@@ -64,14 +64,29 @@ const GLOBAL_SCHEMA = {
             type: "string",
             pattern: BYTES_32_HEX_EXPR,
         },
-        logLevel: {$ref: "non-empty-string-schema"},
-        blockDelay: {$ref: "positive-number-schema"},
+        logLevel: { $ref: "non-empty-string-schema" },
 
-        getter: {$ref: "getter-schema"},
-        submitter: {$ref: "submitter-schema"},
-        persister: {$ref: "persister-schema"},
+        monitor: { $ref: "monitor-schema" },
+        getter: { $ref: "getter-schema" },
+        submitter: { $ref: "submitter-schema" },
+        persister: { $ref: "persister-schema" },
+        wallet: { $ref: "wallet-schema" },
     },
     required: ["privateKey"],
+    additionalProperties: false
+}
+
+const MONITOR_SCHEMA = {
+    $id: "monitor-schema",
+    type: "object",
+    properties: {
+        interval: {
+            type: "number",
+            minimum: 0,
+            maximum: 120_000,   // 2 minutes
+        },
+        blockDelay: { $ref: "positive-number-schema" },
+    },
     additionalProperties: false
 }
 
@@ -79,12 +94,8 @@ const GETTER_SCHEMA = {
     $id: "getter-schema",
     type: "object",
     properties: {
-        processingInterval: {$ref: "processing-interval-schema"},
-        interval: {
-            type: "number",
-            minimum: 0,
-            maximum: 120_000,   // 2 minutes
-        },
+        retryInterval: { $ref: "positive-number-schema" },
+        processingInterval: { $ref: "processing-interval-schema" },
         maxBlocks: {
             type: "number",
             minimum: 0,
@@ -101,44 +112,20 @@ const SUBMITTER_SCHEMA = {
         enabled: {
             type: "boolean"
         },
-        newOrdersDelay: {$ref: "positive-number-schema"},
-        retryInterval: {$ref: "positive-number-schema"},
-        processingInterval: {$ref: "processing-interval-schema"},
-        maxTries: {$ref: "positive-number-schema"},
-        maxPendingTransactions: {$ref: "positive-number-schema"},
-        confirmations: {$ref: "positive-number-schema"},
-        confirmationTimeout: {$ref: "positive-number-schema"},
-
-        lowBalanceWarning: {$ref: "gas-field-schema"},
-        balanceUpdateInterval: {$ref: "positive-number-schema"},
+        newOrdersDelay: { $ref: "positive-number-schema" },
+        retryInterval: { $ref: "positive-number-schema" },
+        processingInterval: { $ref: "processing-interval-schema" },
+        maxTries: { $ref: "positive-number-schema" },
+        maxPendingTransactions: { $ref: "positive-number-schema" },
 
         gasLimitBuffer: {
             type: "object",
             patternProperties: {
-                default: {$ref: "positive-number-schema"},
-                ["^[a-zA-Z0-9_-]+$"]: {$ref: "positive-number-schema"},
+                default: { $ref: "positive-number-schema" },
+                ["^[a-zA-Z0-9_-]+$"]: { $ref: "positive-number-schema" },
             },
             additionalProperties: false
         },
-
-        maxFeePerGas: {$ref: "gas-field-schema"},
-        maxAllowedPriorityFeePerGas: {$ref: "gas-field-schema"},
-        maxPriorityFeeAdjustmentFactor: {
-            type: "number",
-            minimum: 0,
-            maximum: 100
-        },
-        maxAllowedGasPrice: {$ref: "gas-field-schema"},
-        gasPriceAdjustmentFactor: {
-            type: "number",
-            minimum: 0,
-            maximum: 100
-        },
-        priorityAdjustmentFactor: {
-            type: "number",
-            minimum: 0,
-            maximum: 100
-        }
     },
     additionalProperties: false
 }
@@ -150,7 +137,40 @@ const PERSISTER_SCHEMA = {
         enabled: {
             type: "boolean"
         },
-        postgresString: {$ref: "non-empty-string-schema"}
+        postgresString: { $ref: "non-empty-string-schema" }
+    },
+    additionalProperties: false
+}
+
+const WALLET_SCHEMA = {
+    $id: "wallet-schema",
+    type: "object",
+    properties: {
+        retryInterval: { $ref: "positive-number-schema" },
+        processingInterval: { $ref: "processing-interval-schema" },
+        maxTries: { $ref: "positive-number-schema" },
+        maxPendingTransactions: { $ref: "positive-number-schema" },
+        confirmationTimeout: { $ref: "positive-number-schema" },
+        lowGasBalanceWarning: { $ref: "gas-field-schema" },
+        gasBalanceUpdateInterval: { $ref: "positive-number-schema" },
+        maxFeePerGas: { $ref: "gas-field-schema" },
+        maxAllowedPriorityFeePerGas: { $ref: "gas-field-schema" },
+        maxPriorityFeeAdjustmentFactor: {
+            type: "number",
+            minimum: 0,
+            maximum: 100
+        },
+        maxAllowedGasPrice: { $ref: "gas-field-schema" },
+        gasPriceAdjustmentFactor: {
+            type: "number",
+            minimum: 0,
+            maximum: 100
+        },
+        priorityAdjustmentFactor: {
+            type: "number",
+            minimum: 0,
+            maximum: 100
+        },
     },
     additionalProperties: false
 }
@@ -161,11 +181,11 @@ const AMBS_SCHEMA = {
     items: {
         type: "object",
         properties: {
-            name: {$ref: "non-empty-string-schema"},
+            name: { $ref: "non-empty-string-schema" },
             enabled: {
                 type: "boolean"
             },
-            incentivesAddress: {$ref: "address-field-schema"}
+            incentivesAddress: { $ref: "address-field-schema" }
         },
         required: ["name"],
         additionalProperties: true,
@@ -179,16 +199,18 @@ const CHAINS_SCHEMA = {
     items: {
         type: "object",
         properties: {
-            chainId: {$ref: "chain-id-schema"},
-            name:  {$ref: "non-empty-string-schema"},
-            rpc:  {$ref: "non-empty-string-schema"},
+            chainId: { $ref: "chain-id-schema" },
+            name: { $ref: "non-empty-string-schema" },
+            rpc: { $ref: "non-empty-string-schema" },
+            resolver: { $ref: "non-empty-string-schema" },
 
-            blockDelay: {$ref: "positive-number-schema"},
-            startingBlock: {$ref: "positive-number-schema"},
-            stoppingBlock: {$ref: "positive-number-schema"},
+            startingBlock: { $ref: "positive-number-schema" },
+            stoppingBlock: { $ref: "positive-number-schema" },
 
-            getter: {$ref: "getter-schema"},
-            submitter: {$ref: "submitter-schema"},
+            monitor: { $ref: "monitor-schema" },
+            getter: { $ref: "getter-schema" },
+            submitter: { $ref: "submitter-schema" },
+            wallet: { $ref: "wallet-schema" },
         },
         required: ["chainId", "name", "rpc"],
         additionalProperties: true  // allow for 'amb' override config
@@ -197,7 +219,7 @@ const CHAINS_SCHEMA = {
 }
 
 export function getConfigValidator(): AnyValidateFunction<unknown> {
-    const ajv = new Ajv({strict: true});
+    const ajv = new Ajv({ strict: true });
     ajv.addSchema(POSITIVE_NUMBER_SCHEMA);
     ajv.addSchema(NON_EMPTY_STRING_SCHEMA);
     ajv.addSchema(ADDRESS_FIELD_SCHEMA);
@@ -206,9 +228,11 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(PROCESSING_INTERVAL_SCHEMA);
     ajv.addSchema(CONFIG_SCHEMA);
     ajv.addSchema(GLOBAL_SCHEMA);
+    ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
     ajv.addSchema(PERSISTER_SCHEMA);
+    ajv.addSchema(WALLET_SCHEMA);
     ajv.addSchema(AMBS_SCHEMA);
     ajv.addSchema(CHAINS_SCHEMA);
 

@@ -1,139 +1,161 @@
-import { HandleOrderResult, ProcessingQueue } from './processing-queue';
-import { SubmitOrder } from '../submitter.types';
-import { Wallet } from 'ethers';
+import {
+    HandleOrderResult,
+    ProcessingQueue,
+} from '../../processing-queue/processing-queue';
+import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
+import { TransactionRequest, zeroPadValue } from 'ethers6';
 import pino from 'pino';
+import { tryErrorToString } from 'src/common/utils';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { hexZeroPad } from 'ethers/lib/utils';
-import { TransactionHelper } from '../transaction-helper';
-import { PendingTransaction } from './confirm-queue';
+import { WalletInterface } from 'src/wallet/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
-  SubmitOrder,
-  PendingTransaction<SubmitOrder>
+    SubmitOrder,
+    SubmitOrderResult
 > {
-  readonly relayerAddress: string;
+    readonly relayerAddress: string;
 
-  constructor(
-    readonly retryInterval: number,
-    readonly maxTries: number,
-    private readonly incentivesContracts: Map<
-      string,
-      IncentivizedMessageEscrow
-    >,
-    private readonly transactionHelper: TransactionHelper,
-    private readonly confirmationTimeout: number,
-    private readonly wallet: Wallet,
-    private readonly logger: pino.Logger,
-  ) {
-    super(retryInterval, maxTries);
-    this.relayerAddress = hexZeroPad(this.wallet.address, 32);
-  }
-
-  protected async onProcessOrders(): Promise<void> {
-    await this.transactionHelper.updateFeeData();
-    await this.transactionHelper.runBalanceCheck();
-  }
-
-  protected async handleOrder(
-    order: SubmitOrder,
-    retryCount: number,
-  ): Promise<HandleOrderResult<PendingTransaction<SubmitOrder>> | null> {
-    this.logger.debug(
-      { messageIdentifier: order.messageIdentifier },
-      `Handling submit order`,
-    );
-
-    // Simulate the packet submission as a static call. Skip if it's the first submission try,
-    // as in that case the packet 'evaluation' will have been executed shortly before.
-    const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
-
-    if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {
-      await contract.callStatic.processPacket(
-        order.messageCtx,
-        order.message,
-        this.relayerAddress,
-        {
-          gasLimit: order.gasLimit,
-        },
-      );
-    }
-
-    // Execute the relay transaction if the static call did not fail.
-    const tx = await contract.processPacket(
-      order.messageCtx,
-      order.message,
-      this.relayerAddress,
-      {
-        nonce: this.transactionHelper.getTransactionCount(),
-        gasLimit: order.gasLimit,
-        ...this.transactionHelper.getFeeDataForTransaction(),
-      },
-    );
-
-    this.transactionHelper.increaseTransactionCount();
-
-    return { result: { data: order, tx } };
-  }
-
-  protected async handleFailedOrder(
-    order: SubmitOrder,
-    retryCount: number,
-    error: any,
-  ): Promise<boolean> {
-    const errorDescription = {
-      messageIdentifier: order.messageIdentifier,
-      error,
-      try: retryCount + 1,
-    };
-
-    if (error.code === 'CALL_EXCEPTION') {
-      //TODO improve error filtering?
-      this.logger.info(
-        errorDescription,
-        `Error on message submission: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message.`,
-      );
-      return false; // Do not retry eval
-    }
-
-    this.logger.warn(errorDescription, `Error on message submission`);
-
-    if (
-      error.code === 'NONCE_EXPIRED' ||
-      error.code === 'REPLACEMENT_UNDERPRICED' ||
-      error.error?.message.includes('invalid sequence') //TODO is this dangerous?
+    constructor(
+        retryInterval: number,
+        maxTries: number,
+        private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
+        relayerAddress: string,
+        private readonly wallet: WalletInterface,
+        private readonly logger: pino.Logger,
     ) {
-      await this.transactionHelper.updateTransactionCount();
+        super(retryInterval, maxTries);
+        this.relayerAddress = zeroPadValue(relayerAddress, 32);
     }
 
-    return true;
-  }
-
-  protected async onOrderCompletion(
-    order: SubmitOrder,
-    success: boolean,
-    result: PendingTransaction<SubmitOrder> | null,
-    retryCount: number,
-  ): Promise<void> {
-    const orderDescription = {
-      messageIdentifier: order.messageIdentifier,
-      txHash: result?.tx.hash,
-      try: retryCount + 1,
-    };
-
-    if (success) {
-      if (result != null) {
+    protected async handleOrder(
+        order: SubmitOrder,
+        retryCount: number,
+    ): Promise<HandleOrderResult<SubmitOrderResult> | null> {
         this.logger.debug(
-          orderDescription,
-          `Successful submit order: message submitted.`,
+            { messageIdentifier: order.messageIdentifier },
+            `Handling submit order`,
         );
-      } else {
-        this.logger.debug(
-          orderDescription,
-          `Successful submit order: message not submitted.`,
-        );
-      }
-    } else {
-      this.logger.error(orderDescription, `Unsuccessful submit order.`);
+
+        // Simulate the packet submission as a static call. Skip if it's the first submission try,
+        // as in that case the packet 'evaluation' will have been executed shortly before.
+        const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
+
+        if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {
+            await contract.processPacket.staticCall(
+                order.messageCtx,
+                order.message,
+                this.relayerAddress,
+                {
+                    gasLimit: order.gasLimit,
+                },
+            );
+        }
+
+        // Execute the relay transaction if the static call did not fail.
+        const txData = contract.interface.encodeFunctionData("processPacket", [
+            order.messageCtx,
+            order.message,
+            this.relayerAddress,
+        ]);
+
+        const txRequest: TransactionRequest = {
+            to: await contract.getAddress(),
+            data: txData,
+            gasLimit: order.gasLimit,
+        };
+
+        const txPromise = this.wallet.submitTransaction(
+            txRequest,
+            order,
+        ).then((transactionResult): SubmitOrderResult => {
+            if (transactionResult.submissionError) {
+                throw transactionResult.submissionError;    //TODO wrap in a 'SubmissionError' type?
+            }
+            if (transactionResult.confirmationError) {
+                throw transactionResult.confirmationError;    //TODO wrap in a 'ConfirmationError' type?
+            }
+
+            if (transactionResult.tx == undefined) {
+                // This case should never be reached (if tx == undefined, a 'submissionError' should be returned).
+                throw new Error('No transaction returned on wallet transaction submission result.');
+            }
+            if (transactionResult.txReceipt == undefined) {
+                // This case should never be reached (if txReceipt == undefined, a 'confirmationError' should be returned).
+                throw new Error('No transaction receipt returned on wallet transaction submission result.');
+            }
+
+            const order = transactionResult.metadata as SubmitOrder;
+
+            return {
+                ...order,
+                tx: transactionResult.tx,
+                txReceipt: transactionResult.txReceipt
+            };
+        });
+
+        return { result: txPromise };
     }
-  }
+
+    protected async handleFailedOrder(
+        order: SubmitOrder,
+        retryCount: number,
+        error: any,
+    ): Promise<boolean> {
+        const errorDescription = {
+            messageIdentifier: order.messageIdentifier,
+            error: tryErrorToString(error),
+            try: retryCount + 1,
+        };
+
+        if (error.code === 'CALL_EXCEPTION') {
+            //TODO improve error filtering?
+            this.logger.info(
+                errorDescription,
+                `Error on message submission: CALL_EXCEPTION. It has likely been relayed by another relayer. Dropping message.`,
+            );
+            return false; // Do not retry eval
+        }
+
+        this.logger.warn(errorDescription, `Error on message submission. Retrying if possible.`);
+        return true;
+    }
+
+    protected override async onOrderCompletion(
+        order: SubmitOrder,
+        success: boolean,
+        result: SubmitOrderResult | null,
+        retryCount: number,
+    ): Promise<void> {
+        const orderDescription = {
+            messageIdentifier: order.messageIdentifier,
+            txHash: result?.tx.hash,
+            try: retryCount + 1,
+        };
+
+        if (success) {
+            if (result != null) {
+                this.logger.debug(
+                    orderDescription,
+                    `Successful submit order: message submitted.`,
+                );
+            } else {
+                this.logger.debug(
+                    orderDescription,
+                    `Successful submit order: message not submitted.`,
+                );
+            }
+        } else {
+            this.logger.error(orderDescription, `Unsuccessful submit order.`);
+
+            if (order.priority) {
+                this.logger.warn(
+                    {
+                        ...orderDescription,
+                        priority: order.priority
+                    },
+                    `Priority submit order failed.`
+                );
+            }
+        }
+    }
 }

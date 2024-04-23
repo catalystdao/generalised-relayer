@@ -1,36 +1,40 @@
-import { BigNumber, Signature } from 'ethers';
-import { defaultAbiCoder, hexStripZeros, solidityPack } from 'ethers/lib/utils';
-import { add0X, getSwapIdentifier } from 'src/common/utils';
-import { AmbMessage } from 'src/store/types/store.types';
+import { AbiCoder, Signature, solidityPacked } from 'ethers6';
+import { add0X } from 'src/common/utils';
 
-export function decodeMockMessage(rawMockPayload: string): AmbMessage {
-  // Remove 0x.
-  if (rawMockPayload.includes('0x')) rawMockPayload = rawMockPayload.slice(2);
+const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
-  let counter = 0;
-  const sourceChain = BigInt(
-    '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
-  ).toString();
-  // The destination chain identifier is the next of the first 32 bytes.
-  const destinationChain = BigInt(
-    '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
-  ).toString();
+export function decodeMockMessage(rawMockPayload: string): {
+    messageIdentifier: string,
+    sourceChain: string,
+    destinationChain: string,
+    payload: string,
+} {
+    // Remove 0x.
+    if (rawMockPayload.includes('0x')) rawMockPayload = rawMockPayload.slice(2);
 
-  const payload = '0x' + rawMockPayload.slice(counter);
+    let counter = 0;
+    const sourceChain = BigInt(
+        '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
+    ).toString();
+    // The destination chain identifier is the next of the first 32 bytes.
+    const destinationChain = BigInt(
+        '0x' + rawMockPayload.slice(counter, (counter += 32 * 2)),
+    ).toString();
 
-  // Skip the context
-  counter += 1 * 2;
+    const payload = '0x' + rawMockPayload.slice(counter);
 
-  const messageIdentifier =
-    '0x' + rawMockPayload.slice(counter, counter + 32 * 2);
+    // Skip the context
+    counter += 1 * 2;
 
-  return {
-    messageIdentifier,
-    amb: 'mock',
-    sourceChain,
-    destinationChain,
-    payload: payload,
-  };
+    const messageIdentifier =
+        '0x' + rawMockPayload.slice(counter, counter + 32 * 2);
+
+    return {
+        messageIdentifier,
+        sourceChain,
+        destinationChain,
+        payload: payload,
+    };
 }
 
 /**
@@ -40,7 +44,7 @@ export function decodeMockMessage(rawMockPayload: string): AmbMessage {
  * @returns The Encoded message
  */
 export const encodeMessage = (address: string, message: string): string => {
-  return solidityPack(['bytes', 'bytes'], [address, message]);
+    return solidityPacked(['bytes', 'bytes'], [address, message]);
 };
 
 /**
@@ -49,31 +53,31 @@ export const encodeMessage = (address: string, message: string): string => {
  * @returns The Encoded execution context
  */
 export const encodeSignature = (signature: Signature): string => {
-  return defaultAbiCoder.encode(
-    ['uint8', 'uint256', 'uint256'],
-    [signature.v, signature.r, signature.s],
-  );
+    return defaultAbiCoder.encode(
+        ['uint8', 'uint256', 'uint256'],
+        [signature.v, signature.r, signature.s],
+    );
 };
 
 export const decodeEventMessage = (
-  message: string,
+    message: string,
 ): [string, string, string] => {
-  // The 'message' field within the 'Message' event is encoded as:
-  // - Source identifier: 32 bytes
-  // - Destination identifier: 32 bytes
-  // - App message: bytes
+    // The 'message' field within the 'Message' event is encoded as:
+    // - Source identifier: 32 bytes
+    // - Destination identifier: 32 bytes
+    // - App message: bytes
 
-  // Note that on a hex-encoded string one byte is 2 characters
+    // Note that on a hex-encoded string one byte is 2 characters
 
-  const sourceIdentifier = add0X(message.slice(2, 2 + 32 * 2));
-  const destinationIdentifier = add0X(
-    message.slice(2 + 32 * 2, 2 + 32 * 2 + 32 * 2),
-  );
-  const baseMessage = add0X(message.slice(2 + 32 * 2 + 32 * 2));
+    const sourceIdentifier = add0X(message.slice(2, 2 + 32 * 2));
+    const destinationIdentifier = add0X(
+        message.slice(2 + 32 * 2, 2 + 32 * 2 + 32 * 2),
+    );
+    const baseMessage = add0X(message.slice(2 + 32 * 2 + 32 * 2));
 
-  return [sourceIdentifier, destinationIdentifier, baseMessage];
+    return [sourceIdentifier, destinationIdentifier, baseMessage];
 };
 
 export const decodeMessageIdentifierFromPayload = (message: string): string => {
-  return add0X(message.slice(2 + 1 * 2, 2 + 1 * 2 + 32 * 2)); // See MessagePayload.sol for reference (GeneralisedIncentives repo)
+    return add0X(message.slice(2 + 1 * 2, 2 + 1 * 2 + 32 * 2)); // See MessagePayload.sol for reference (GeneralisedIncentives repo)
 };

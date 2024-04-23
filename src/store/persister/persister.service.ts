@@ -6,69 +6,69 @@ import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class PersisterService {
-  private worker: Worker;
+    private worker?: Worker;
 
-  private chains: string[];
+    private chains: string[] = [];
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly loggerService: LoggerService,
-  ) {}
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly loggerService: LoggerService,
+    ) {}
 
-  async onModuleInit(): Promise<void> {
-    // Do we need to start persister?
-    const startPersister = this.configService.globalConfig.persister.enabled;
-    this.loggerService.info(
-      `Persister is ${startPersister ? 'enabled' : 'disabled'}`,
-    );
-    if (!startPersister) return;
+    async onModuleInit(): Promise<void> {
+        // Do we need to start persister?
+        const startPersister = this.configService.globalConfig.persister.enabled;
+        this.loggerService.info(
+            `Persister is ${startPersister ? 'enabled' : 'disabled'}`,
+        );
+        if (!startPersister) return;
 
-    this.loggerService.info(`Starting the persister...`);
+        this.loggerService.info(`Starting the persister...`);
 
-    const chains: string[] = [];
-    for (const [, chainConfig] of this.configService.chainsConfig) {
-      chains.push(chainConfig.chainId);
-    }
-    this.chains = chains;
+        const chains: string[] = [];
+        for (const [, chainConfig] of this.configService.chainsConfig) {
+            chains.push(chainConfig.chainId);
+        }
+        this.chains = chains;
 
-    const worker = new Worker(join(__dirname, 'persister.worker.js'), {
-      workerData: {
-        postgresConnectionString:
-          this.configService.globalConfig.persister.postgresString,
-        chains: chains,
-        loggerOptions: this.loggerService.loggerOptions,
-      },
-    });
-
-    await this.setSubscriptions(worker);
-
-    this.worker = worker;
-  }
-
-  async setSubscriptions(worker: Worker) {
-    worker.on('error', (error) =>
-      this.loggerService.fatal(error, `Error on persister.`),
-    );
-
-    worker.on('exit', (exitCode) => {
-      this.loggerService.fatal({ exitCode }, `Persister exited.`);
-      // Sometimes the postgres connection is dropped, we need to recover from that case.
-      if (exitCode === 1) {
-        setTimeout(() => {
-          this.loggerService.info(`Starting new persister`);
-          const newWorker = new Worker(join(__dirname, 'persister.worker.js'), {
+        const worker = new Worker(join(__dirname, 'persister.worker.js'), {
             workerData: {
-              postgresConnectionString:
-                this.configService.globalConfig.persister.postgresString,
-              chains: this.chains,
-              loggerOptions: this.loggerService.loggerOptions,
+                postgresConnectionString:
+                    this.configService.globalConfig.persister.postgresString,
+                chains: chains,
+                loggerOptions: this.loggerService.loggerOptions,
             },
-          });
-
-          void this.setSubscriptions(newWorker);
-          this.worker = newWorker;
         });
-      }
-    });
-  }
+
+        await this.setSubscriptions(worker);
+
+        this.worker = worker;
+    }
+
+    async setSubscriptions(worker: Worker) {
+        worker.on('error', (error) =>
+            this.loggerService.fatal(error, `Error on persister.`),
+        );
+
+        worker.on('exit', (exitCode) => {
+            this.loggerService.fatal({ exitCode }, `Persister exited.`);
+            // Sometimes the postgres connection is dropped, we need to recover from that case.
+            if (exitCode === 1) {
+                setTimeout(() => {
+                    this.loggerService.info(`Starting new persister`);
+                    const newWorker = new Worker(join(__dirname, 'persister.worker.js'), {
+                        workerData: {
+                            postgresConnectionString:
+                                this.configService.globalConfig.persister.postgresString,
+                            chains: this.chains,
+                            loggerOptions: this.loggerService.loggerOptions,
+                        },
+                    });
+
+                    void this.setSubscriptions(newWorker);
+                    this.worker = newWorker;
+                });
+            }
+        });
+    }
 }

@@ -1,5 +1,5 @@
 export enum BountyStatus {
-  BountyPlaced,
-  MessageDelivered,
-  BountyClaimed,
+    BountyPlaced,
+    MessageDelivered,
+    BountyClaimed,
 }

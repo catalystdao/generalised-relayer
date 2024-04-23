@@ -2,26 +2,26 @@ import { BountyJson } from '../types/store.types';
 import { bounties } from './postgres.schema';
 
 export function bountyFromJson(
-  bounty: BountyJson,
+    bounty: BountyJson,
 ): typeof bounties.$inferInsert & {
-  submitTransactionHash?: string;
-  execTransactionHash?: string;
-  ackTransactionHash?: string;
+    submitTransactionHash?: string;
+    execTransactionHash?: string;
+    ackTransactionHash?: string;
 } {
-  return {
-    bountyIdentifier: bounty.messageIdentifier,
-    fromChainId: bounty.fromChainId,
-    toChainId: bounty.toChainId,
-    maxGasDelivery: bounty.maxGasDelivery?.toString(),
-    maxGasAck: bounty.maxGasAck?.toString(),
-    refundGasTo: bounty.refundGasTo,
-    priceOfDeliveryGas: bounty.priceOfDeliveryGas,
-    priceOfAckGas: bounty.priceOfAckGas,
-    targetDelta: bounty.targetDelta,
-    bountyStatus: bounty.status,
-    sourceAddress: bounty.sourceAddress,
-    destinationAddress: bounty.destinationAddress,
-  };
+    return {
+        bountyIdentifier: bounty.messageIdentifier,
+        fromChainId: bounty.fromChainId,
+        toChainId: bounty.toChainId,
+        maxGasDelivery: bounty.maxGasDelivery?.toString(),
+        maxGasAck: bounty.maxGasAck?.toString(),
+        refundGasTo: bounty.refundGasTo,
+        priceOfDeliveryGas: bounty.priceOfDeliveryGas,
+        priceOfAckGas: bounty.priceOfAckGas,
+        targetDelta: bounty.targetDelta,
+        bountyStatus: bounty.status,
+        sourceAddress: bounty.sourceAddress,
+        destinationAddress: bounty.destinationAddress,
+    };
 }
 
 // export function proofFromJson(proof: AmbPayload): typeof ambPayloads.$inferInsert &  {bountyIdentifier: string} {

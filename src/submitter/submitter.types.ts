@@ -1,42 +1,28 @@
-import { BigNumber, BytesLike } from 'ethers';
+import { BytesLike, TransactionReceipt, TransactionResponse } from 'ethers6';
 
 export interface Order {
-  amb: string;
-  messageIdentifier: string;
-  message: BytesLike;
-  messageCtx: BytesLike;
+    amb: string;
+    messageIdentifier: string;
+    message: BytesLike;
+    messageCtx: BytesLike;
 }
 
 export interface EvalOrder extends Order {
-  priority: boolean;
+    priority: boolean;
 }
 
 export interface SubmitOrder extends Order {
-  gasLimit: number | undefined;
-  requeueCount?: number;
+    priority: boolean;
+    gasLimit: bigint | undefined;
+    requeueCount?: number;
+}
+
+export interface SubmitOrderResult extends SubmitOrder {
+    tx: TransactionResponse;
+    txReceipt: TransactionReceipt;
 }
 
 export interface NewOrder<OrderType> {
-  order: OrderType;
-  processAt: number;
-}
-
-export interface GasFeeOverrides {
-  gasPrice?: BigNumber;
-  maxFeePerGas?: BigNumber;
-  maxPriorityFeePerGas?: BigNumber;
-}
-
-export interface GasFeeConfig {
-  gasPriceAdjustmentFactor?: number;
-  maxAllowedGasPrice?: number | string;
-  maxFeePerGas?: number | string;
-  maxPriorityFeeAdjustmentFactor?: number;
-  maxAllowedPriorityFeePerGas?: number | string;
-  priorityAdjustmentFactor?: number;
-}
-
-export interface BalanceConfig {
-  lowBalanceWarning: number | undefined;
-  balanceUpdateInterval: number;
+    order: OrderType;
+    processAt: number;
 }

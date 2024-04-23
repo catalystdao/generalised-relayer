@@ -1,258 +1,155 @@
-import { join } from 'path';
-import { Worker } from 'worker_threads';
-import { CollectorModuleInterface } from '../collector.controller';
 import { ConfigService } from 'src/config/config.service';
-import { AMBConfig, ChainConfig } from 'src/config/config.types';
-import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { CollectorModuleInterface } from '../collector.controller';
+import { initiateRelayerEngineWorker } from './wormhole-engine';
+import { initiateMessageSnifferWorkers } from './wormhole-message-sniffer';
+import { initiateRecoveryWorkers } from './wormhole-recovery';
+import { WormholeChainConfig, WormholeConfig } from './wormhole.types';
+import { LoggerService } from 'src/logger/logger.service';
+import { ChainConfig } from 'src/config/config.types';
 import {
-  DEFAULT_GETTER_BLOCK_DELAY,
-  DEFAULT_GETTER_INTERVAL,
-  DEFAULT_GETTER_MAX_BLOCKS,
-} from 'src/getter/getter.controller';
-import { LoggerOptions } from 'pino';
+    DEFAULT_GETTER_RETRY_INTERVAL,
+    DEFAULT_GETTER_PROCESSING_INTERVAL,
+    DEFAULT_GETTER_MAX_BLOCKS,
+} from 'src/getter/getter.service';
+import { loadWormholeChainIdMap } from './wormhole.utils';
 
-export interface WormholeRelayerEngineWorkerData {
-  isTestnet: boolean;
-  useDocker: boolean;
-  spyPort: string;
-  wormholeChainConfig: Map<string, any>;
-  reverseWormholeChainConfig: Map<string, any>;
-  loggerOptions: LoggerOptions;
+function loadWormholeConfig(
+    configService: ConfigService,
+    loggerService: LoggerService,
+): WormholeConfig {
+    // Get the global Wormhole config
+    const globalWormholeConfig = configService.ambsConfig.get('wormhole');
+    if (globalWormholeConfig == undefined) {
+        throw Error(
+            `Failed to load Wormhole module: 'wormhole' configuration not found.`,
+        );
+    }
+
+    const wormholeChainConfigs = new Map<string, WormholeChainConfig>();
+    configService.chainsConfig.forEach((chainConfig) => {
+        const wormholeChainConfig = loadWormholeChainConfig(
+            chainConfig,
+            configService,
+        );
+
+        if (wormholeChainConfig != null) {
+            wormholeChainConfigs.set(chainConfig.chainId, wormholeChainConfig);
+            loggerService.info(
+                { chainId: chainConfig.chainId, wormholeChainConfig },
+                `Wormhole configuration for chain found.`,
+            );
+        } else {
+            loggerService.info(
+                { chainId: chainConfig.chainId },
+                `Wormhole configuration for chain not found or incomplete.`,
+            );
+        }
+    });
+
+    const wormholeChainIdMap = loadWormholeChainIdMap(wormholeChainConfigs);
+
+    if (process.env['REDIS_PORT'] == undefined) {
+        throw new Error(`Failed to load environment variable 'REDIS_PORT'`)
+    }
+    const redisPort = parseInt(process.env['REDIS_PORT']);
+
+    if (process.env['SPY_PORT'] == undefined) {
+        throw new Error(`Failed to load environment variable 'SPY_PORT'`)
+    }
+    const spyPort = parseInt(process.env['SPY_PORT']);
+
+    const redisDBIndex = process.env['REDIS_WORMHOLE_DB_INDEX'] != undefined
+        ? parseInt(process.env['REDIS_WORMHOLE_DB_INDEX'])
+        : undefined;
+
+    return {
+        isTestnet: globalWormholeConfig.globalProperties['isTestnet'],
+        redisHost: process.env['REDIS_HOST'],
+        redisPort,
+        redisDBIndex,
+        spyHost: process.env['SPY_HOST'],
+        spyPort,
+        wormholeChainConfigs,
+        wormholeChainIdMap,
+        loggerOptions: loggerService.loggerOptions,
+    };
 }
 
-interface WormholeGlobalPacketSnifferConfig {
-  blockDelay: number;
-  interval: number;
-  maxBlocks: number | null;
-}
+function loadWormholeChainConfig(
+    chainConfig: ChainConfig,
+    configService: ConfigService,
+): WormholeChainConfig | null {
+    const chainId = chainConfig.chainId;
 
-export interface WormholePacketSnifferWorkerData {
-  chainId: string;
-  rpc: string;
-  startingBlock?: number;
-  stoppingBlock?: number;
-  blockDelay: number;
-  interval: number;
-  maxBlocks: number | null;
-  incentivesAddress: string;
-  wormholeAddress: string;
-  loggerOptions: LoggerOptions;
-}
-
-function loadRelayerEngineWorkerData(
-  wormholeConfig: AMBConfig,
-  configService: ConfigService,
-  loggerService: LoggerService,
-): WormholeRelayerEngineWorkerData {
-  // Get the chain-specific Wormhole config
-  const wormholeChainConfig = new Map<string, any>();
-  const reverseWormholeChainConfig = new Map<string, any>();
-  configService.chainsConfig.forEach((chainConfig) => {
-    const wormholeChainId: string | undefined = configService.getAMBConfig(
-      'wormhole',
-      'wormholeChainId',
-      chainConfig.chainId,
+    const wormholeChainId: number | undefined = configService.getAMBConfig(
+        'wormhole',
+        'wormholeChainId',
+        chainId,
     );
 
-    if (wormholeChainId != undefined) {
-      const incentivesAddress = wormholeConfig.getIncentivesAddress(
-        chainConfig.chainId,
-      );
+    const wormholeAddress: string | undefined = configService.getAMBConfig(
+        'wormhole',
+        'bridgeAddress',
+        chainId,
+    );
 
-      wormholeChainConfig.set(chainConfig.chainId, {
+    const incentivesAddress: string | undefined = configService.getAMBConfig(
+        'wormhole',
+        'incentivesAddress',
+        chainId,
+    );
+
+    if (
+        wormholeChainId == undefined ||
+        wormholeAddress == undefined ||
+        incentivesAddress == undefined
+    ) {
+        return null;
+    }
+
+    const rpc = chainConfig.rpc;
+    const resolver = chainConfig.resolver;
+
+    const startingBlock = chainConfig.startingBlock;
+    const stoppingBlock = chainConfig.stoppingBlock;
+
+    const globalConfig = configService.globalConfig;
+    const retryInterval =
+        chainConfig.getter.retryInterval ??
+        globalConfig.getter.retryInterval ??
+        DEFAULT_GETTER_RETRY_INTERVAL;
+    const processingInterval =
+        chainConfig.getter.processingInterval ??
+        globalConfig.getter.processingInterval ??
+        DEFAULT_GETTER_PROCESSING_INTERVAL;
+    const maxBlocks =
+        chainConfig.getter.maxBlocks ??
+        globalConfig.getter.maxBlocks ??
+        DEFAULT_GETTER_MAX_BLOCKS;
+
+    return {
+        chainId,
+        rpc,
+        resolver,
+        startingBlock,
+        stoppingBlock,
+        retryInterval,
+        processingInterval,
+        maxBlocks,
         wormholeChainId,
         incentivesAddress,
-      });
-      reverseWormholeChainConfig.set(
-        String(wormholeChainId),
-        chainConfig.chainId,
-      );
-      loggerService.info(
-        `'wormholeChainId' for chain ${chainConfig.chainId} is set to ${wormholeChainId}.`,
-      );
-    } else {
-      loggerService.info(
-        `No 'wormholeChainId' set for chain ${chainConfig.chainId}. Skipping chain (wormhole collector).`,
-      );
-    }
-  });
-
-  return {
-    isTestnet: wormholeConfig.globalProperties['isTestnet'],
-    useDocker: process.env.USE_DOCKER == 'true',
-    spyPort: process.env.SPY_PORT ?? '',
-    wormholeChainConfig,
-    reverseWormholeChainConfig,
-    loggerOptions: loggerService.loggerOptions,
-  };
-}
-
-function loadGlobalPacketSnifferConfig(
-  configService: ConfigService,
-): WormholeGlobalPacketSnifferConfig {
-  const blockDelay =
-    configService.globalConfig.blockDelay ?? DEFAULT_GETTER_BLOCK_DELAY;
-
-  const getterConfig = configService.globalConfig.getter;
-  const interval = getterConfig.interval ?? DEFAULT_GETTER_INTERVAL;
-  const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
-
-  return {
-    blockDelay,
-    interval,
-    maxBlocks,
-  };
-}
-
-function loadPacketSnifferWorkerData(
-  wormholeConfig: AMBConfig,
-  configService: ConfigService,
-  loggerService: LoggerService,
-  chainConfig: ChainConfig,
-  globalConfig: WormholeGlobalPacketSnifferConfig,
-): WormholePacketSnifferWorkerData | undefined {
-  const chainId = chainConfig.chainId;
-  const rpc = chainConfig.rpc;
-
-  const incentivesAddress = wormholeConfig.getIncentivesAddress(
-    chainConfig.chainId,
-  );
-
-  const wormholeAddress = configService.getAMBConfig(
-    'wormhole',
-    'bridgeAddress',
-    chainConfig.chainId,
-  ) as string | undefined;
-
-  if (wormholeAddress == undefined) return undefined;
-
-  return {
-    chainId,
-    rpc,
-    startingBlock: chainConfig.startingBlock,
-    stoppingBlock: chainConfig.stoppingBlock,
-    blockDelay: chainConfig.blockDelay ?? globalConfig.blockDelay,
-    interval: chainConfig.getter.interval ?? globalConfig.interval,
-    maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
-    incentivesAddress,
-    wormholeAddress,
-    loggerOptions: loggerService.loggerOptions,
-  };
-}
-
-function initiateRelayerEngineWorker(
-  wormholeConfig: AMBConfig,
-  configService: ConfigService,
-  loggerService: LoggerService,
-): void {
-  loggerService.info('Starting the wormhole relayer engine...');
-
-  const workerData = loadRelayerEngineWorkerData(
-    wormholeConfig,
-    configService,
-    loggerService,
-  );
-
-  const worker = new Worker(join(__dirname, 'wormhole-engine.service.js'), {
-    workerData,
-  });
-  let workerRunning = true;
-
-  worker.on('error', (error) =>
-    loggerService.fatal(error, 'Error on Wormhole engine worker.'),
-  );
-
-  worker.on('exit', (exitCode) => {
-    workerRunning = false;
-    loggerService.info({ exitCode }, `Wormhole engine worker exited.`);
-  });
-
-  // Initiate status log interval
-  const logStatus = () => {
-    loggerService.info(
-      { isRunning: workerRunning },
-      `Wormhole collector relayer engine workers status.`,
-    );
-  };
-  setInterval(logStatus, STATUS_LOG_INTERVAL);
-}
-
-function initiatePacketSnifferWorkers(
-  wormholeConfig: AMBConfig,
-  configService: ConfigService,
-  loggerService: LoggerService,
-): void {
-  loggerService.info('Starting the wormhole packet sniffer workers...');
-
-  const workers: Record<string, Worker | null> = {};
-
-  const globalMockConfig = loadGlobalPacketSnifferConfig(configService);
-
-  configService.chainsConfig.forEach((chainConfig) => {
-    // Spawn a worker for every Wormhole implementation
-    const workerData = loadPacketSnifferWorkerData(
-      wormholeConfig,
-      configService,
-      loggerService,
-      chainConfig,
-      globalMockConfig,
-    );
-
-    if (workerData) {
-      const worker = new Worker(join(__dirname, 'wormhole.service.js'), {
-        workerData,
-      });
-      workers[chainConfig.chainId] = worker;
-
-      worker.on('error', (error) =>
-        loggerService.fatal(
-          { error, chainId: chainConfig.chainId },
-          'Error on Wormhole service worker.',
-        ),
-      );
-
-      worker.on('exit', (exitCode) => {
-        workers[chainConfig.chainId] = null;
-        loggerService.info(
-          { exitCode, chainId: chainConfig.chainId },
-          `Wormhole service worker exited.`,
-        );
-      });
-    }
-  });
-
-  // Initiate status log interval
-  const logStatus = () => {
-    const activeWorkers = [];
-    const inactiveWorkers = [];
-    for (const chainId of Object.keys(workers)) {
-      if (workers[chainId] != null) activeWorkers.push(chainId);
-      else inactiveWorkers.push(chainId);
-    }
-    const status = {
-      activeWorkers,
-      inactiveWorkers,
+        wormholeAddress,
     };
-    loggerService.info(
-      status,
-      'Wormhole collector packet sniffer workers status.',
-    );
-  };
-  setInterval(logStatus, STATUS_LOG_INTERVAL);
 }
 
-export default (moduleInterface: CollectorModuleInterface) => {
-  const { configService, loggerService } = moduleInterface;
+export default async (moduleInterface: CollectorModuleInterface) => {
+    const { configService, monitorService, loggerService } = moduleInterface;
 
-  // Get the global Wormhole config
-  const wormholeConfig = configService.ambsConfig.get('wormhole');
-  if (wormholeConfig == undefined) {
-    throw Error(
-      `Failed to load Wormhole module: 'wormhole' configuration not found.`,
-    );
-  }
+    const wormholeConfig = loadWormholeConfig(configService, loggerService);
 
-  initiateRelayerEngineWorker(wormholeConfig, configService, loggerService);
+    initiateRelayerEngineWorker(wormholeConfig, loggerService);
 
-  initiatePacketSnifferWorkers(wormholeConfig, configService, loggerService);
+    await initiateMessageSnifferWorkers(wormholeConfig, monitorService, loggerService);
+
+    initiateRecoveryWorkers(wormholeConfig, loggerService);
 };
