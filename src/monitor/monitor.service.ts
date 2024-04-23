@@ -9,7 +9,7 @@ import { tryErrorToString } from 'src/common/utils';
 import { ChainConfig } from 'src/config/config.types';
 
 export const DEFAULT_MONITOR_INTERVAL = 5000;
-export const DEFAULT_MONITOR_BLOCK_DELAY = 0;
+export const DEFAULT_MONITOR_BLOCK_DELAY = 1;
 
 
 interface DefaultMonitorWorkerData {
