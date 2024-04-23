@@ -249,40 +249,13 @@ class PolymerCollectorSnifferWorker {
         const destinationChain: string = event.sourceChannelId;
 
         // Decode the Universal channel payload
-        const packet = event.packet.startsWith('0x')
+        // Polymer has 32 bytes for a implementation identifier at the beginning. It doesn't provide any relevant information.
+        const packet = (event.packet.startsWith('0x')
             ? event.packet.slice(2)
-            : event.packet;
-
-        let params: [string, bigint, string, string];
-        try {
-            params = abi.decode(
-                ['tuple(bytes32, uint256, bytes32, bytes)'],
-                event.packet,
-            )[0];
-        } catch (error) {
-            this.logger.debug(
-                {
-                    error: tryErrorToString(error),
-                },
-                `Couldn't decode a Polymer message. Likely because it is not a UniversalChannel Package.`,
-            );
-            return;
-        }
-
-        const incentivisedMessageEscrowFromPacket: string =
-            '0x' + params[0].replaceAll('0x', '').slice(12 * 2);
-
-        if (
-            incentivisedMessageEscrowFromPacket.toLowerCase() !=
-                this.config.incentivesAddress.toLowerCase() ||
-            packet.length <= 384 + 64 * 2
-        ) {
-            return;
-        }
-
+            : event.packet).slice(32 * 2);
         // Derive the message identifier
-        const messageIdentifier = '0x' + params[3]
-            .replaceAll('0x', '').slice(1 * 2, 1 * 2 + 32 * 2);
+
+        const messageIdentifier = '0x' + packet.slice(0,32 * 2);
 
         const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
             log.blockNumber
@@ -293,8 +266,8 @@ class PolymerCollectorSnifferWorker {
             amb: 'polymer',
             sourceChain: this.chainId,
             destinationChain,
-            sourceEscrow: "", // ! TODO implement (important for underwriting)
-            payload: params[3],
+            sourceEscrow: event.sourcePortAddress,
+            payload: packet,
             blockNumber: log.blockNumber,
             transactionBlockNumber,
             blockHash: log.blockHash,
