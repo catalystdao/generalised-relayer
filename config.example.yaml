@@ -83,7 +83,6 @@ chains:
     # Overrides
     monitor:
       blockDelay: 2
-    getter:
       interval: 5000
 
     # AMB configuration
