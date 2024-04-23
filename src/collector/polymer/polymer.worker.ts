@@ -5,7 +5,7 @@ import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
-import { AbiCoder, JsonRpcProvider, Log, LogDescription } from 'ethers6';
+import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
@@ -50,7 +50,10 @@ class PolymerCollectorSnifferWorker {
         this.incentivesAddress = this.config.incentivesAddress;
         this.polymerAddress = this.config.polymerAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
-        this.filterTopics = [[this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash]];
+        this.filterTopics = [
+            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash],
+            [zeroPadValue(this.incentivesAddress, 32)]
+        ];
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
