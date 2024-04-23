@@ -255,7 +255,7 @@ class PolymerCollectorSnifferWorker {
             : event.packet).slice(32 * 2);
         // Derive the message identifier
 
-        const messageIdentifier = '0x' + packet.slice(0,32 * 2);
+        const messageIdentifier = '0x' + packet.slice(2, 2 + 32 * 2);
 
         const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
             log.blockNumber
