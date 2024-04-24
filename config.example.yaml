@@ -15,7 +15,6 @@ global:
     enabled: true
     newOrdersDelay: 1000                # Time to wait before processing new 'submission' orders
     retryInterval: 30000                # Time to wait before retrying a failed transaction
-    processingInterval: 100             # Throttle for the Submitter main 'run' loop
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
 
@@ -26,7 +25,6 @@ global:
 
   wallet:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
-    processingInterval: 100             # Throttle for the Wallet main 'run' loop
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline
     confirmations: 1                    # Number of confirmations to wait before accepting a transaction as 'completed'.
@@ -85,10 +83,7 @@ chains:
     # Overrides
     monitor:
       blockDelay: 2
-    getter:
       interval: 5000
-    submitter:
-      retryInterval: 30000
 
     # AMB configuration
     wormhole:
@@ -118,12 +113,12 @@ chains:
       incentivesAddress: '0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F'
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
     polymer:
-      incentivesAddress: '0x62e27C0bD89D7AC599Df8765cDEe0183A34A9929'
-      bridgeAddress: '0x58f1863F75c9Db1c7266dC3d7b43832b58f35e83'
+      incentivesAddress: '0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD'
+      bridgeAddress: '0xE2029629f51ab994210d671Dc08b7Ec94899b278'
 
   - chainId: 84532
     name: 'Base Sepolia'
-    rpc: 'https://rpc.notadegen.com/base/sepolia'
+    rpc: 'https://sepolia.base.org'
     polymer:
-      incentivesAddress: '0x147d414F1964c94c4Ac7422aC148aBddb4BEdC82'
-      bridgeAddress: '0xfC1d3E02e00e0077628e8Cc9edb6812F95Db05dC'
+      incentivesAddress: '0xE106643739deB1879CcD8E3ffe2736D8B489bC2F'
+      bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
