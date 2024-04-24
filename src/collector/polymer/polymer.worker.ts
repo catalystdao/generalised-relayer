@@ -249,7 +249,11 @@ class PolymerCollectorSnifferWorker {
     ): Promise<void> {
 
         const event = parsedLog.args as unknown as SendPacketEvent.OutputObject;
-        const destinationChain: string = event.sourceChannelId;
+
+        // We need to convert the source chain id to the destination chain using the
+        // settings map.
+        this.config.polymerChannels[event.sourceChannelId];
+        const destinationChain: string = this.config.polymerChannels[event.sourceChannelId] ?? event.sourceChannelId;
 
         // Decode the Universal channel payload
         // Polymer has 32 bytes for a implementation identifier at the beginning. It doesn't provide any relevant information.
