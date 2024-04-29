@@ -250,9 +250,8 @@ class PolymerCollectorSnifferWorker {
 
         const event = parsedLog.args as unknown as SendPacketEvent.OutputObject;
 
-        // We need to convert the source chain id to the destination chain using the
+        // We need to convert the source channel id to the destination chain using the
         // settings map.
-        this.config.polymerChannels[event.sourceChannelId];
         const destinationChain: string = this.config.polymerChannels[event.sourceChannelId] ?? event.sourceChannelId;
 
         // Decode the Universal channel payload
