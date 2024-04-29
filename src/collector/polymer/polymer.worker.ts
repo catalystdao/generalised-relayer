@@ -51,8 +51,7 @@ class PolymerCollectorSnifferWorker {
         this.polymerAddress = this.config.polymerAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
         this.filterTopics = [
-            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash],
-            [zeroPadValue(this.incentivesAddress, 32)]
+            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash, zeroPadValue(this.incentivesAddress, 32)]
         ];
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
@@ -252,7 +251,11 @@ class PolymerCollectorSnifferWorker {
 
         // We need to convert the source channel id to the destination chain using the
         // settings map.
-        const destinationChain: string = this.config.polymerChannels[event.sourceChannelId] ?? event.sourceChannelId;
+        const destinationChain: string | undefined = this.config.polymerChannels[event.sourceChannelId];
+        if (destinationChain === undefined) {
+            this.logger.debug(`DestinationChain: ${destinationChain} not found in config.`)
+            return;
+        }
 
         // Decode the Universal channel payload
         // Polymer has 32 bytes for a implementation identifier at the beginning. It doesn't provide any relevant information.
