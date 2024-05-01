@@ -176,24 +176,36 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             // Source to Destination
             const gasLimit = BigInt(bounty.maxGasDelivery + gasLimitBuffer);
 
-            this.logger.debug(
-                {
-                    messageIdentifier,
-                    gasLimit,
-                    maxGasDelivery: bounty.maxGasDelivery,
-                    gasLimitBuffer,
-                    gasEstimation: gasEstimation.toString(),
-                },
-                `Bounty evaluation (source to destination).`,
-            );
-
             if (order.priority) {
+                this.logger.debug(
+                    {
+                        messageIdentifier,
+                        gasLimit,
+                        maxGasDelivery: bounty.maxGasDelivery,
+                        gasLimitBuffer,
+                        gasEstimation: gasEstimation.toString(),
+                        priority: true,
+                    },
+                    `Bounty evaluation (source to destination).`,
+                );
+
                 return gasEstimation;
             }
 
             //TODO do we want this check? Should the tx always be submitted regardless of maxGasDelivery?
             const isGasLimitEnough = gasLimit >= gasEstimation;
             if (!isGasLimitEnough) {
+                this.logger.debug(
+                    {
+                        messageIdentifier,
+                        gasLimit,
+                        maxGasDelivery: bounty.maxGasDelivery,
+                        gasLimitBuffer,
+                        gasEstimation: gasEstimation.toString(),
+                    },
+                    `Bounty evaluation (source to destination). Gas limit exceeded.`,
+                );
+
                 // Do not relay packet
                 return 0n;
             }
@@ -208,11 +220,26 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             );
             const deliveryFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, bounty.fromChainId);
 
-            const deliveryProfit = deliveryFiatReward - deliveryFiatCost;
+            const deliveryFiatProfit = deliveryFiatReward - deliveryFiatCost;
 
             const relayDelivery = (
-                deliveryProfit > this.evaluationcConfig.minDeliveryReward ||
-                deliveryProfit / deliveryFiatCost > this.evaluationcConfig.relativeMinDeliveryReward
+                deliveryFiatProfit > this.evaluationcConfig.minDeliveryReward ||
+                deliveryFiatProfit / deliveryFiatCost > this.evaluationcConfig.relativeMinDeliveryReward
+            );
+
+            this.logger.debug(
+                {
+                    messageIdentifier,
+                    gasLimit,
+                    maxGasDelivery: bounty.maxGasDelivery,
+                    gasLimitBuffer,
+                    gasEstimation: gasEstimation.toString(),
+                    deliveryFiatCost,
+                    deliveryFiatReward,
+                    deliveryFiatProfit,
+                    relayDelivery,
+                },
+                `Bounty evaluation (source to destination).`,
             );
 
             return relayDelivery ? gasEstimation : 0n;
@@ -220,18 +247,20 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             // Destination to Source
             const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer); //TODO do we care about this?
 
-            this.logger.debug(
-                {
-                    messageIdentifier,
-                    gasLimit,
-                    maxGasAck: bounty.maxGasAck,
-                    gasLimitBuffer,
-                    gasEstimation: gasEstimation.toString(),
-                },
-                `Bounty evaluation (destination to source).`,
-            );
 
             if (order.priority) {
+                this.logger.debug(
+                    {
+                        messageIdentifier,
+                        gasLimit,
+                        maxGasAck: bounty.maxGasAck,
+                        gasLimitBuffer,
+                        gasEstimation: gasEstimation.toString(),
+                        priority: true,
+                    },
+                    `Bounty evaluation (destination to source).`,
+                );
+
                 return gasEstimation;
             }
 
@@ -245,10 +274,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             );
             const ackFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, this.chainId);
 
-            const ackProfit = ackFiatReward - ackFiatCost;
+            const ackFiatProfit = ackFiatReward - ackFiatCost;
             const deliveryCost = bounty.deliveryGasCost ?? 0n;  // This is only present if *this* relayer submitted the message delivery.
             
             let relayAck: boolean;
+            let deliveryFiatReward = 0;
             if (deliveryCost != 0n) {
                 // If the delivery was submitted by *this* relayer, always submit the ack *unless*
                 // the net result of doing so is worse than not getting paid for the message
@@ -262,17 +292,32 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 const deliveryGasReward = bounty.priceOfDeliveryGas * (
                     usedGasDelivery > maxGasDelivery ? maxGasDelivery : usedGasDelivery
                 );
-                const deliveryFiatReward = await this.getGasCostFiatPrice(deliveryGasReward, this.chainId);
+                deliveryFiatReward = await this.getGasCostFiatPrice(deliveryGasReward, this.chainId);
 
-
-                relayAck = (ackProfit + deliveryFiatReward) > 0n;
+                relayAck = (ackFiatProfit + deliveryFiatReward) > 0n;
             }
             else {
                 relayAck = (
-                    ackProfit > this.evaluationcConfig.minAckReward ||
-                    ackProfit / ackFiatCost > this.evaluationcConfig.relativeMinAckReward
+                    ackFiatProfit > this.evaluationcConfig.minAckReward ||
+                    ackFiatProfit / ackFiatCost > this.evaluationcConfig.relativeMinAckReward
                 );
             }
+
+            this.logger.debug(
+                {
+                    messageIdentifier,
+                    gasLimit,
+                    maxGasAck: bounty.maxGasAck,
+                    gasLimitBuffer,
+                    gasEstimation: gasEstimation.toString(),
+                    ackFiatCost,
+                    ackFiatReward,
+                    ackFiatProfit,
+                    deliveryFiatReward,
+                    relayAck,
+                },
+                `Bounty evaluation (destination to source).`,
+            );
 
             return relayAck ? gasEstimation : 0n;
         }
