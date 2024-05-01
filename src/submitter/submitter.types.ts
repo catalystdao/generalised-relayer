@@ -5,6 +5,7 @@ export interface Order {
     messageIdentifier: string;
     message: BytesLike;
     messageCtx: BytesLike;
+    incentivesPayload?: BytesLike;
 }
 
 export interface EvalOrder extends Order {

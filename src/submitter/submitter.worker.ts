@@ -218,8 +218,8 @@ class SubmitterWorker {
                             {
                                 messageIdentifier: message.messageIdentifier,
                             },
-                            `AMB message not found on submit order. Priority set to 'false'.`
-                        )
+                            `AMB message not found on submit order. Submission evaluation will be less accurate.`
+                        );
                     }
 
                     return this.addSubmitOrder(
@@ -228,6 +228,7 @@ class SubmitterWorker {
                         message.message,
                         message.messageCtx ?? '',
                         ambMessage?.priority ?? false, // eval priority => undefined = false.
+                        ambMessage?.payload,
                     );
                 })
         });
@@ -239,6 +240,7 @@ class SubmitterWorker {
         message: BytesLike,
         messageCtx: BytesLike,
         priority: boolean,
+        incentivesPayload?: BytesLike,
     ) {
         this.logger.debug(
             { messageIdentifier, priority },
@@ -252,6 +254,7 @@ class SubmitterWorker {
                 message,
                 messageCtx,
                 priority: true,
+                incentivesPayload,
             });
         } else {
             // Push into the evaluation queue
@@ -263,6 +266,7 @@ class SubmitterWorker {
                     message,
                     messageCtx,
                     priority: false,
+                    incentivesPayload,
                 },
             });
         }

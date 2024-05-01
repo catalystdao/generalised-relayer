@@ -255,7 +255,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 // delivery.
 
                 // Recalculate the delivery reward using the latest pricing info
-                const usedGasDelivery = await this.getGasUsedForDelivery(order.message) ?? 0n;  // 'gasUsed' should not be 'undefined', but if it is, continue as if it where 0
+                const usedGasDelivery = order.incentivesPayload
+                    ? await this.getGasUsedForDelivery(order.incentivesPayload) ?? 0n
+                    : 0n;  // 'gasUsed' should not be 'undefined', but if it is, continue as if it was 0
                 const maxGasDelivery = BigInt(bounty.maxGasDelivery);
                 const deliveryGasReward = bounty.priceOfDeliveryGas * (
                     usedGasDelivery > maxGasDelivery ? maxGasDelivery : usedGasDelivery
@@ -321,6 +323,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     }
 
     private async getGasCostFiatPrice(amount: bigint, chainId: string): Promise<number> {
+        //TODO add timeout?
         const price = await this.pricing.getPrice(chainId, amount);
         if (price == null) {
             throw new Error('Unable to fetch price.');
