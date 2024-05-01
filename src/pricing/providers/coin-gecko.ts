@@ -1,5 +1,5 @@
 import pino from "pino";
-import fetch from "node-fetch";
+import axios from "axios";
 import { PricingProviderConfig, PricingProvider } from "../pricing.provider";
 
 export const PRICING_TYPE_COIN_GECKO = 'coin-gecko';
@@ -14,6 +14,10 @@ export interface CoinGeckoPricingConfig extends PricingProviderConfig {
 export class FixedPricingProvider extends PricingProvider<CoinGeckoPricingConfig> {
     readonly pricingProviderType = PRICING_TYPE_COIN_GECKO;
 
+    private readonly client = axios.create({
+        baseURL: BASE_COIN_GECKO_URL,
+    })
+
     constructor(
         config: CoinGeckoPricingConfig,
         logger: pino.Logger,
@@ -25,19 +29,15 @@ export class FixedPricingProvider extends PricingProvider<CoinGeckoPricingConfig
 
         const coinId = this.config.coinId;
         const denom = this.config.pricingDenomination.toLowerCase();
-        const endpoint = `${BASE_COIN_GECKO_URL}/simple/price?ids=${coinId}&vs_currencies=${denom}`;
+        const path = `/simple/price?ids=${coinId}&vs_currencies=${denom}`;
 
-        const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-        });
+        const { data } = await this.client.get(path);
 
-        const parsedResponse: any = await response.json();
-        const price = Number(parsedResponse[coinId]?.[denom]);
+        const price = Number(data[coinId]?.[denom]);
 
         if (isNaN(price)) {
             throw new Error(
-                `Failed to parse api query response (endpoint ${endpoint}, response ${JSON.stringify(parsedResponse)})`
+                `Failed to parse api query response (url ${BASE_COIN_GECKO_URL}, path ${path}, response ${JSON.stringify(data)})`
             );
         }
 
