@@ -15,7 +15,7 @@ export const PRICING_DEFAULT_RETRY_INTERVAL = 2000;
 export const PRICING_DEFAULT_MAX_TRIES = 3;
 
 export interface PricingWorkerData {
-    chainPricingProvidersConfig: Record<string, PricingProviderConfig>;
+    chainPricingProviderConfigs: Record<string, PricingProviderConfig>;
     loggerOptions: LoggerOptions;
 }
 
@@ -64,7 +64,7 @@ export class PricingService implements OnModuleInit {
     private loadWorkerConfig(): PricingWorkerData {
         const globalPricingConfig = this.configService.globalConfig.pricing;
         
-        const chainPricingProvidersConfig: Record<string, PricingProviderConfig> = {};
+        const chainPricingProviderConfigs: Record<string, PricingProviderConfig> = {};
 
         for (const [chainId, chainConfig] of this.configService.chainsConfig) {
             const chainPricingConfig = chainConfig.pricing;
@@ -111,10 +111,12 @@ export class PricingService implements OnModuleInit {
             for (const [key, value] of Object.entries(chainPricingConfig.providerSpecificConfig)) {
                 pricingProviderConfig[key] = value;
             }
+
+            chainPricingProviderConfigs[chainId] = pricingProviderConfig;
         }
 
         return {
-            chainPricingProvidersConfig: chainPricingProvidersConfig,
+            chainPricingProviderConfigs: chainPricingProviderConfigs,
             loggerOptions: this.loggerService.loggerOptions
         }
     }

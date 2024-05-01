@@ -174,7 +174,7 @@ export class ConfigService {
 
         // Any configuration keys that do not form part of the 'PRICING_SCHEMA' definition are
         // assumed to be provider-specific configuration options.
-        for (const [key, value] of Object.entries(rawConfig)) {
+        for (const [key, value] of Object.entries(rawConfig ?? {})) {
             if (commonKeys.includes(key)) {
                 formattedConfig[key] = value;
             }

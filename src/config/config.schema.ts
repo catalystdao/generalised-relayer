@@ -237,6 +237,7 @@ const CHAINS_SCHEMA = {
 
             monitor: { $ref: "monitor-schema" },
             getter: { $ref: "getter-schema" },
+            pricing: { $ref: "pricing-schema" },
             submitter: { $ref: "submitter-schema" },
             wallet: { $ref: "wallet-schema" },
         },

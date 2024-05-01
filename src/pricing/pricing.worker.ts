@@ -37,7 +37,7 @@ class PricingWorker {
     }
 
     private initializeProviders() {
-        for (const [chainId, config] of Object.entries(this.config.chainPricingProvidersConfig)) {
+        for (const [chainId, config] of Object.entries(this.config.chainPricingProviderConfigs)) {
             this.initializeProvider(chainId, config);
         }
     }
