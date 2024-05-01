@@ -4,6 +4,7 @@ export interface GlobalConfig {
   logLevel?: string;
   monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
+  pricing: PricingGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
   wallet: WalletGlobalConfig;
@@ -24,6 +25,18 @@ export interface GetterGlobalConfig {
 
 export interface GetterConfig extends GetterGlobalConfig {}
 
+export interface PricingGlobalConfig {
+  provider?: string;
+  coinDecimals?: number;
+  pricingDenomination?: string;
+  cacheDuration?: number;
+  retryInterval?: number;
+  maxTries?: number;
+  providerSpecificConfig: Record<string, any>;
+};
+
+export interface PricingConfig extends PricingGlobalConfig {}
+
 export interface SubmitterGlobalConfig {
   enabled?: boolean;
   newOrdersDelay?: number;
@@ -33,6 +46,10 @@ export interface SubmitterGlobalConfig {
   maxPendingTransactions?: number;
 
   gasLimitBuffer?: Record<string, number> & { default?: number };
+  minDeliveryReward?: number;
+  relativeMinDeliveryReward?: number;
+  minAckReward?: number;
+  relativeMinAckReward?: number;
 }
 
 export interface SubmitterConfig extends SubmitterGlobalConfig {}
@@ -78,6 +95,7 @@ export interface ChainConfig {
   stoppingBlock?: number;
   monitor: MonitorConfig;
   getter: GetterConfig;
+  pricing: PricingConfig;
   submitter: SubmitterConfig;
   wallet: WalletConfig;
 }

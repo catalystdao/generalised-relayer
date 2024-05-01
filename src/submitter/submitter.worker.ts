@@ -10,12 +10,13 @@ import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/Ince
 import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { EvalOrder, NewOrder } from './submitter.types';
+import { BountyEvaluationConfig, EvalOrder, NewOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { WalletInterface } from 'src/wallet/wallet.interface';
+import { PricingInterface } from 'src/pricing/pricing.interface';
 
 class SubmitterWorker {
     private readonly store: Store;
@@ -28,6 +29,7 @@ class SubmitterWorker {
 
     private readonly chainId: string;
 
+    private readonly pricing: PricingInterface;
     private readonly wallet: WalletInterface;
 
     private readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
@@ -51,18 +53,27 @@ class SubmitterWorker {
         });
         this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
+        this.pricing = new PricingInterface(this.config.pricingPort);
         this.wallet = new WalletInterface(this.config.walletPort);
 
         [this.evalQueue, this.submitQueue] =
             this.initializeQueues(
                 this.config.retryInterval,
                 this.config.maxTries,
+                this.config.walletPublicKey,
                 this.store,
                 this.loadIncentivesContracts(this.config.incentivesAddresses),
                 this.config.chainId,
-                this.config.gasLimitBuffer,
-                this.config.walletPublicKey,
+                {
+                    gasLimitBuffer: this.config.gasLimitBuffer,
+                    minDeliveryReward: this.config.minDeliveryReward,
+                    relativeMinDeliveryReward: this.config.relativeMinDeliveryReward,
+                    minAckReward: this.config.minAckReward,
+                    relativeMinAckReward: this.config.relativeMinAckReward,
+                },
+                this.pricing,
                 this.wallet,
+                this.provider,
                 this.logger,
             );
 
@@ -84,28 +95,33 @@ class SubmitterWorker {
     private initializeQueues(
         retryInterval: number,
         maxTries: number,
+        walletPublicKey: string,
         store: Store,
         incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         chainId: string,
-        gasLimitBuffer: Record<string, number>,
-        walletPublicKey: string,
+        bountyEvaluationConfig: BountyEvaluationConfig,
+        pricing: PricingInterface,
         wallet: WalletInterface,
+        provider: JsonRpcProvider,
         logger: pino.Logger,
     ): [EvalQueue, SubmitQueue] {
         const evalQueue = new EvalQueue(
             retryInterval,
             maxTries,
+            walletPublicKey,
             store,
             incentivesContracts,
             chainId,
-            gasLimitBuffer,
-            walletPublicKey,
+            bountyEvaluationConfig,
+            pricing,
+            provider,
             logger,
         );
 
         const submitQueue = new SubmitQueue(
             retryInterval,
             maxTries,
+            store,
             incentivesContracts,
             walletPublicKey,
             wallet,

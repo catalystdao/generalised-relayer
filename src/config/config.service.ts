@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
-import { getConfigValidator } from './config.schema';
-import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig } from './config.types';
+import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
+import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig } from './config.types';
 
 @Injectable()
 export class ConfigService {
@@ -87,6 +87,7 @@ export class ConfigService {
             logLevel: rawGlobalConfig.logLevel,
             monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
             getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
+            pricing: this.formatPricingGlobalConfig(rawGlobalConfig.pricing),
             submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
             persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
             wallet: this.formatWalletGlobalConfig(rawGlobalConfig.wallet),
@@ -107,6 +108,7 @@ export class ConfigService {
                 stoppingBlock: rawChainConfig.stoppingBlock,
                 monitor: this.formatMonitorConfig(rawChainConfig.monitor),
                 getter: this.formatGetterConfig(rawChainConfig.getter),
+                pricing: this.formatPricingConfig(rawChainConfig.pricing),
                 submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
                 wallet: this.formatWalletConfig(rawChainConfig.wallet),
             });
@@ -164,6 +166,26 @@ export class ConfigService {
         return { ...rawConfig } as GetterGlobalConfig;
     }
 
+    private formatPricingGlobalConfig(rawConfig: any): PricingGlobalConfig {
+        const commonKeys = Object.keys(PRICING_SCHEMA.properties);
+
+        const formattedConfig: Record<string, any> = {};
+        formattedConfig['providerSpecificConfig'] = {}
+
+        // Any configuration keys that do not form part of the 'PRICING_SCHEMA' definition are
+        // assumed to be provider-specific configuration options.
+        for (const [key, value] of Object.entries(rawConfig)) {
+            if (commonKeys.includes(key)) {
+                formattedConfig[key] = value;
+            }
+            else {
+                formattedConfig['providerSpecificConfig'][key] = value;
+            }
+        }
+
+        return formattedConfig as PricingGlobalConfig;
+    }
+
     private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
         return { ...rawConfig } as SubmitterGlobalConfig;
     }
@@ -196,6 +218,10 @@ export class ConfigService {
 
     private formatGetterConfig(rawConfig: any): GetterConfig {
         return this.formatGetterGlobalConfig(rawConfig);
+    }
+
+    private formatPricingConfig(rawConfig: any): PricingConfig {
+        return this.formatPricingGlobalConfig(rawConfig);
     }
 
     private formatSubmitterConfig(rawConfig: any): SubmitterConfig {

@@ -8,6 +8,7 @@ import { SubmitterModule } from './submitter/submitter.module';
 import { PersisterModule } from './store/persister/persister.module';
 import { StoreModule } from './store/store.module';
 import { MonitorModule } from './monitor/monitor.module';
+import { PricingModule } from './pricing/pricing.module';
 
 @Module({
     imports: [
@@ -17,6 +18,7 @@ import { MonitorModule } from './monitor/monitor.module';
         GetterModule,
         EvaluatorModule,
         CollectorModule,
+        PricingModule,
         SubmitterModule,
         PersisterModule,
         StoreModule,

@@ -7,6 +7,7 @@ import { TransactionRequest, zeroPadValue } from 'ethers6';
 import pino from 'pino';
 import { tryErrorToString } from 'src/common/utils';
 import { IncentivizedMessageEscrow } from 'src/contracts';
+import { Store } from 'src/store/store.lib';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
@@ -18,6 +19,7 @@ export class SubmitQueue extends ProcessingQueue<
     constructor(
         retryInterval: number,
         maxTries: number,
+        private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         relayerAddress: string,
         private readonly wallet: WalletInterface,
@@ -138,6 +140,8 @@ export class SubmitQueue extends ProcessingQueue<
                     orderDescription,
                     `Successful submit order: message submitted.`,
                 );
+
+                void this.registerSubmissionCost(order, result.txReceipt.gasUsed);
             } else {
                 this.logger.debug(
                     orderDescription,
@@ -156,6 +160,19 @@ export class SubmitQueue extends ProcessingQueue<
                     `Priority submit order failed.`
                 );
             }
+        }
+    }
+
+    private async registerSubmissionCost(
+        order: SubmitOrder,
+        gasUsed: bigint,
+    ): Promise<void> {
+        // Currently the 'ack' submission cost is not registered.
+        if (order.isDelivery) {
+            void this.store.registerDeliveryCost({
+                messageIdentifier: order.messageIdentifier,
+                deliveryGasCost: gasUsed
+            });
         }
     }
 }

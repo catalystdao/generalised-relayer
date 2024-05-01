@@ -8,12 +8,17 @@ import { LoggerOptions } from 'pino';
 import { WalletService } from 'src/wallet/wallet.service';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
+import { PricingService } from 'src/pricing/pricing.service';
 
 const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
+const MIN_DELIVERY_REWARD_DEFAULT = 0;
+const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
+const MIN_ACK_REWARD_DEFAULT = 0;
+const RELATIVE_MIN_ACK_REWARD_DEFAULT = 0;
 
 interface GlobalSubmitterConfig {
     enabled: boolean;
@@ -23,6 +28,10 @@ interface GlobalSubmitterConfig {
     maxTries: number;
     maxPendingTransactions: number;
     gasLimitBuffer: Record<string, number> & { default?: number };
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number;
+    minAckReward: number;
+    relativeMinAckReward: number;
     walletPublicKey: string;
 }
 
@@ -37,6 +46,11 @@ export interface SubmitterWorkerData {
     maxTries: number;
     maxPendingTransactions: number;
     gasLimitBuffer: Record<string, number>;
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number;
+    minAckReward: number;
+    relativeMinAckReward: number;
+    pricingPort: MessagePort;
     walletPublicKey: string;
     walletPort: MessagePort;
     loggerOptions: LoggerOptions;
@@ -48,6 +62,7 @@ export class SubmitterService {
 
     constructor(
         private readonly configService: ConfigService,
+        private readonly pricingService: PricingService,
         private readonly walletService: WalletService,
         private readonly loggerService: LoggerService,
     ) {}
@@ -73,7 +88,7 @@ export class SubmitterService {
 
             const worker = new Worker(join(__dirname, 'submitter.worker.js'), {
                 workerData,
-                transferList: [workerData.walletPort]
+                transferList: [workerData.pricingPort, workerData.walletPort]
             });
 
             worker.on('error', (error) =>
@@ -117,6 +132,14 @@ export class SubmitterService {
         if (!('default' in gasLimitBuffer)) {
             gasLimitBuffer['default'] = 0;
         }
+        const minDeliveryReward =
+            submitterConfig.minDeliveryReward ?? MIN_DELIVERY_REWARD_DEFAULT;
+        const relativeMinDeliveryReward =
+            submitterConfig.relativeMinDeliveryReward ?? RELATIVE_MIN_DELIVERY_REWARD_DEFAULT;
+        const minAckReward =
+            submitterConfig.minAckReward ?? MIN_ACK_REWARD_DEFAULT;
+        const relativeMinAckReward =
+            submitterConfig.relativeMinAckReward ?? RELATIVE_MIN_ACK_REWARD_DEFAULT;
 
         const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
 
@@ -129,6 +152,10 @@ export class SubmitterService {
             maxPendingTransactions,
             gasLimitBuffer,
             walletPublicKey,
+            minDeliveryReward,
+            relativeMinDeliveryReward,
+            minAckReward,
+            relativeMinAckReward,
         };
     }
 
@@ -177,6 +204,25 @@ export class SubmitterService {
                 globalConfig.gasLimitBuffer,
                 chainConfig.submitter.gasLimitBuffer ?? {},
             ),
+            
+            minDeliveryReward:
+                chainConfig.submitter.minDeliveryReward ??
+                globalConfig.minDeliveryReward,
+
+            relativeMinDeliveryReward:
+                chainConfig.submitter.relativeMinDeliveryReward ??
+                globalConfig.relativeMinDeliveryReward,
+
+            minAckReward:
+                chainConfig.submitter.minAckReward ??
+                globalConfig.minAckReward,
+
+            relativeMinAckReward:
+                chainConfig.submitter.relativeMinAckReward ??
+                globalConfig.relativeMinAckReward,
+
+
+            pricingPort: await this.pricingService.attachToPricing(),
 
             walletPublicKey: globalConfig.walletPublicKey,
             walletPort: await this.walletService.attachToWallet(chainId),

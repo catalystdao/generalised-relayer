@@ -2,41 +2,64 @@ import {
     HandleOrderResult,
     ProcessingQueue,
 } from '../../processing-queue/processing-queue';
-import { EvalOrder, SubmitOrder } from '../submitter.types';
+import { BountyEvaluationConfig, EvalOrder, SubmitOrder } from '../submitter.types';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
 import { Bounty } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
 import { IncentivizedMessageEscrow } from 'src/contracts';
-import { tryErrorToString } from 'src/common/utils';
-import { zeroPadValue } from 'ethers6';
+import { tryErrorToString, wait } from 'src/common/utils';
+import { BytesLike, FeeData, JsonRpcProvider, MaxUint256, zeroPadValue } from 'ethers6';
+import { ParsePayload, MessageContext } from 'src/payload/decode.payload';
+import { PricingInterface } from 'src/pricing/pricing.interface';
+
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     readonly relayerAddress: string;
 
+    private feeData: FeeData | undefined;
+
     constructor(
         retryInterval: number,
         maxTries: number,
+        relayerAddress: string,
         private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         private readonly chainId: string,
-        private readonly gasLimitBuffer: Record<string, number>,
-        relayerAddress: string,
+        private readonly evaluationcConfig: BountyEvaluationConfig,
+        private readonly pricing: PricingInterface,
+        private readonly provider: JsonRpcProvider,
         private readonly logger: pino.Logger,
     ) {
         super(retryInterval, maxTries);
         this.relayerAddress = zeroPadValue(relayerAddress, 32);
     }
 
+    override async init(): Promise<void> {
+        await this.initializeFeeData();
+    }
+
+    protected override async onProcessOrders(): Promise<void> {
+        await this.updateFeeData();
+    }
+
     protected async handleOrder(
         order: EvalOrder,
         _retryCount: number,
     ): Promise<HandleOrderResult<SubmitOrder> | null> {
-        const gasLimit = await this.evaluateBounty(order);
+        const bounty = await this.queryBountyInfo(order.messageIdentifier);
+        if (bounty === null || bounty === undefined) {
+            throw Error(
+                `Bounty of message not found on evaluation (message ${order.messageIdentifier})`,
+            );
+        }
+
+        const gasLimit = await this.evaluateBounty(order, bounty);
+        const isDelivery = bounty.fromChainId != this.chainId;
 
         if (gasLimit > 0) {
             // Move the order to the submit queue
-            return { result: { ...order, gasLimit } };
+            return { result: { ...order, gasLimit, isDelivery } };
         } else {
             return null;
         }
@@ -114,14 +137,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         return this.store.getBounty(messageIdentifier);
     }
 
-    private async evaluateBounty(order: EvalOrder): Promise<bigint> {
+    private async evaluateBounty(order: EvalOrder, bounty: Bounty): Promise<bigint> {
         const messageIdentifier = order.messageIdentifier;
-        const bounty = await this.queryBountyInfo(messageIdentifier);
-        if (bounty === null || bounty === undefined) {
-            throw Error(
-                `Bounty of message not found on evaluation (message ${messageIdentifier})`,
-            );
-        }
 
         // Check if the bounty has already been submitted/is in process of being submitted
         const isDelivery = bounty.fromChainId != this.chainId;
@@ -154,8 +171,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
         const gasLimitBuffer = this.getGasLimitBuffer(order.amb);
 
-        //TODO gas prices are not being considered at this point
         if (isDelivery) {
+            //TODO is this correct? Is this desired?
             // Source to Destination
             const gasLimit = BigInt(bounty.maxGasDelivery + gasLimitBuffer);
 
@@ -170,14 +187,38 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 `Bounty evaluation (source to destination).`,
             );
 
+            if (order.priority) {
+                return gasEstimation;
+            }
+
+            //TODO do we want this check? Should the tx always be submitted regardless of maxGasDelivery?
             const isGasLimitEnough = gasLimit >= gasEstimation;
-            const relayDelivery = order.priority || isGasLimitEnough;
-            return relayDelivery
-                ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
-                : 0n;
+            if (!isGasLimitEnough) {
+                // Do not relay packet
+                return 0n;
+            }
+            
+            // Evaluate the cost of packet relaying
+            const gasCostEstimate = this.getGasCost(gasEstimation); 
+            const deliveryFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
+
+            const maxGasDelivery = BigInt(bounty.maxGasDelivery);
+            const gasRewardEstimate = bounty.priceOfDeliveryGas * (
+                gasEstimation > maxGasDelivery ? maxGasDelivery : gasEstimation
+            );
+            const deliveryFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, bounty.fromChainId);
+
+            const deliveryProfit = deliveryFiatReward - deliveryFiatCost;
+
+            const relayDelivery = (
+                deliveryProfit > this.evaluationcConfig.minDeliveryReward ||
+                deliveryProfit / deliveryFiatCost > this.evaluationcConfig.relativeMinDeliveryReward
+            );
+
+            return relayDelivery ? gasEstimation : 0n;
         } else {
             // Destination to Source
-            const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer);
+            const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer); //TODO do we care about this?
 
             this.logger.debug(
                 {
@@ -190,17 +231,128 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 `Bounty evaluation (destination to source).`,
             );
 
-            const isGasLimitEnough = gasLimit >= gasEstimation;
-            const relayAck = order.priority || isGasLimitEnough;
-            return relayAck
-                ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
-                : 0n;
+            if (order.priority) {
+                return gasEstimation;
+            }
+
+            // Evaluate the cost of packet relaying
+            const gasCostEstimate = this.getGasCost(gasEstimation); 
+            const ackFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
+
+            const maxGasAck = BigInt(bounty.maxGasAck);
+            const gasRewardEstimate = bounty.priceOfAckGas * (
+                gasEstimation > maxGasAck ? maxGasAck : gasEstimation
+            );
+            const ackFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, this.chainId);
+
+            const ackProfit = ackFiatReward - ackFiatCost;
+            const deliveryCost = bounty.deliveryGasCost ?? 0n;  // This is only present if *this* relayer submitted the message delivery.
+            
+            let relayAck: boolean;
+            if (deliveryCost != 0n) {
+                // If the delivery was submitted by *this* relayer, always submit the ack *unless*
+                // the net result of doing so is worse than not getting paid for the message
+                // delivery.
+
+                // Recalculate the delivery reward using the latest pricing info
+                const usedGasDelivery = await this.getGasUsedForDelivery(order.message) ?? 0n;  // 'gasUsed' should not be 'undefined', but if it is, continue as if it where 0
+                const maxGasDelivery = BigInt(bounty.maxGasDelivery);
+                const deliveryGasReward = bounty.priceOfDeliveryGas * (
+                    usedGasDelivery > maxGasDelivery ? maxGasDelivery : usedGasDelivery
+                );
+                const deliveryFiatReward = await this.getGasCostFiatPrice(deliveryGasReward, this.chainId);
+
+
+                relayAck = (ackProfit + deliveryFiatReward) > 0n;
+            }
+            else {
+                relayAck = (
+                    ackProfit > this.evaluationcConfig.minAckReward ||
+                    ackProfit / ackFiatCost > this.evaluationcConfig.relativeMinAckReward
+                );
+            }
+
+            return relayAck ? gasEstimation : 0n;
         }
 
         return 0n; // Do not relay packet
     }
 
     private getGasLimitBuffer(amb: string): number {
-        return this.gasLimitBuffer[amb] ?? this.gasLimitBuffer['default'] ?? 0;
+        return this.evaluationcConfig.gasLimitBuffer[amb]
+            ?? this.evaluationcConfig.gasLimitBuffer['default']
+            ?? 0;
+    }
+
+
+    private async initializeFeeData(): Promise<void> {
+        let tryCount = 0;
+        while (this.feeData == undefined) {
+            try {
+                this.feeData = await this.provider.getFeeData();
+            } catch {
+                this.logger.warn(
+                    { try: ++tryCount },
+                    'Failed to initialize feeData on submitter eval-queue. Worker locked until successful update.'
+                );
+                await wait(this.retryInterval);
+            }
+        }
+    }
+
+    private async updateFeeData(): Promise<void> {
+        try {
+            this.feeData = await this.provider.getFeeData();
+        } catch {
+            // Continue with stale fee data.
+        }
+    }
+
+    private getGasCost(gas: bigint): bigint {
+        // TODO! this should depend on the wallet's latest gas info AND on the config adjustments!
+        // TODO! OR the gas price should be sent to the wallet!
+        // If gas fee data is missing or incomplete, default the gas price to an extremely high
+        // value.
+        const gasPrice = this.feeData?.maxFeePerGas
+            ?? this.feeData?.maxFeePerGas
+            ?? MaxUint256;
+
+        return gas * gasPrice;
+    }
+
+    private async getGasCostFiatPrice(amount: bigint, chainId: string): Promise<number> {
+        const price = await this.pricing.getPrice(chainId, amount);
+        if (price == null) {
+            throw new Error('Unable to fetch price.');
+        }
+        return price;
+    }
+
+    private async getGasUsedForDelivery(message: BytesLike): Promise<bigint | null> {
+        try {
+            const payload = ParsePayload(message.toString());
+
+            if (payload == undefined) {
+                return null;
+            }
+
+            if (payload.context != MessageContext.CTX_DESTINATION_TO_SOURCE) {
+                this.logger.warn(
+                    { payload },
+                    `Unable to extract the 'gasUsed' for delivery. Payload is not a 'destination-to-source' message.`,
+                );
+                return null;
+            }
+
+            return payload.gasSpent;
+        }
+        catch (error) {
+            this.logger.warn(
+                { message },
+                `Failed to parse generalised incentives payload for 'gasSpent' (on delivery).`
+            );
+        }
+
+        return null;
     }
 }

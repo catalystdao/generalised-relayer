@@ -12,6 +12,7 @@ export interface EvalOrder extends Order {
 }
 
 export interface SubmitOrder extends Order {
+    isDelivery: boolean;
     priority: boolean;
     gasLimit: bigint | undefined;
     requeueCount?: number;
@@ -25,4 +26,13 @@ export interface SubmitOrderResult extends SubmitOrder {
 export interface NewOrder<OrderType> {
     order: OrderType;
     processAt: number;
+}
+
+
+export interface BountyEvaluationConfig {
+    gasLimitBuffer: Record<string, number>;
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number,
+    minAckReward: number;
+    relativeMinAckReward: number;
 }

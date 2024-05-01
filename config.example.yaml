@@ -18,10 +18,20 @@ global:
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
 
-    # Gas properties
+    # Evaluation properties
     gasLimitBuffer:                     # Extra gasLimit buffer. Customizable per AMB.
       default: 10000
       mock: 50000
+    minDeliveryReward: 0.001            # In the 'pricingDenomination' specified below
+    relativeMinDeliveryReward: 0.001
+    minAckReward: 0.001                 # In the 'pricingDenomination' specified below
+    relativeMinAckReward: 0.001
+
+  pricing:
+    provider: 'coin-gecko'
+    coinDecimals: 18
+    pricingDenomination: 'usd'
+
 
   wallet:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
@@ -85,6 +95,9 @@ chains:
       blockDelay: 2
       interval: 5000
 
+    pricing:
+      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+
     # AMB configuration
     wormhole:
       wormholeChainId: 10002
@@ -100,6 +113,8 @@ chains:
       blockDelay: 5
     getter:
       maxBlocks: 5000
+    pricing:
+      coinId: 'ethereum'
     wormhole:
       wormholeChainId: 10003
       incentivesAddress: '0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28'
@@ -108,6 +123,8 @@ chains:
   - chainId: 11155420
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
+    pricing:
+      coinId: 'ethereum'
     wormhole:
       wormholeChainId: 10005
       incentivesAddress: '0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F'
@@ -119,6 +136,8 @@ chains:
   - chainId: 84532
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
+    pricing:
+      coinId: 'ethereum'
     polymer:
       incentivesAddress: '0xE106643739deB1879CcD8E3ffe2736D8B489bC2F'
       bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
