@@ -21,3 +21,5 @@ export class FixedPricingProvider extends PricingProvider<FixedPricingConfig> {
         return this.config.value;
     }
 }
+
+export default FixedPricingProvider;

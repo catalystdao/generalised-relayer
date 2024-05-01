@@ -81,7 +81,7 @@ export abstract class PricingProvider<Config extends PricingProviderConfig> {
             await this.updateCoinPrice();
         }
 
-        return this.cachedCoinPrice * Number(amount) / this.config.coinDecimals;
+        return this.cachedCoinPrice * Number(amount) / 10**this.config.coinDecimals;
     }
 
     private async updateCoinPrice(): Promise<number> {

@@ -74,7 +74,7 @@ class PricingWorker {
                     amount: request.amount,
                     price
                 };
-                port1.emit('message', response);
+                port1.postMessage(response);
             });
         })
 

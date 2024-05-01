@@ -11,7 +11,7 @@ export interface CoinGeckoPricingConfig extends PricingProviderConfig {
     coinId: string;
 }
 
-export class FixedPricingProvider extends PricingProvider<CoinGeckoPricingConfig> {
+export class CoinGeckoPricingProvider extends PricingProvider<CoinGeckoPricingConfig> {
     readonly pricingProviderType = PRICING_TYPE_COIN_GECKO;
 
     private readonly client = axios.create({
@@ -44,3 +44,5 @@ export class FixedPricingProvider extends PricingProvider<CoinGeckoPricingConfig
         return price;
     }
 }
+
+export default CoinGeckoPricingProvider;
