@@ -114,7 +114,7 @@ chains:
     getter:
       maxBlocks: 5000
     pricing:
-      coinId: 'ethereum'
+      coinId: 'arbitrum'
     wormhole:
       wormholeChainId: 10003
       incentivesAddress: '0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28'
@@ -124,7 +124,7 @@ chains:
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
     pricing:
-      coinId: 'ethereum'
+      coinId: 'optimism'
     wormhole:
       wormholeChainId: 10005
       incentivesAddress: '0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F'
@@ -137,7 +137,7 @@ chains:
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
     pricing:
-      coinId: 'ethereum'
+      coinId: 'ethereum'  #TODO
     polymer:
       incentivesAddress: '0xE106643739deB1879CcD8E3ffe2736D8B489bC2F'
       bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
