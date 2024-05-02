@@ -27,7 +27,6 @@ interface GlobalSubmitterConfig {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
-    gasLimitBuffer: Record<string, number> & { default?: number };
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
     minAckReward: number;
@@ -45,7 +44,6 @@ export interface SubmitterWorkerData {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
-    gasLimitBuffer: Record<string, number>;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
     minAckReward: number;
@@ -128,10 +126,6 @@ export class SubmitterService {
         const maxPendingTransactions =
             submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
 
-        const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
-        if (!('default' in gasLimitBuffer)) {
-            gasLimitBuffer['default'] = 0;
-        }
         const minDeliveryReward =
             submitterConfig.minDeliveryReward ?? MIN_DELIVERY_REWARD_DEFAULT;
         const relativeMinDeliveryReward =
@@ -150,7 +144,6 @@ export class SubmitterService {
             processingInterval,
             maxTries,
             maxPendingTransactions,
-            gasLimitBuffer,
             walletPublicKey,
             minDeliveryReward,
             relativeMinDeliveryReward,
@@ -199,11 +192,6 @@ export class SubmitterService {
             maxPendingTransactions:
                 chainConfig.submitter.maxPendingTransactions ??
                 globalConfig.maxPendingTransactions,
-
-            gasLimitBuffer: this.getChainGasLimitBufferConfig(
-                globalConfig.gasLimitBuffer,
-                chainConfig.submitter.gasLimitBuffer ?? {},
-            ),
             
             minDeliveryReward:
                 chainConfig.submitter.minDeliveryReward ??
@@ -228,24 +216,5 @@ export class SubmitterService {
             walletPort: await this.walletService.attachToWallet(chainId),
             loggerOptions: this.loggerService.loggerOptions,
         };
-    }
-
-    private getChainGasLimitBufferConfig(
-        defaultGasLimitBufferConfig: Record<string, number>,
-        chainGasLimitBufferConfig: Record<string, number>,
-    ): Record<string, number> {
-        const gasLimitBuffers: Record<string, number> = {};
-
-        // Apply defaults
-        for (const key in defaultGasLimitBufferConfig) {
-            gasLimitBuffers[key] = defaultGasLimitBufferConfig[key]!;
-        }
-
-        // Apply chain overrides
-        for (const key in chainGasLimitBufferConfig) {
-            gasLimitBuffers[key] = chainGasLimitBufferConfig[key]!;
-        }
-
-        return gasLimitBuffers;
     }
 }

@@ -31,7 +31,6 @@ export interface NewOrder<OrderType> {
 
 
 export interface BountyEvaluationConfig {
-    gasLimitBuffer: Record<string, number>;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number,
     minAckReward: number;

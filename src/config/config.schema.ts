@@ -141,14 +141,6 @@ const SUBMITTER_SCHEMA = {
         maxPendingTransactions: { $ref: "positive-number-schema" },
 
         //TODO define 'evaluation' configuration somewhere else?
-        gasLimitBuffer: {
-            type: "object",
-            patternProperties: {
-                default: { $ref: "positive-number-schema" },
-                ["^[a-zA-Z0-9_-]+$"]: { $ref: "positive-number-schema" },
-            },
-            additionalProperties: false
-        },
         minDeliveryReward: { $ref: "positive-number-schema" },
         relativeMinDeliveryReward: { $ref: "positive-number-schema" },
         minAckReward: { $ref: "positive-number-schema" },

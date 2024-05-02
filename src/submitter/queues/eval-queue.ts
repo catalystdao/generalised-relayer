@@ -169,20 +169,14 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.relayerAddress,
         );
 
-        const gasLimitBuffer = this.getGasLimitBuffer(order.amb);   //TODO not needed
-
         if (isDelivery) {
             //TODO is this correct? Is this desired?
             // Source to Destination
-            const gasLimit = BigInt(bounty.maxGasDelivery + gasLimitBuffer);
-
             if (order.priority) {
                 this.logger.debug(
                     {
                         messageIdentifier,
-                        gasLimit,
                         maxGasDelivery: bounty.maxGasDelivery,
-                        gasLimitBuffer,
                         gasEstimation: gasEstimation.toString(),
                         priority: true,
                     },
@@ -190,24 +184,6 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 );
 
                 return gasEstimation;
-            }
-
-            //TODO do we want this check? Should the tx always be submitted regardless of maxGasDelivery?
-            const isGasLimitEnough = gasLimit >= gasEstimation;
-            if (!isGasLimitEnough) {
-                this.logger.debug(
-                    {
-                        messageIdentifier,
-                        gasLimit,
-                        maxGasDelivery: bounty.maxGasDelivery,
-                        gasLimitBuffer,
-                        gasEstimation: gasEstimation.toString(),
-                    },
-                    `Bounty evaluation (source to destination). Gas limit exceeded.`,
-                );
-
-                // Do not relay packet
-                return 0n;
             }
             
             // Evaluate the cost of packet relaying
@@ -233,9 +209,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.logger.debug(
                 {
                     messageIdentifier,
-                    gasLimit,
                     maxGasDelivery: bounty.maxGasDelivery,
-                    gasLimitBuffer,
                     gasEstimation: gasEstimation.toString(),
                     deliveryFiatCost,
                     deliveryFiatReward,
@@ -248,16 +222,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             return relayDelivery ? gasEstimation : 0n;
         } else {
             // Destination to Source
-            const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer); //TODO do we care about this?
-
-
             if (order.priority) {
                 this.logger.debug(
                     {
                         messageIdentifier,
-                        gasLimit,
                         maxGasAck: bounty.maxGasAck,
-                        gasLimitBuffer,
                         gasEstimation: gasEstimation.toString(),
                         priority: true,
                     },
@@ -309,9 +278,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.logger.debug(
                 {
                     messageIdentifier,
-                    gasLimit,
                     maxGasAck: bounty.maxGasAck,
-                    gasLimitBuffer,
                     gasEstimation: gasEstimation.toString(),
                     ackFiatCost,
                     ackFiatReward,
@@ -326,12 +293,6 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         }
 
         return 0n; // Do not relay packet
-    }
-
-    private getGasLimitBuffer(amb: string): number {
-        return this.evaluationcConfig.gasLimitBuffer[amb]
-            ?? this.evaluationcConfig.gasLimitBuffer['default']
-            ?? 0;
     }
 
 

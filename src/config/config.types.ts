@@ -45,7 +45,6 @@ export interface SubmitterGlobalConfig {
   maxTries?: number;
   maxPendingTransactions?: number;
 
-  gasLimitBuffer?: Record<string, number> & { default?: number };
   minDeliveryReward?: number;
   relativeMinDeliveryReward?: number;
   minAckReward?: number;

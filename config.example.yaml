@@ -19,9 +19,6 @@ global:
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
 
     # Evaluation properties
-    gasLimitBuffer:                     # Extra gasLimit buffer. Customizable per AMB.
-      default: 10000
-      mock: 50000
     minDeliveryReward: 0.001            # In the 'pricingDenomination' specified below
     relativeMinDeliveryReward: 0.001
     minAckReward: 0.001                 # In the 'pricingDenomination' specified below

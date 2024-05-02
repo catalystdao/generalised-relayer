@@ -65,7 +65,6 @@ class SubmitterWorker {
                 this.loadIncentivesContracts(this.config.incentivesAddresses),
                 this.config.chainId,
                 {
-                    gasLimitBuffer: this.config.gasLimitBuffer,
                     minDeliveryReward: this.config.minDeliveryReward,
                     relativeMinDeliveryReward: this.config.relativeMinDeliveryReward,
                     minAckReward: this.config.minAckReward,
