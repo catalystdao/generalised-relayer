@@ -285,7 +285,7 @@ class GetterWorker {
 
         const event = parsedLog.args as unknown as BountyClaimedEvent.OutputObject;
 
-        const messageIdentifier = event.uniqueIdentifier;
+        const messageIdentifier = event.messageIdentifier;
 
         this.logger.info({ messageIdentifier }, `BountyClaimed event found.`);
 
