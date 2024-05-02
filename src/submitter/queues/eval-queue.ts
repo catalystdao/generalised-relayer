@@ -169,7 +169,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.relayerAddress,
         );
 
-        const gasLimitBuffer = this.getGasLimitBuffer(order.amb);
+        const gasLimitBuffer = this.getGasLimitBuffer(order.amb);   //TODO not needed
 
         if (isDelivery) {
             //TODO is this correct? Is this desired?
@@ -211,12 +211,15 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             }
             
             // Evaluate the cost of packet relaying
+            //TODO for delivery, the ack reward must be taken into account
+            //TODO  - Skip delivery if maxGasAck is too small?
+            //TODO  - Take into account the ack gas price somehow?
             const gasCostEstimate = this.getGasCost(gasEstimation); 
             const deliveryFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
 
             const maxGasDelivery = BigInt(bounty.maxGasDelivery);
             const gasRewardEstimate = bounty.priceOfDeliveryGas * (
-                gasEstimation > maxGasDelivery ? maxGasDelivery : gasEstimation
+                gasEstimation > maxGasDelivery ? maxGasDelivery : gasEstimation //TODO gasEstimation is too large (it does not take into account that gas used by verification logic is not paid for)
             );
             const deliveryFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, bounty.fromChainId);
 
@@ -270,7 +273,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
             const maxGasAck = BigInt(bounty.maxGasAck);
             const gasRewardEstimate = bounty.priceOfAckGas * (
-                gasEstimation > maxGasAck ? maxGasAck : gasEstimation
+                gasEstimation > maxGasAck ? maxGasAck : gasEstimation   //TODO gasEstimation is too large
             );
             const ackFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, this.chainId);
 
