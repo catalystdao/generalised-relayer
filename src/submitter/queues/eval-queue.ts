@@ -211,6 +211,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     messageIdentifier,
                     maxGasDelivery: bounty.maxGasDelivery,
                     gasEstimation: gasEstimation.toString(),
+                    gasCostEstimate: gasCostEstimate.toString(),
+                    gasRewardEstimate: gasRewardEstimate.toString(),
                     deliveryFiatCost,
                     deliveryFiatReward,
                     deliveryFiatProfit,
@@ -250,6 +252,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const deliveryCost = bounty.deliveryGasCost ?? 0n;  // This is only present if *this* relayer submitted the message delivery.
             
             let relayAck: boolean;
+            let deliveryGasReward = 0n;
             let deliveryFiatReward = 0;
             if (deliveryCost != 0n) {
                 // If the delivery was submitted by *this* relayer, always submit the ack *unless*
@@ -261,7 +264,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     ? await this.getGasUsedForDelivery(order.incentivesPayload) ?? 0n
                     : 0n;  // 'gasUsed' should not be 'undefined', but if it is, continue as if it was 0
                 const maxGasDelivery = BigInt(bounty.maxGasDelivery);
-                const deliveryGasReward = bounty.priceOfDeliveryGas * (
+                deliveryGasReward = bounty.priceOfDeliveryGas * (
                     usedGasDelivery > maxGasDelivery ? maxGasDelivery : usedGasDelivery
                 );
                 deliveryFiatReward = await this.getGasCostFiatPrice(deliveryGasReward, this.chainId);
@@ -280,9 +283,12 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     messageIdentifier,
                     maxGasAck: bounty.maxGasAck,
                     gasEstimation: gasEstimation.toString(),
+                    gasCostEstimate: gasCostEstimate.toString(),
+                    gasRewardEstimate: gasRewardEstimate.toString(),
                     ackFiatCost,
                     ackFiatReward,
                     ackFiatProfit,
+                    deliveryGasReward: deliveryGasReward.toString(),
                     deliveryFiatReward,
                     relayAck,
                 },
