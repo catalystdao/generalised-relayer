@@ -325,7 +325,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         // If gas fee data is missing or incomplete, default the gas price to an extremely high
         // value.
         const gasPrice = this.feeData?.maxFeePerGas
-            ?? this.feeData?.maxFeePerGas
+            ?? this.feeData?.gasPrice
             ?? MaxUint256;
 
         return gas * gasPrice;
