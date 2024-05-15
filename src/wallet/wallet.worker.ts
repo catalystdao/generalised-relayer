@@ -228,6 +228,26 @@ class WalletWorker {
         await this.transactionHelper.init();
         await this.confirmQueue.init();
 
+        // Keep main logic loop running, even if it crashes.
+        while (true) {
+            try {
+                await this.main();
+            } catch (error) {
+                this.logger.warn({
+                    message: "Wallet crashed. Restarting wallet. Queue is maintained.",
+                    error,
+                });
+            }
+        }
+    }
+
+    /**
+     * Main logic loop.
+     * @dev While the wallet shouldn't crash, it significantly impacts the relayer
+     * performance if it does. If another piece of software depends on the relayer
+     * then a wallet crash may be critical.
+     */
+    async main(): Promise<void> {
         while (true) {
             const newOrders = await this.processNewRequestsQueue();
 
