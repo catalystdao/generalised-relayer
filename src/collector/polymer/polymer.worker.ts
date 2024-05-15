@@ -5,7 +5,7 @@ import { Store } from 'src/store/store.lib';
 import { AmbMessage } from 'src/store/types/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
-import { AbiCoder, JsonRpcProvider, Log, LogDescription } from 'ethers6';
+import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
@@ -50,7 +50,9 @@ class PolymerCollectorSnifferWorker {
         this.incentivesAddress = this.config.incentivesAddress;
         this.polymerAddress = this.config.polymerAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
-        this.filterTopics = [[this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash]];
+        this.filterTopics = [
+            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash, zeroPadValue(this.incentivesAddress, 32)]
+        ];
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
@@ -246,43 +248,23 @@ class PolymerCollectorSnifferWorker {
     ): Promise<void> {
 
         const event = parsedLog.args as unknown as SendPacketEvent.OutputObject;
-        const destinationChain: string = event.sourceChannelId;
+
+        // We need to convert the source channel id to the destination chain using the
+        // settings map.
+        const destinationChain: string | undefined = this.config.polymerChannels[event.sourceChannelId];
+        if (destinationChain === undefined) {
+            this.logger.debug(`DestinationChain: ${destinationChain} not found in config.`)
+            return;
+        }
 
         // Decode the Universal channel payload
-        const packet = event.packet.startsWith('0x')
+        // Polymer has 32 bytes for a implementation identifier at the beginning. It doesn't provide any relevant information.
+        const packet = (event.packet.startsWith('0x')
             ? event.packet.slice(2)
-            : event.packet;
-
-        let params: [string, bigint, string, string];
-        try {
-            params = abi.decode(
-                ['tuple(bytes32, uint256, bytes32, bytes)'],
-                event.packet,
-            )[0];
-        } catch (error) {
-            this.logger.debug(
-                {
-                    error: tryErrorToString(error),
-                },
-                `Couldn't decode a Polymer message. Likely because it is not a UniversalChannel Package.`,
-            );
-            return;
-        }
-
-        const incentivisedMessageEscrowFromPacket: string =
-            '0x' + params[0].replaceAll('0x', '').slice(12 * 2);
-
-        if (
-            incentivisedMessageEscrowFromPacket.toLowerCase() !=
-                this.config.incentivesAddress.toLowerCase() ||
-            packet.length <= 384 + 64 * 2
-        ) {
-            return;
-        }
-
+            : event.packet).slice(32 * 2);
         // Derive the message identifier
-        const messageIdentifier = '0x' + params[3]
-            .replaceAll('0x', '').slice(1 * 2, 1 * 2 + 32 * 2);
+
+        const messageIdentifier = '0x' + packet.slice(2, 2 + 32 * 2);
 
         const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
             log.blockNumber
@@ -293,8 +275,8 @@ class PolymerCollectorSnifferWorker {
             amb: 'polymer',
             sourceChain: this.chainId,
             destinationChain,
-            sourceEscrow: "", // ! TODO implement (important for underwriting)
-            payload: params[3],
+            sourceEscrow: event.sourcePortAddress,
+            payload: packet,
             blockNumber: log.blockNumber,
             transactionBlockNumber,
             blockHash: log.blockHash,

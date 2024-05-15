@@ -113,6 +113,8 @@ chains:
       incentivesAddress: '0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F'
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
     polymer:
+      channels:
+        "0x6368616e6e656c2d343032393800000000000000000000000000000000000000": '84532'
       incentivesAddress: '0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD'
       bridgeAddress: '0xE2029629f51ab994210d671Dc08b7Ec94899b278'
 
@@ -120,5 +122,7 @@ chains:
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
     polymer:
+      channels:
+        "0x6368616e6e656c2d343032393900000000000000000000000000000000000000": '11155420'
       incentivesAddress: '0xE106643739deB1879CcD8E3ffe2736D8B489bC2F'
       bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'

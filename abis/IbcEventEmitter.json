@@ -1,293 +1,488 @@
 [
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "sourcePortAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "sourceChannelId",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint64",
-        "name": "sequence",
-        "type": "uint64"
-      }
-    ],
+    "type": "event",
     "name": "Acknowledgement",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
     "inputs": [
       {
+        "name": "sourcePortAddress",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "portAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "sourceChannelId",
+        "type": "bytes32",
         "indexed": true,
-        "internalType": "bytes32",
-        "name": "channelId",
-        "type": "bytes32"
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sequence",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
-    "name": "CloseIbcChannel",
-    "type": "event"
+    "anonymous": false
   },
   {
-    "anonymous": false,
+    "type": "event",
+    "name": "AcknowledgementError",
     "inputs": [
       {
+        "name": "receiver",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "portAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "error",
+        "type": "bytes",
         "indexed": false,
-        "internalType": "bytes32",
-        "name": "channelId",
-        "type": "bytes32"
+        "internalType": "bytes"
       }
     ],
-    "name": "ConnectIbcChannel",
-    "type": "event"
+    "anonymous": false
   },
   {
-    "anonymous": false,
+    "type": "event",
+    "name": "ChannelOpenAck",
     "inputs": [
       {
+        "name": "receiver",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "portAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "channelId",
+        "type": "bytes32",
         "indexed": false,
-        "internalType": "string",
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenAckError",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "error",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenConfirm",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "channelId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenConfirmError",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "error",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenInit",
+    "inputs": [
+      {
+        "name": "recevier",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "version",
-        "type": "string"
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       },
       {
-        "indexed": false,
-        "internalType": "enum ChannelOrder",
         "name": "ordering",
-        "type": "uint8"
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ChannelOrder"
       },
       {
-        "indexed": false,
-        "internalType": "bool",
         "name": "feeEnabled",
-        "type": "bool"
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       },
       {
-        "indexed": false,
-        "internalType": "string[]",
         "name": "connectionHops",
-        "type": "string[]"
+        "type": "string[]",
+        "indexed": false,
+        "internalType": "string[]"
       },
       {
-        "indexed": false,
-        "internalType": "string",
         "name": "counterpartyPortId",
-        "type": "string"
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenInitError",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
+        "name": "error",
+        "type": "bytes",
         "indexed": false,
-        "internalType": "bytes32",
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ChannelOpenTry",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "version",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "ordering",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ChannelOrder"
+      },
+      {
+        "name": "feeEnabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "connectionHops",
+        "type": "string[]",
+        "indexed": false,
+        "internalType": "string[]"
+      },
+      {
+        "name": "counterpartyPortId",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
         "name": "counterpartyChannelId",
-        "type": "bytes32"
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       }
     ],
-    "name": "OpenIbcChannel",
-    "type": "event"
+    "anonymous": false
   },
   {
-    "anonymous": false,
+    "type": "event",
+    "name": "ChannelOpenTryError",
     "inputs": [
       {
+        "name": "receiver",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "destPortAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "destChannelId",
-        "type": "bytes32"
-      },
-      {
+        "name": "error",
+        "type": "bytes",
         "indexed": false,
-        "internalType": "uint64",
-        "name": "sequence",
-        "type": "uint64"
+        "internalType": "bytes"
       }
     ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CloseIbcChannel",
+    "inputs": [
+      {
+        "name": "portAddress",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "channelId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CloseIbcChannelError",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "error",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "RecvPacket",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
     "inputs": [
       {
+        "name": "destPortAddress",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "sourcePortAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "destChannelId",
+        "type": "bytes32",
         "indexed": true,
-        "internalType": "bytes32",
-        "name": "sourceChannelId",
-        "type": "bytes32"
+        "internalType": "bytes32"
       },
       {
-        "indexed": false,
-        "internalType": "bytes",
-        "name": "packet",
-        "type": "bytes"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint64",
         "name": "sequence",
-        "type": "uint64"
-      },
-      {
+        "type": "uint64",
         "indexed": false,
-        "internalType": "uint64",
-        "name": "timeoutTimestamp",
-        "type": "uint64"
+        "internalType": "uint64"
       }
     ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "SendPacket",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
         "name": "sourcePortAddress",
-        "type": "address"
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        "indexed": true,
-        "internalType": "bytes32",
         "name": "sourceChannelId",
-        "type": "bytes32"
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
       },
       {
-        "indexed": true,
-        "internalType": "uint64",
+        "name": "packet",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
         "name": "sequence",
-        "type": "uint64"
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "timeoutTimestamp",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
-    "name": "Timeout",
-    "type": "event"
+    "anonymous": false
   },
   {
-    "anonymous": false,
+    "type": "event",
+    "name": "Timeout",
     "inputs": [
       {
+        "name": "sourcePortAddress",
+        "type": "address",
         "indexed": true,
-        "internalType": "address",
-        "name": "writerPortAddress",
-        "type": "address"
+        "internalType": "address"
       },
       {
+        "name": "sourceChannelId",
+        "type": "bytes32",
         "indexed": true,
-        "internalType": "bytes32",
-        "name": "writerChannelId",
-        "type": "bytes32"
+        "internalType": "bytes32"
       },
       {
-        "indexed": false,
-        "internalType": "uint64",
         "name": "sequence",
-        "type": "uint64"
+        "type": "uint64",
+        "indexed": true,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TimeoutError",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "success",
-            "type": "bool"
-          },
-          {
-            "internalType": "bytes",
-            "name": "data",
-            "type": "bytes"
-          }
-        ],
+        "name": "error",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WriteAckPacket",
+    "inputs": [
+      {
+        "name": "writerPortAddress",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "writerChannelId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sequence",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "ackPacket",
+        "type": "tuple",
         "indexed": false,
         "internalType": "struct AckPacket",
-        "name": "ackPacket",
-        "type": "tuple"
-      }
-    ],
-    "name": "WriteAckPacket",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "writerPortAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "writerChannelId",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint64",
-        "name": "sequence",
-        "type": "uint64"
-      },
-      {
         "components": [
           {
-            "internalType": "uint64",
-            "name": "revision_number",
-            "type": "uint64"
+            "name": "success",
+            "type": "bool",
+            "internalType": "bool"
           },
           {
-            "internalType": "uint64",
-            "name": "revision_height",
-            "type": "uint64"
+            "name": "data",
+            "type": "bytes",
+            "internalType": "bytes"
           }
-        ],
-        "indexed": false,
-        "internalType": "struct Height",
-        "name": "timeoutHeight",
-        "type": "tuple"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint64",
-        "name": "timeoutTimestamp",
-        "type": "uint64"
+        ]
       }
     ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "WriteTimeoutPacket",
-    "type": "event"
+    "inputs": [
+      {
+        "name": "writerPortAddress",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "writerChannelId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sequence",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "timeoutHeight",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct Height",
+        "components": [
+          {
+            "name": "revision_number",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "revision_height",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "timeoutTimestamp",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
   }
 ]

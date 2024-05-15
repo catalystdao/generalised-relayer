@@ -31,6 +31,7 @@ export interface PolymerWorkerData {
     monitorPort: MessagePort;
     loggerOptions: LoggerOptions;
     polymerAddress: string;
+    polymerChannels: { [channel: string]: string }
 }
 
 function loadGlobalPolymerConfig(
@@ -77,6 +78,12 @@ async function loadWorkerData(
         chainConfig.chainId,
     );
 
+    const polymerChannels: { [channel: string]: string } = configService.getAMBConfig(
+        'polymer',
+        'channels',
+        chainConfig.chainId,
+    );
+
     if (
         incentivesAddress == undefined ||
         polymerAddress == undefined
@@ -95,6 +102,7 @@ async function loadWorkerData(
         maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
         incentivesAddress,
         polymerAddress,
+        polymerChannels,
         monitorPort: await monitorService.attachToMonitor(chainId),
         loggerOptions: loggerService.loggerOptions,
     };
