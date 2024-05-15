@@ -235,7 +235,7 @@ class WalletWorker {
             } catch (error) {
                 this.logger.warn({
                     message: "Wallet crashed. Restarting wallet. Queue is maintained.",
-                    error,
+                    error: tryErrorToString(error),
                 });
             }
         }
