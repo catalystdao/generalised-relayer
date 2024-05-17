@@ -98,11 +98,6 @@ chains:
       wormholeChainId: 10005
       incentivesAddress: '0x198cDD55d90277726f3222D5A8111AdB8b0af9ee'
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
-    polymer:
-      channels:
-        "0x6368616e6e656c2d343032393800000000000000000000000000000000000000": '84532'
-      incentivesAddress: '0x26E4dE526b9B21A2E5A52Cf75EA9C20B3E7b255c'
-      bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
 
   - chainId: 84532
     name: 'Base Sepolia'
@@ -111,13 +106,8 @@ chains:
       wormholeChainId: 10004
       incentivesAddress: '0x63B4E24DC9814fAcDe241fB4dEFcA04d5fc6d763'
       bridgeAddress: '0x79A1027a6A159502049F10906D333EC57E95F083'
-    polymer:
-      channels:
-        "0x6368616e6e656c2d343032393900000000000000000000000000000000000000": '11155420'
-      incentivesAddress: '0xC6131198Cf37944A55C8C1D880BcA2e2D2358D6f'
-      bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
 
-  - chainId: 23888
+  - chainId: 168587773
     name: 'Blast Testnet'
     rpc: 'https://sepolia.blast.io'
     wormhole:
