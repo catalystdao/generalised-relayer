@@ -116,3 +116,11 @@ chains:
         "0x6368616e6e656c2d343032393900000000000000000000000000000000000000": '11155420'
       incentivesAddress: '0xC6131198Cf37944A55C8C1D880BcA2e2D2358D6f'
       bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
+
+  - chainId: 23888
+    name: 'Blast Testnet'
+    rpc: 'https://sepolia.blast.io'
+    wormhole:
+      wormholeChainId: 36
+      incentivesAddress: '0x9524ACA1fF46fAd177160F0a803189Cb552A3780'
+      bridgeAddress: '0x473e002D7add6fB67a4964F13bFd61280Ca46886'
