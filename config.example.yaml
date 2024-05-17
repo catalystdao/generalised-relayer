@@ -88,41 +88,31 @@ chains:
     # AMB configuration
     wormhole:
       wormholeChainId: 10002
-      incentivesAddress: '0x45C140Dd2526E4bfD1c2A5Bb0Aa6aA1DB00b1744'
+      incentivesAddress: '0x294F41D30D058C9e5A71810A6C758E595b7aC170'
       bridgeAddress: '0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78'
-
-  - chainId: 421614
-    name: 'Arbitrum Sepolia'
-    rpc: 'https://sepolia-rollup.arbitrum.io/rpc' # NOTE: This rpc errors easily with a 'requests rate too high' error
-    resolver: 'arbitrum'
-    monitor:
-      interval: 2000
-      blockDelay: 5
-    getter:
-      maxBlocks: 5000
-    wormhole:
-      wormholeChainId: 10003
-      incentivesAddress: '0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28'
-      bridgeAddress: '0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35'
 
   - chainId: 11155420
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
     wormhole:
       wormholeChainId: 10005
-      incentivesAddress: '0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F'
+      incentivesAddress: '0x198cDD55d90277726f3222D5A8111AdB8b0af9ee'
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
     polymer:
       channels:
         "0x6368616e6e656c2d343032393800000000000000000000000000000000000000": '84532'
-      incentivesAddress: '0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD'
-      bridgeAddress: '0xE2029629f51ab994210d671Dc08b7Ec94899b278'
+      incentivesAddress: '0x26E4dE526b9B21A2E5A52Cf75EA9C20B3E7b255c'
+      bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
 
   - chainId: 84532
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
+    wormhole:
+      wormholeChainId: 10004
+      incentivesAddress: '0x63B4E24DC9814fAcDe241fB4dEFcA04d5fc6d763'
+      bridgeAddress: '0x79A1027a6A159502049F10906D333EC57E95F083'
     polymer:
       channels:
         "0x6368616e6e656c2d343032393900000000000000000000000000000000000000": '11155420'
-      incentivesAddress: '0xE106643739deB1879CcD8E3ffe2736D8B489bC2F'
+      incentivesAddress: '0xC6131198Cf37944A55C8C1D880BcA2e2D2358D6f'
       bridgeAddress: '0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361'
