@@ -215,6 +215,16 @@
         "name": "messageDelivered",
         "inputs": [
             {
+                "name": "sourceIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "sourceImplementationIdentifier",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
                 "name": "messageIdentifier",
                 "type": "bytes32",
                 "internalType": "bytes32"
@@ -452,7 +462,19 @@
         "name": "BountyClaimed",
         "inputs": [
             {
-                "name": "uniqueIdentifier",
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
                 "type": "bytes32",
                 "indexed": true,
                 "internalType": "bytes32"
@@ -514,6 +536,18 @@
         "name": "BountyPlaced",
         "inputs": [
             {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
                 "name": "messageIdentifier",
                 "type": "bytes32",
                 "indexed": true,
@@ -565,6 +599,18 @@
         "name": "MessageAcked",
         "inputs": [
             {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
                 "name": "messageIdentifier",
                 "type": "bytes32",
                 "indexed": false,
@@ -578,6 +624,18 @@
         "name": "MessageDelivered",
         "inputs": [
             {
+                "name": "sourceImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
                 "name": "messageIdentifier",
                 "type": "bytes32",
                 "indexed": true,
@@ -588,8 +646,20 @@
     },
     {
         "type": "event",
-        "name": "MessageTimedout",
+        "name": "MessageTimedOut",
         "inputs": [
+            {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
             {
                 "name": "messageIdentifier",
                 "type": "bytes32",
@@ -634,6 +704,18 @@
         "type": "event",
         "name": "TimeoutInitiated",
         "inputs": [
+            {
+                "name": "sourceImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
             {
                 "name": "messageIdentifier",
                 "type": "bytes32",
@@ -792,12 +874,17 @@
     },
     {
         "type": "error",
+        "name": "MessageHasInvalidContext",
+        "inputs": []
+    },
+    {
+        "type": "error",
         "name": "NoImplementationAddressSet",
         "inputs": []
     },
     {
         "type": "error",
-        "name": "NotEnoughGasExeuction",
+        "name": "NotEnoughGasExecution",
         "inputs": []
     },
     {
