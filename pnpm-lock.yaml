@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@wormhole-foundation/relayer-engine>@certusone/wormhole-sdk': 0.10.15
+
 dependencies:
   '@nestjs/common':
     specifier: ^10.0.0
@@ -684,8 +687,8 @@ packages:
       '@types/node': 18.19.22
     dev: false
 
-  /@certusone/wormhole-sdk@0.10.11(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2):
-    resolution: {integrity: sha512-WG2gmVqc5t5T6WeSkh6aDPMToN0whTJ1WQv9Kke3/bk4ssR6Gn6gv2OXHL0ZzYcUS8hft5EQBTNr1HGNQT2gMQ==}
+  /@certusone/wormhole-sdk@0.10.15(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2):
+    resolution: {integrity: sha512-XECfrvdYjsGPZWyR1bqWCPOiRw7+6upszpSvAXjKIqEnTNXOCYRkt5ae8TVh5oZxPjpts2X3t4Oi9WGcEssHpQ==}
     dependencies:
       '@certusone/wormhole-sdk-proto-web': 0.0.7(google-protobuf@3.21.2)
       '@certusone/wormhole-sdk-wasm': 0.0.1
@@ -2108,7 +2111,7 @@ packages:
     dependencies:
       '@injectivelabs/exceptions': 1.14.6(google-protobuf@3.21.2)
       '@injectivelabs/ts-types': 1.14.6
-      '@injectivelabs/utils': 1.10.12(google-protobuf@3.21.2)
+      '@injectivelabs/utils': 1.14.6(google-protobuf@3.21.2)
       link-module-alias: 1.2.0
       shx: 0.3.4
     transitivePeerDependencies:
@@ -2148,11 +2151,11 @@ packages:
       '@injectivelabs/grpc-web-react-native-transport': 0.0.2(@injectivelabs/grpc-web@0.0.1)
       '@injectivelabs/indexer-proto-ts': 1.10.8-rc.4
       '@injectivelabs/mito-proto-ts': 1.0.9
-      '@injectivelabs/networks': 1.10.12(google-protobuf@3.21.2)
+      '@injectivelabs/networks': 1.14.6(google-protobuf@3.21.2)
       '@injectivelabs/test-utils': 1.14.4
       '@injectivelabs/token-metadata': 1.14.7(google-protobuf@3.21.2)
       '@injectivelabs/ts-types': 1.14.6
-      '@injectivelabs/utils': 1.10.12(google-protobuf@3.21.2)
+      '@injectivelabs/utils': 1.14.6(google-protobuf@3.21.2)
       '@metamask/eth-sig-util': 4.0.1
       axios: 0.27.2
       bech32: 2.0.0
@@ -3841,7 +3844,7 @@ packages:
     dependencies:
       '@bull-board/api': 5.14.2(@bull-board/ui@5.14.2)
       '@bull-board/koa': 5.14.2
-      '@certusone/wormhole-sdk': 0.10.11(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)
+      '@certusone/wormhole-sdk': 0.10.15(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)
       '@certusone/wormhole-spydk': 0.0.1
       '@datastructures-js/queue': 4.2.3
       '@improbable-eng/grpc-web-node-http-transport': 0.15.0(@improbable-eng/grpc-web@0.15.0)
@@ -7129,7 +7132,7 @@ packages:
       is-extglob: 2.1.1
 
   /is-hex-prefixed@1.0.0:
-    resolution: {integrity: sha1-fY035q135dEnFIkTxXPggtd39VQ=}
+    resolution: {integrity: sha512-WvtOiug1VFrE9v1Cydwm+FnXd3+w9GaeVUss5W4v/SLy3UW00vP+6iNF2SdnfiBoLy4bTqVdkftNGTUeOFVsbA==}
     engines: {node: '>=6.5.0', npm: '>=3'}
     requiresBuild: true
     dev: false
@@ -9508,7 +9511,7 @@ packages:
       create-hash: 1.2.0
       drbg.js: 1.0.1
       elliptic: 6.5.5
-      nan: 2.14.0
+      nan: 2.19.0
       safe-buffer: 5.2.1
     dev: false
     optional: true
@@ -9839,7 +9842,7 @@ packages:
     dev: true
 
   /strip-hex-prefix@1.0.0:
-    resolution: {integrity: sha1-DF8VX+8RUTczd96du1iNoFUA428=}
+    resolution: {integrity: sha512-q8d4ue7JGEiVcypji1bALTos+0pWtyGlivAWyPuTkHzuTCJqrK9sWxYQZUq6Nq3cuyv3bm734IhHvHtGGURU6A==}
     engines: {node: '>=6.5.0', npm: '>=3'}
     requiresBuild: true
     dependencies:
