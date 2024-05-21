@@ -4,7 +4,7 @@ import { workerData } from 'worker_threads';
 import {
     ParsedVaaWithBytes,
     parseVaaWithBytes,
-} from '@catalabs/relayer-engine';
+} from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { AmbPayload } from 'src/store/types/store.types';
