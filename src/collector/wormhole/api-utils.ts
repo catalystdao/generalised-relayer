@@ -1,11 +1,13 @@
 import pino from "pino";
 import { wait } from "src/common/utils";
 
-export const WORMHOLESCAN_API_ENDPOINT = 'https://api.testnet.wormholescan.io';
+export const WORMHOLESCAN_API_ENDPOINT = 'https://api.wormholescan.io';
+export const WORMHOLESCAN_API_ENDPOINT_TESTNET = 'https://api.testnet.wormholescan.io';
 
 export async function fetchVAAs(
     womrholeChainId: number,
     emitterAddress: string,
+    isTestnet: boolean,
     pageIndex: number,
     logger: pino.Logger,
     pageSize = 1000,
@@ -14,8 +16,9 @@ export async function fetchVAAs(
 ): Promise<any[]> {
     for (let tryCount = 0; tryCount < maxTries; tryCount++) {
         try {
+            const apiEndpoint = isTestnet ? WORMHOLESCAN_API_ENDPOINT_TESTNET : WORMHOLESCAN_API_ENDPOINT;
             const response = await fetch(
-                `${WORMHOLESCAN_API_ENDPOINT}/api/v1/vaas/${womrholeChainId}/${emitterAddress}?page=${pageIndex}&pageSize=${pageSize}`,
+                `${apiEndpoint}/api/v1/vaas/${womrholeChainId}/${emitterAddress}?page=${pageIndex}&pageSize=${pageSize}`,
             );
 
             const body = await response.text();

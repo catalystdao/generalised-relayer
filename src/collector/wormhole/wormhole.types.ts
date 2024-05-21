@@ -38,6 +38,7 @@ export interface WormholeMessageSnifferWorkerData extends WormholeChainConfig {
 }
 
 export interface WormholeRecoveryWorkerData extends WormholeChainConfig {
+  isTestnet: boolean;
   startingBlock: number;
   wormholeChainIdMap: Map<WormholeChainId, string>;
   loggerOptions: LoggerOptions;
