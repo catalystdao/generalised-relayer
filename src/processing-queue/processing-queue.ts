@@ -114,31 +114,32 @@ export abstract class ProcessingQueue<OrderType, ReturnType = OrderType> {
     }
 
     private async processOrder(order: ProcessOrder<OrderType>): Promise<void> {
-        try {
-            const handleResult = await this.handleOrder(
-                order.order,
-                order.retryCount,
-            );
-            if (handleResult == null) {
-                await this.handleOrderSuccess(order, null);
-            } else {
-                this._pendingCount++;
-                Promise.resolve(handleResult.result).then(
-                    (result) => {
-                        void this.handleOrderSuccess(order, result).then(
-                            () => this._pendingCount--,
-                        );
-                    },
-                    (error) => {
-                        void this.handleOrderError(order, error, true).then(
-                            () => this._pendingCount--,
-                        );
-                    },
-                );
-            }
-        } catch (error) {
-            await this.handleOrderError(order, error, false);
-        }
+        await this.handleOrder(
+            order.order,
+            order.retryCount,
+        ).then(
+            (handleResult) => {
+                if (handleResult == null) {
+                    return this.handleOrderSuccess(order, null);
+                } else {
+                    this._pendingCount++;
+                    Promise.resolve(handleResult.result).then(
+                        (result) => {
+                            void this.handleOrderSuccess(order, result).then(
+                                () => this._pendingCount--,
+                            );
+                        },
+                        (error) => {
+                            void this.handleOrderError(order, error, true).then(
+                                () => this._pendingCount--,
+                            );
+                        },
+                    );
+                    return; // Do not wait for the order to resolve
+                }
+            },
+            (error) => this.handleOrderError(order, error, false)
+        );
     }
 
     private getOrdersToRetry(): ProcessOrder<OrderType>[] {
