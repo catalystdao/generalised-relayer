@@ -1,10 +1,10 @@
 import { Global, Injectable, OnModuleInit } from '@nestjs/common';
 import { join } from 'path';
 import { LoggerOptions } from 'pino';
-import { Worker, MessagePort } from 'worker_threads';
+import { Worker, MessagePort, MessageChannel } from 'worker_threads';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { WalletGetPortMessage, WalletGetPortResponse } from './wallet.types';
+import { WalletServiceRoutingMessage, WalletTransactionRequestMessage } from './wallet.types';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
 
@@ -60,7 +60,8 @@ export interface WalletWorkerData {
 @Injectable()
 export class WalletService implements OnModuleInit {
     private workers: Record<string, Worker | null> = {};
-    private requestPortMessageId = 0;
+    private portsCount = 0;
+    private readonly ports: Record<number, MessagePort> = {};
 
     readonly publicKey: string;
 
@@ -105,6 +106,19 @@ export class WalletService implements OnModuleInit {
                     `Wallet worker exited.`,
                 );
             });
+
+            worker.on('message', (message: WalletServiceRoutingMessage) => {
+                const port = this.ports[message.portId];
+                if (port == undefined) {
+                    this.loggerService.error(
+                        message,
+                        `Unable to route transaction response on wallet: port id not found.`
+                    );
+                    return;
+                }
+
+                port.postMessage(message.data);
+            })
         }
 
         // Add a small delay to wait for the workers to be initialized
@@ -232,32 +246,27 @@ export class WalletService implements OnModuleInit {
         setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
-
-    private getNextRequestPortMessageId(): number {
-        return this.requestPortMessageId++;
-    }
-
     async attachToWallet(chainId: string): Promise<MessagePort> {
         const worker = this.workers[chainId];
 
         if (worker == undefined) {
             throw new Error(`Wallet does not exist for chain ${chainId}`);
         }
+        
+        const portId = this.portsCount++;
 
-        const messageId = this.getNextRequestPortMessageId();
-        const portPromise = new Promise<MessagePort>((resolve) => {
-            const listener = (data: WalletGetPortResponse) => {
-                if (data.messageId == messageId) {
-                    worker.off("message", listener);
-                    resolve(data.port);
-                }
+        const { port1, port2 } = new MessageChannel();
+
+        port1.on('message', (message: WalletTransactionRequestMessage) => {
+            const routingMessage: WalletServiceRoutingMessage = {
+                portId,
+                data: message
             };
-            worker.on("message", listener);
-
-            const portMessage: WalletGetPortMessage = { messageId };
-            worker.postMessage(portMessage);
+            worker.postMessage(routingMessage);
         });
 
-        return portPromise;
+        this.ports[portId] = port1;
+
+        return port2;
     }
 }

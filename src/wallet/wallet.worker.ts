@@ -6,7 +6,7 @@ import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
 import { TransactionHelper } from "./transaction-helper";
 import { ConfirmQueue } from "./queues/confirm-queue";
 import { WalletWorkerData } from "./wallet.service";
-import { ConfirmedTransaction, GasFeeConfig, WalletGetPortMessage, WalletGetPortResponse, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestMessage, WalletTransactionRequestResponse, BalanceConfig } from "./wallet.types";
+import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestMessage, WalletTransactionRequestResponse, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
 import { SubmitQueue } from "./queues/submit-queue";
 
 
@@ -66,7 +66,7 @@ class WalletWorker {
             this.logger
         );
 
-        this.initializePorts();
+        this.initializePort();
 
         this.initiateIntervalStatusLog();
     }
@@ -149,14 +149,15 @@ class WalletWorker {
         };
     }
 
-    private initializePorts(): void {
-        parentPort!.on('message', (message: WalletGetPortMessage) => {
-            const port = this.registerNewPort();
-            const response: WalletGetPortResponse = {
-                messageId: message.messageId,
-                port
-            };
-            parentPort!.postMessage(response, [port])
+    private initializePort(): void {
+        parentPort!.on('message', (message: WalletServiceRoutingMessage) => {
+            this.addTransaction(
+                message.portId,
+                message.data.messageId,
+                message.data.txRequest,
+                message.data.metadata,
+                message.data.options
+            );
         });
     }
 
@@ -477,13 +478,7 @@ class WalletWorker {
         confirmationError?: any,
     ): void {
 
-        const port = this.ports[request.portId];
-        if (port == undefined) {
-            this.logger.error({ request }, 'Failed to send transaction result: invalid portId.');
-            return;
-        }
-
-        const response: WalletTransactionRequestResponse = {
+        const transactionResponse: WalletTransactionRequestResponse = {
             messageId: request.messageId,
             txRequest: request.txRequest,
             metadata: request.metadata,
@@ -492,7 +487,13 @@ class WalletWorker {
             submissionError: tryErrorToString(submissionError),
             confirmationError: tryErrorToString(confirmationError),
         }
-        port.postMessage(response);
+
+        const routingResponse: WalletServiceRoutingMessage = {
+            portId: request.portId,
+            data: transactionResponse,
+        }
+
+        parentPort!.postMessage(routingResponse);
     }
 
     private isNonceExpiredError(error: any, includeUnderpricedError?: boolean): boolean {
