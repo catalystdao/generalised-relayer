@@ -1,12 +1,12 @@
 import { JsonRpcProvider, Wallet, Provider, AbstractProvider, ZeroAddress, TransactionResponse, TransactionReceipt, TransactionRequest } from "ethers6";
 import pino, { LoggerOptions } from "pino";
-import { workerData, parentPort, MessageChannel, MessagePort } from 'worker_threads';
+import { workerData, parentPort, MessagePort } from 'worker_threads';
 import { tryErrorToString, wait } from "src/common/utils";
 import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
 import { TransactionHelper } from "./transaction-helper";
 import { ConfirmQueue } from "./queues/confirm-queue";
 import { WalletWorkerData } from "./wallet.service";
-import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestMessage, WalletTransactionRequestResponse, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
+import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestResponse, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
 import { SubmitQueue } from "./queues/submit-queue";
 
 
@@ -159,26 +159,6 @@ class WalletWorker {
                 message.data.options
             );
         });
-    }
-
-    private registerNewPort(): MessagePort {
-
-        const portId = this.portsCount++;
-
-        const { port1, port2 } = new MessageChannel();
-
-        port1.on('message', (message: WalletTransactionRequestMessage) => {
-            this.addTransaction(
-                portId,
-                message.messageId,
-                message.txRequest,
-                message.metadata,
-                message.options
-            );
-        })
-        this.ports[portId] = port1;
-
-        return port2;
     }
 
     private addTransaction(

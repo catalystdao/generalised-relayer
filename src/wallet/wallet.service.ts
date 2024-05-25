@@ -8,6 +8,8 @@ import { WalletServiceRoutingMessage, WalletTransactionRequestMessage } from './
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
 
+export const WALLET_WORKER_CRASHED_MESSAGE_ID = -1;
+
 const DEFAULT_WALLET_RETRY_INTERVAL = 30000;
 const DEFAULT_WALLET_PROCESSING_INTERVAL = 100;
 const DEFAULT_WALLET_MAX_TRIES = 3;
@@ -56,12 +58,21 @@ export interface WalletWorkerData {
 
 }
 
+interface PortDescription {
+    chainId: string;
+    port: MessagePort;
+}
+
 @Global()
 @Injectable()
 export class WalletService implements OnModuleInit {
+    private readonly defaultWorkerConfig: DefaultWalletWorkerData;
+
     private workers: Record<string, Worker | null> = {};
     private portsCount = 0;
-    private readonly ports: Record<number, MessagePort> = {};
+    private readonly ports: Record<number, PortDescription> = {};
+
+    private readonly queuedRequests: Record<string, WalletServiceRoutingMessage[]> = {};
 
     readonly publicKey: string;
 
@@ -69,6 +80,7 @@ export class WalletService implements OnModuleInit {
         private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
     ) {
+        this.defaultWorkerConfig = this.loadDefaultWorkerConfig();
         this.publicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
     }
 
@@ -81,44 +93,9 @@ export class WalletService implements OnModuleInit {
     }
 
     private async initializeWorkers(): Promise<void> {
-        const defaultWorkerConfig = this.loadDefaultWorkerConfig();
 
         for (const [chainId,] of this.configService.chainsConfig) {
-
-            const workerData = this.loadWorkerConfig(chainId, defaultWorkerConfig);
-
-            const worker = new Worker(join(__dirname, 'wallet.worker.js'), {
-                workerData
-            });
-            this.workers[chainId] = worker;
-
-            worker.on('error', (error) =>
-                this.loggerService.fatal(
-                    { error: tryErrorToString(error), chainId },
-                    `Error on wallet worker.`,
-                ),
-            );
-
-            worker.on('exit', (exitCode) => {
-                this.workers[chainId] = null;
-                this.loggerService.fatal(
-                    { exitCode, chainId },
-                    `Wallet worker exited.`,
-                );
-            });
-
-            worker.on('message', (message: WalletServiceRoutingMessage) => {
-                const port = this.ports[message.portId];
-                if (port == undefined) {
-                    this.loggerService.error(
-                        message,
-                        `Unable to route transaction response on wallet: port id not found.`
-                    );
-                    return;
-                }
-
-                port.postMessage(message.data);
-            })
+            this.spawnWorker(chainId);
         }
 
         // Add a small delay to wait for the workers to be initialized
@@ -166,8 +143,9 @@ export class WalletService implements OnModuleInit {
 
     private loadWorkerConfig(
         chainId: string,
-        defaultConfig: DefaultWalletWorkerData
     ): WalletWorkerData {
+
+        const defaultConfig = this.defaultWorkerConfig;
 
         const chainConfig = this.configService.chainsConfig.get(chainId);
         if (chainConfig == undefined) {
@@ -229,6 +207,56 @@ export class WalletService implements OnModuleInit {
         };
     }
 
+    private spawnWorker(
+        chainId: string
+    ): void {
+        const workerData = this.loadWorkerConfig(chainId);
+        this.loggerService.info(
+            {
+                chainId,
+                workerData,
+            },
+            `Spawning wallet worker.`
+        );
+
+        const worker = new Worker(join(__dirname, 'wallet.worker.js'), {
+            workerData
+        });
+        this.workers[chainId] = worker;
+
+        worker.on('error', (error) =>
+            this.loggerService.error(
+                { error: tryErrorToString(error), chainId },
+                `Error on wallet worker.`,
+            ),
+        );
+
+        worker.on('exit', (exitCode) => {
+            this.workers[chainId] = null;
+            this.loggerService.error(
+                { exitCode, chainId },
+                `Wallet worker exited.`,
+            );
+
+            this.abortPendingRequests(chainId);
+            this.spawnWorker(chainId);
+            this.recoverQueuedMessages(chainId);
+        });
+
+        worker.on('message', (message: WalletServiceRoutingMessage) => {
+            const portDescription = this.ports[message.portId];
+            if (portDescription == undefined) {
+                this.loggerService.error(
+                    message,
+                    `Unable to route transaction response on wallet: port id not found.`
+                );
+                return;
+            }
+
+            portDescription.port.postMessage(message.data);
+        });
+    }
+
     private initiateIntervalStatusLog(): void {
         const logStatus = () => {
             const activeWorkers = [];
@@ -247,26 +275,90 @@ export class WalletService implements OnModuleInit {
     }
 
     async attachToWallet(chainId: string): Promise<MessagePort> {
-        const worker = this.workers[chainId];
-
-        if (worker == undefined) {
-            throw new Error(`Wallet does not exist for chain ${chainId}`);
-        }
         
         const portId = this.portsCount++;
 
         const { port1, port2 } = new MessageChannel();
 
         port1.on('message', (message: WalletTransactionRequestMessage) => {
-            const routingMessage: WalletServiceRoutingMessage = {
+            this.handleTransactionRequestMessage(
+                chainId,
                 portId,
-                data: message
-            };
-            worker.postMessage(routingMessage);
+                message,
+            );
         });
 
-        this.ports[portId] = port1;
+        this.ports[portId] = {
+            chainId,
+            port: port1,
+        };
 
         return port2;
+    }
+
+    private handleTransactionRequestMessage(
+        chainId: string,
+        portId: number,
+        message: WalletTransactionRequestMessage
+    ): void {
+        const worker = this.workers[chainId];
+
+        const routingMessage: WalletServiceRoutingMessage = {
+            portId,
+            data: message
+        };
+
+        if (worker == undefined) {
+            this.loggerService.warn(
+                {
+                    chainId,
+                    portId,
+                    message
+                },
+                `Wallet does not exist for the requested chain. Queueing message.`
+            );
+
+            if (!(chainId in this.queuedRequests)) {
+                this.queuedRequests[chainId] = [];
+            }
+            this.queuedRequests[chainId]!.push(routingMessage);
+        } else {
+            worker.postMessage(routingMessage);
+        }
+    }
+
+    private abortPendingRequests(
+        chainId: string,
+    ): void {
+        for (const portDescription of Object.values(this.ports)) {
+            if (portDescription.chainId === chainId) {
+                portDescription.port.postMessage({
+                    messageId: WALLET_WORKER_CRASHED_MESSAGE_ID
+                });
+            }
+        }
+    }
+
+    private recoverQueuedMessages(
+        chainId: string,
+    ): void {
+        const queuedRequests = this.queuedRequests[chainId] ?? [];
+        this.queuedRequests[chainId] = [];
+
+        this.loggerService.info(
+            {
+                chainId,
+                count: queuedRequests.length,
+            },
+            `Recovering queued wallet requests.`
+        );
+
+        for (const request of queuedRequests) {
+            this.handleTransactionRequestMessage(
+                chainId,
+                request.portId,
+                request.data,
+            );
+        }
     }
 }
