@@ -1,17 +1,12 @@
 import { TransactionRequest, TransactionReceipt, TransactionResponse } from "ethers6";
-import { MessagePort } from "worker_threads";
 
 
 
 // Port Channels Types
 // ************************************************************************************************
-export interface WalletGetPortMessage {
-    messageId: number;
-}
-
-export interface WalletGetPortResponse {
-    messageId: number;
-    port: MessagePort;
+export interface WalletServiceRoutingMessage<T = any> {
+    portId: number;
+    data: T;
 }
 
 //TODO add 'priority'
