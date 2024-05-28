@@ -35,16 +35,16 @@ global:
     gasBalanceUpdateInterval: 50        # Number of transactions after which to update the Underwriter gas balance from the rpc. 
 
     # EIP-1559 Transactions
-    maxFeePerGas: '200000000000'        # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
+    maxFeePerGas: '10000000000'        # 'maxFeePerGas' set for all transactions (for chains that support eip-1559)
 
     maxAllowedPriorityFeePerGas:        # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
-      '100000000000'
+      '5000000000'
     maxPriorityFeeAdjustmentFactor:     # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'. 
       1.01                              # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
                                         # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
 
     # Legacy Transactions
-    maxAllowedGasPrice: '200000000000'  # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
+    maxAllowedGasPrice: '10000000000'  # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
     gasPriceAdjustmentFactor: 1.01      # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
                                         # value is set as the 'gasPrice' property of the transaction if it is smaller than the 
                                         # configuration property 'maxAllowedGasPrice' (if set).
