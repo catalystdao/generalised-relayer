@@ -267,6 +267,7 @@ class WormholeRecoveryWorker {
             const pageVAAs: any[] = await fetchVAAs(
                 womrholeChainId,
                 emitterAddress,
+                this.config.isTestnet,
                 pageIndex,
                 this.logger,
                 pageSize,

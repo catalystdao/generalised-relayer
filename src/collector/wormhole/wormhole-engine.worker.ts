@@ -143,6 +143,7 @@ class WormholeEngineWorker {
             const mostRecentVAAs = await fetchVAAs(
                 wormholeChainId,
                 wormholeConfig.incentivesAddress,
+                this.config.isTestnet,
                 0,
                 this.logger,
                 1,
