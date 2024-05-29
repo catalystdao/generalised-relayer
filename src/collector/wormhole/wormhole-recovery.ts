@@ -19,6 +19,7 @@ function loadRecoveryWorkerData(
     }
 
     return {
+        isTestnet: wormholeConfig.isTestnet,
         ...wormholeChainConfig,
         startingBlock,
         wormholeChainIdMap: wormholeConfig.wormholeChainIdMap,

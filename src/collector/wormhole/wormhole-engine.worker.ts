@@ -3,7 +3,7 @@ import {
     ParsedVaaWithBytes,
     StandardRelayerApp,
     StandardRelayerContext,
-} from '@catalabs/relayer-engine';
+} from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from 'src/collector/wormhole/wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { workerData } from 'worker_threads';
@@ -143,6 +143,7 @@ class WormholeEngineWorker {
             const mostRecentVAAs = await fetchVAAs(
                 wormholeChainId,
                 wormholeConfig.incentivesAddress,
+                this.config.isTestnet,
                 0,
                 this.logger,
                 1,

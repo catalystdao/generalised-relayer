@@ -40,17 +40,17 @@ global:
     maxAllowedPriorityFeePerGas:        # Upper bound to the 'maxPriorityFeePerGas' set on transactions (for chains that support eip-1559)
       '100000000000'
     maxPriorityFeeAdjustmentFactor:     # Decimal factor used to adjust the 'maxPriorityFeePerGas' returned by 'getFeeData()'. 
-      1.05                              # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
+      1.01                              # The resulting value is set as the 'maxPriorityFeePerGas' property of the transaction
                                         # if it is smaller than the configuration property 'maxAllowedPriorityFeePerGas' (if set).
 
     # Legacy Transactions
     maxAllowedGasPrice: '200000000000'  # Upper bound to the 'gasPrice' set on transactions (for chains that do not support eip-1559)
-    gasPriceAdjustmentFactor: 1.05      # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
+    gasPriceAdjustmentFactor: 1.01      # Decimal factor used to adjust the 'gasPrice' returned by 'getFeeData()'. The resulting 
                                         # value is set as the 'gasPrice' property of the transaction if it is smaller than the 
                                         # configuration property 'maxAllowedGasPrice' (if set).
 
     # All Transactions
-    priorityAdjustmentFactor: 1.2       # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for 
+    priorityAdjustmentFactor: 1.05      # Decimal factor used to adjust **all** the gas prices (including 'maxFeePerGas') for 
                                         # priority transactions.
 
   persister:
