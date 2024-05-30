@@ -13,6 +13,12 @@ const POSITIVE_NUMBER_SCHEMA = {
     minimum: 0,
 }
 
+const INTEGER_SCHEMA = {
+    $id: "integer-schema",
+    type: "number",
+    multipleOf: 1,
+}
+
 const POSITIVE_NON_ZERO_INTEGER_SCHEMA = {
     $id: "positive-non-zero-integer-schema",
     type: "number",
@@ -212,7 +218,7 @@ const CHAINS_SCHEMA = {
             rpc: { $ref: "non-empty-string-schema" },
             resolver: { $ref: "non-empty-string-schema" },
 
-            startingBlock: { $ref: "positive-number-schema" },
+            startingBlock: { $ref: "integer-schema" },
             stoppingBlock: { $ref: "positive-number-schema" },
 
             monitor: { $ref: "monitor-schema" },
@@ -229,6 +235,7 @@ const CHAINS_SCHEMA = {
 export function getConfigValidator(): AnyValidateFunction<unknown> {
     const ajv = new Ajv({ strict: true });
     ajv.addSchema(POSITIVE_NUMBER_SCHEMA);
+    ajv.addSchema(INTEGER_SCHEMA);
     ajv.addSchema(POSITIVE_NON_ZERO_INTEGER_SCHEMA);
     ajv.addSchema(NON_EMPTY_STRING_SCHEMA);
     ajv.addSchema(ADDRESS_FIELD_SCHEMA);
