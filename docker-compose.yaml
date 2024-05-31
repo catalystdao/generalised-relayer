@@ -23,7 +23,7 @@ services:
       - --spyRPC
       - '[::]:${SPY_PORT}'
       - --env
-      - mainnet
+      - testnet
     attach: false
     profiles: ['wormhole']
     logging:
