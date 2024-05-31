@@ -250,7 +250,6 @@ const CHAINS_SCHEMA = {
 export function getConfigValidator(): AnyValidateFunction<unknown> {
     const ajv = new Ajv({ strict: true });
     ajv.addSchema(POSITIVE_NUMBER_SCHEMA);
-    ajv.addSchema(PRIVATE_KEY_SCHEMA);
     ajv.addSchema(INTEGER_SCHEMA);
     ajv.addSchema(POSITIVE_NON_ZERO_INTEGER_SCHEMA);
     ajv.addSchema(NON_EMPTY_STRING_SCHEMA);
@@ -260,6 +259,7 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(PROCESSING_INTERVAL_SCHEMA);
     ajv.addSchema(CONFIG_SCHEMA);
     ajv.addSchema(GLOBAL_SCHEMA);
+    ajv.addSchema(PRIVATE_KEY_SCHEMA);
     ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
