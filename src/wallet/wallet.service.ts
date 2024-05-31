@@ -74,11 +74,14 @@ export class WalletService implements OnModuleInit {
 
     private readonly queuedRequests: Record<string, WalletServiceRoutingMessage[]> = {};
 
+    readonly publicKey: Promise<string>;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
     ) {
         this.defaultWorkerConfig = this.loadDefaultWorkerConfig();
+        this.publicKey = this.loadPublicKey();
     }
 
     async onModuleInit() {
@@ -87,6 +90,10 @@ export class WalletService implements OnModuleInit {
         await this.initializeWorkers();
 
         this.initiateIntervalStatusLog();
+    }
+
+    private async loadPublicKey(): Promise<string> {
+        return (new Wallet(await this.configService.globalConfig.privateKey)).address;
     }
 
     private async initializeWorkers(): Promise<void> {
