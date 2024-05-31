@@ -55,7 +55,7 @@ export class SubmitterService {
     async onModuleInit(): Promise<void> {
         this.loggerService.info(`Starting the submitter on all chains...`);
 
-        const globalSubmitterConfig = this.loadGlobalSubmitterConfig();
+        const globalSubmitterConfig = await this.loadGlobalSubmitterConfig();
 
         // check if the submitter has been disabled.
         if (!globalSubmitterConfig.enabled) {
@@ -98,7 +98,7 @@ export class SubmitterService {
         await new Promise((r) => setTimeout(r, 5000));
     }
 
-    private loadGlobalSubmitterConfig(): GlobalSubmitterConfig {
+    private async loadGlobalSubmitterConfig(): Promise<GlobalSubmitterConfig> {
         const submitterConfig = this.configService.globalConfig.submitter;
 
         const enabled = submitterConfig['enabled'] ?? true;
@@ -118,7 +118,7 @@ export class SubmitterService {
             gasLimitBuffer['default'] = 0;
         }
 
-        const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
+        const walletPublicKey = (new Wallet(await this.configService.globalConfig.privateKey)).address;
 
         return {
             enabled,
@@ -138,7 +138,7 @@ export class SubmitterService {
     ): Promise<SubmitterWorkerData> {
         const chainId = chainConfig.chainId;
         const rpc = chainConfig.rpc;
-        const relayerPrivateKey = this.configService.globalConfig.privateKey;
+        const relayerPrivateKey = await this.configService.globalConfig.privateKey;
 
         const incentivesAddresses = new Map<string, string>();
         this.configService.ambsConfig.forEach((amb) => {
