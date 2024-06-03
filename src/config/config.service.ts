@@ -187,7 +187,14 @@ export class ConfigService {
     }
 
     private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
-        return { ...rawConfig } as SubmitterGlobalConfig;
+        const config = { ...rawConfig };
+        if (config.unrewardedDeliveryGas != undefined) {
+            config.unrewardedDeliveryGas = BigInt(config.unrewardedDeliveryGas);
+        }
+        if (config.unrewardedAckGas != undefined) {
+            config.unrewardedAckGas = BigInt(config.unrewardedAckGas);
+        }
+        return config as SubmitterGlobalConfig;
     }
 
     private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {

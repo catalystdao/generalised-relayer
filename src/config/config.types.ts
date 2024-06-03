@@ -45,8 +45,10 @@ export interface SubmitterGlobalConfig {
   maxTries?: number;
   maxPendingTransactions?: number;
 
+  unrewardedDeliveryGas?: bigint;
   minDeliveryReward?: number;
   relativeMinDeliveryReward?: number;
+  unrewardedAckGas?: bigint;
   minAckReward?: number;
   relativeMinAckReward?: number;
 }

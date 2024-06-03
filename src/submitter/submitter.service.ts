@@ -15,8 +15,10 @@ const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
+const UNREWARDED_DELIVERY_GAS_DEFAULT = 0n;
 const MIN_DELIVERY_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
+const UNREWARDED_ACK_GAS_DEFAULT = 0n;
 const MIN_ACK_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_ACK_REWARD_DEFAULT = 0;
 
@@ -27,8 +29,10 @@ interface GlobalSubmitterConfig {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
+    unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
+    unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
     walletPublicKey: string;
@@ -44,8 +48,10 @@ export interface SubmitterWorkerData {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
+    unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
+    unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
     pricingPort: MessagePort;
@@ -126,10 +132,14 @@ export class SubmitterService {
         const maxPendingTransactions =
             submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
 
+        const unrewardedDeliveryGas = 
+            submitterConfig.unrewardedDeliveryGas ?? UNREWARDED_DELIVERY_GAS_DEFAULT;
         const minDeliveryReward =
             submitterConfig.minDeliveryReward ?? MIN_DELIVERY_REWARD_DEFAULT;
         const relativeMinDeliveryReward =
             submitterConfig.relativeMinDeliveryReward ?? RELATIVE_MIN_DELIVERY_REWARD_DEFAULT;
+        const unrewardedAckGas = 
+            submitterConfig.unrewardedAckGas ?? UNREWARDED_ACK_GAS_DEFAULT;
         const minAckReward =
             submitterConfig.minAckReward ?? MIN_ACK_REWARD_DEFAULT;
         const relativeMinAckReward =
@@ -145,8 +155,10 @@ export class SubmitterService {
             maxTries,
             maxPendingTransactions,
             walletPublicKey,
+            unrewardedDeliveryGas,
             minDeliveryReward,
             relativeMinDeliveryReward,
+            unrewardedAckGas,
             minAckReward,
             relativeMinAckReward,
         };
@@ -193,6 +205,10 @@ export class SubmitterService {
                 chainConfig.submitter.maxPendingTransactions ??
                 globalConfig.maxPendingTransactions,
             
+            unrewardedDeliveryGas:
+                chainConfig.submitter.unrewardedDeliveryGas ??
+                globalConfig.unrewardedDeliveryGas,
+        
             minDeliveryReward:
                 chainConfig.submitter.minDeliveryReward ??
                 globalConfig.minDeliveryReward,
@@ -200,6 +216,10 @@ export class SubmitterService {
             relativeMinDeliveryReward:
                 chainConfig.submitter.relativeMinDeliveryReward ??
                 globalConfig.relativeMinDeliveryReward,
+            
+            unrewardedAckGas:
+                chainConfig.submitter.unrewardedAckGas ??
+                globalConfig.unrewardedAckGas,
 
             minAckReward:
                 chainConfig.submitter.minAckReward ??

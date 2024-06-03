@@ -19,8 +19,10 @@ global:
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
 
     # Evaluation properties
+    unrewardedDeliveryGas: '100000'     # Gas amount that will be unrewarded on delivery submission.
     minDeliveryReward: 0.001            # In the 'pricingDenomination' specified below
     relativeMinDeliveryReward: 0.001
+    unrewardedAckGas: '50000'           # Gas amount that will be unrewarded on ack submission.
     minAckReward: 0.001                 # In the 'pricingDenomination' specified below
     relativeMinAckReward: 0.001
 

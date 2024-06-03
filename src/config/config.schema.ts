@@ -147,8 +147,10 @@ const SUBMITTER_SCHEMA = {
         maxPendingTransactions: { $ref: "positive-number-schema" },
 
         //TODO define 'evaluation' configuration somewhere else?
+        unrewardedDeliveryGas: { $ref: "gas-field-schema" },
         minDeliveryReward: { $ref: "positive-number-schema" },
         relativeMinDeliveryReward: { $ref: "positive-number-schema" },
+        unrewardedAckGas: { $ref: "gas-field-schema" },
         minAckReward: { $ref: "positive-number-schema" },
         relativeMinAckReward: { $ref: "positive-number-schema" },
     },

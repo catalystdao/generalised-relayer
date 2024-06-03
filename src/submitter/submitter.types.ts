@@ -31,8 +31,10 @@ export interface NewOrder<OrderType> {
 
 
 export interface BountyEvaluationConfig {
+    unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number,
+    unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
 }

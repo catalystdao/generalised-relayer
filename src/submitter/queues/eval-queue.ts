@@ -194,8 +194,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const deliveryFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
 
             const maxGasDelivery = BigInt(bounty.maxGasDelivery);
+            const rewardableGasEstimation = gasEstimation > this.evaluationcConfig.unrewardedDeliveryGas
+                ? gasEstimation - this.evaluationcConfig.unrewardedDeliveryGas
+                : 0n;
             const gasRewardEstimate = bounty.priceOfDeliveryGas * (
-                gasEstimation > maxGasDelivery ? maxGasDelivery : gasEstimation //TODO gasEstimation is too large (it does not take into account that gas used by verification logic is not paid for)
+                rewardableGasEstimation > maxGasDelivery ? maxGasDelivery : rewardableGasEstimation
             );
             const deliveryFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, bounty.fromChainId);
 
@@ -243,8 +246,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const ackFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
 
             const maxGasAck = BigInt(bounty.maxGasAck);
+            const rewardableGasEstimation = gasEstimation > this.evaluationcConfig.unrewardedAckGas
+                ? gasEstimation - this.evaluationcConfig.unrewardedAckGas
+                : 0n;
             const gasRewardEstimate = bounty.priceOfAckGas * (
-                gasEstimation > maxGasAck ? maxGasAck : gasEstimation   //TODO gasEstimation is too large
+                rewardableGasEstimation > maxGasAck ? maxGasAck : rewardableGasEstimation
             );
             const ackFiatReward = await this.getGasCostFiatPrice(gasRewardEstimate, this.chainId);
 
