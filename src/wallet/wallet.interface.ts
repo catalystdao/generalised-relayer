@@ -1,6 +1,6 @@
 import { TransactionReceipt, TransactionRequest, TransactionResponse } from 'ethers6';
 import { MessagePort } from 'worker_threads';
-import { WalletTransactionOptions, WalletTransactionRequestMessage, WalletTransactionRequestResponse } from './wallet.types';
+import { WalletTransactionOptions, WalletTransactionRequestMessage, WalletTransactionRequestResponseMessage } from './wallet.types';
 import { WALLET_WORKER_CRASHED_MESSAGE_ID } from './wallet.service';
 
 export interface TransactionResult<T = any> {
@@ -34,7 +34,7 @@ export class WalletInterface {
                 if (data.messageId === messageId) {
                     this.port.off("message", listener);
 
-                    const walletResponse = data as WalletTransactionRequestResponse<T>;
+                    const walletResponse = data as WalletTransactionRequestResponseMessage<T>;
 
                     const result = {
                         txRequest: walletResponse.txRequest,

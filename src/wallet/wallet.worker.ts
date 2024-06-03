@@ -6,7 +6,7 @@ import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
 import { TransactionHelper } from "./transaction-helper";
 import { ConfirmQueue } from "./queues/confirm-queue";
 import { WalletWorkerData } from "./wallet.service";
-import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestResponse, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
+import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestResponseMessage, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
 import { SubmitQueue } from "./queues/submit-queue";
 
 
@@ -458,7 +458,7 @@ class WalletWorker {
         confirmationError?: any,
     ): void {
 
-        const transactionResponse: WalletTransactionRequestResponse = {
+        const transactionResponse: WalletTransactionRequestResponseMessage = {
             messageId: request.messageId,
             txRequest: request.txRequest,
             metadata: request.metadata,

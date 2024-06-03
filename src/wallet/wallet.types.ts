@@ -17,7 +17,7 @@ export interface WalletTransactionRequestMessage<T = any> {
     options?: WalletTransactionOptions;
 }
 
-export interface WalletTransactionRequestResponse<T = any> {
+export interface WalletTransactionRequestResponseMessage<T = any> {
     messageId: number;
     txRequest: TransactionRequest;
     metadata: T;
