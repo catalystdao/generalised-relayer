@@ -69,7 +69,6 @@ async function loadWorkerData(
     const incentivesAddress = configService.getAMBConfig(
         'layerZero',
         'incentivesAddress',
-        chainId,
     ) as string;
 
     return {
@@ -103,7 +102,7 @@ export default async (moduleInterface: CollectorModuleInterface) => {
             globalLayerZeroConfig,
         );
 
-        const worker = new Worker(join(__dirname, 'layerZero.worker.js'), {
+        const worker = new Worker(join(__dirname, 'worker.js'), {
             workerData,
             transferList: [workerData.monitorPort]
         });
