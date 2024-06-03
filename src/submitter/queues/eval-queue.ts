@@ -26,7 +26,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         private readonly chainId: string,
-        private readonly evaluationcConfig: BountyEvaluationConfig,
+        private readonly evaluationConfig: BountyEvaluationConfig,
         private readonly pricing: PricingInterface,
         private readonly provider: JsonRpcProvider,
         private readonly logger: pino.Logger,
@@ -194,8 +194,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const deliveryFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
 
             const maxGasDelivery = BigInt(bounty.maxGasDelivery);
-            const rewardableGasEstimation = gasEstimation > this.evaluationcConfig.unrewardedDeliveryGas
-                ? gasEstimation - this.evaluationcConfig.unrewardedDeliveryGas
+            const rewardableGasEstimation = gasEstimation > this.evaluationConfig.unrewardedDeliveryGas
+                ? gasEstimation - this.evaluationConfig.unrewardedDeliveryGas
                 : 0n;
             const gasRewardEstimate = bounty.priceOfDeliveryGas * (
                 rewardableGasEstimation > maxGasDelivery ? maxGasDelivery : rewardableGasEstimation
@@ -205,8 +205,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const deliveryFiatProfit = deliveryFiatReward - deliveryFiatCost;
 
             const relayDelivery = (
-                deliveryFiatProfit > this.evaluationcConfig.minDeliveryReward ||
-                deliveryFiatProfit / deliveryFiatCost > this.evaluationcConfig.relativeMinDeliveryReward
+                deliveryFiatProfit > this.evaluationConfig.minDeliveryReward ||
+                deliveryFiatProfit / deliveryFiatCost > this.evaluationConfig.relativeMinDeliveryReward
             );
 
             this.logger.debug(
@@ -246,8 +246,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const ackFiatCost = await this.getGasCostFiatPrice(gasCostEstimate, this.chainId);
 
             const maxGasAck = BigInt(bounty.maxGasAck);
-            const rewardableGasEstimation = gasEstimation > this.evaluationcConfig.unrewardedAckGas
-                ? gasEstimation - this.evaluationcConfig.unrewardedAckGas
+            const rewardableGasEstimation = gasEstimation > this.evaluationConfig.unrewardedAckGas
+                ? gasEstimation - this.evaluationConfig.unrewardedAckGas
                 : 0n;
             const gasRewardEstimate = bounty.priceOfAckGas * (
                 rewardableGasEstimation > maxGasAck ? maxGasAck : rewardableGasEstimation
@@ -279,8 +279,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             }
             else {
                 relayAck = (
-                    ackFiatProfit > this.evaluationcConfig.minAckReward ||
-                    ackFiatProfit / ackFiatCost > this.evaluationcConfig.relativeMinAckReward
+                    ackFiatProfit > this.evaluationConfig.minAckReward ||
+                    ackFiatProfit / ackFiatCost > this.evaluationConfig.relativeMinAckReward
                 );
             }
 
