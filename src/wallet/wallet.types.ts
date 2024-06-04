@@ -22,10 +22,16 @@ export interface WalletServiceRoutingData {
 export enum WalletMessageType {
     TransactionRequest,
     TransactionRequestResponse,
+    GetFeeData,
+    FeeData,
     WalletCrashed,
 }
 
-export type WalletMessage = WalletTransactionRequestMessage | WalletTransactionRequestResponseMessage | WalletCrashedMessage;
+export type WalletMessage = WalletTransactionRequestMessage
+    | WalletTransactionRequestResponseMessage
+    | WalletGetFeeDataMessage
+    | WalletFeeDataMessage
+    | WalletCrashedMessage;
 
 
 //TODO add 'priority'
@@ -44,6 +50,19 @@ export interface WalletTransactionRequestResponseMessage<T = any> {
     txReceipt?: TransactionReceipt;
     submissionError?: any;
     confirmationError?: any;
+}
+
+export interface WalletGetFeeDataMessage {
+    type: WalletMessageType.GetFeeData,
+    priority: boolean,
+}
+
+export interface WalletFeeDataMessage {
+    type: WalletMessageType.FeeData,
+    priority: boolean,
+    gasPrice?: bigint;
+    maxFeePerGas?: bigint;
+    maxPriorityFeePerGas?: bigint;
 }
 
 export interface WalletCrashedMessage {
