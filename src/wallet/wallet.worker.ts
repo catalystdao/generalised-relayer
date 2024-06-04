@@ -6,7 +6,7 @@ import { STATUS_LOG_INTERVAL } from "src/logger/logger.service";
 import { TransactionHelper } from "./transaction-helper";
 import { ConfirmQueue } from "./queues/confirm-queue";
 import { WalletWorkerData } from "./wallet.service";
-import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestResponse, BalanceConfig, WalletServiceRoutingMessage } from "./wallet.types";
+import { ConfirmedTransaction, GasFeeConfig, PendingTransaction, WalletTransactionOptions, WalletTransactionRequest, WalletTransactionRequestResponseMessage, BalanceConfig, WalletServiceRoutingData, WalletMessageType, WalletFeeDataMessage } from "./wallet.types";
 import { SubmitQueue } from "./queues/submit-queue";
 
 
@@ -150,15 +150,36 @@ class WalletWorker {
     }
 
     private initializePort(): void {
-        parentPort!.on('message', (message: WalletServiceRoutingMessage) => {
-            this.addTransaction(
-                message.portId,
-                message.data.messageId,
-                message.data.txRequest,
-                message.data.metadata,
-                message.data.options
-            );
+        parentPort!.on('message', (message: WalletServiceRoutingData) => {
+            this.processRequest(message);
         });
+    }
+
+    private processRequest(data: WalletServiceRoutingData): void {
+        const messageType = data.message.type;
+        switch(messageType) {
+            case WalletMessageType.TransactionRequest:
+                this.addTransaction(
+                    data.portId,
+                    data.messageId,
+                    data.message.txRequest,
+                    data.message.metadata,
+                    data.message.options
+                )
+                break;
+            case WalletMessageType.GetFeeData:
+                this.handleGetFeeDataRequest(
+                    data.portId,
+                    data.messageId,
+                    data.message.priority,
+                );
+                break;
+            default:
+                this.logger.error(
+                    data,
+                    'Unable to process request: wallet message type unsupported.'
+                );
+        }
     }
 
     private addTransaction(
@@ -180,6 +201,30 @@ class WalletWorker {
         this.logger.debug(request, `Transaction received.`);
 
         this.newRequestsQueue.push(request);
+    }
+
+    private handleGetFeeDataRequest(
+        portId: number,
+        messageId: number,
+        priority: boolean,
+    ): void {
+        const adjustedFeeData = this.transactionHelper.getAdjustedFeeData(priority);
+
+        const feeDataMessage: WalletFeeDataMessage = {
+            type: WalletMessageType.FeeData,
+            priority,
+            maxFeePerGas: adjustedFeeData?.maxFeePerGas ?? undefined,
+            maxPriorityFeePerGas: adjustedFeeData?.maxPriorityFeePerGas ?? undefined,
+            gasPrice: adjustedFeeData?.gasPrice ?? undefined,
+        };
+
+        const routingResponse: WalletServiceRoutingData = {
+            portId,
+            messageId,
+            message: feeDataMessage,
+        };
+
+        parentPort!.postMessage(routingResponse);
     }
 
     private initiateIntervalStatusLog(): void {
@@ -458,8 +503,8 @@ class WalletWorker {
         confirmationError?: any,
     ): void {
 
-        const transactionResponse: WalletTransactionRequestResponse = {
-            messageId: request.messageId,
+        const transactionResponse: WalletTransactionRequestResponseMessage = {
+            type: WalletMessageType.TransactionRequestResponse,
             txRequest: request.txRequest,
             metadata: request.metadata,
             tx,
@@ -468,9 +513,10 @@ class WalletWorker {
             confirmationError: tryErrorToString(confirmationError),
         }
 
-        const routingResponse: WalletServiceRoutingMessage = {
+        const routingResponse: WalletServiceRoutingData = {
             portId: request.portId,
-            data: transactionResponse,
+            messageId: request.messageId,
+            message: transactionResponse,
         }
 
         parentPort!.postMessage(routingResponse);

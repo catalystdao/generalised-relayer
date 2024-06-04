@@ -125,6 +125,7 @@ class SubmitterWorker {
             store,
             incentivesContracts,
             walletPublicKey,
+            chainId,
             wallet,
             logger,
         );

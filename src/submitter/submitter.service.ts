@@ -233,7 +233,7 @@ export class SubmitterService {
             pricingPort: await this.pricingService.attachToPricing(),
 
             walletPublicKey: globalConfig.walletPublicKey,
-            walletPort: await this.walletService.attachToWallet(chainId),
+            walletPort: await this.walletService.attachToWallet(),
             loggerOptions: this.loggerService.loggerOptions,
         };
     }

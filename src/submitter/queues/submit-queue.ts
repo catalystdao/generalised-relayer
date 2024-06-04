@@ -22,6 +22,7 @@ export class SubmitQueue extends ProcessingQueue<
         private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
         relayerAddress: string,
+        private readonly chainId: string,
         private readonly wallet: WalletInterface,
         private readonly logger: pino.Logger,
     ) {
@@ -67,6 +68,7 @@ export class SubmitQueue extends ProcessingQueue<
         };
 
         const txPromise = this.wallet.submitTransaction(
+            this.chainId,
             txRequest,
             order,
         ).then((transactionResult): SubmitOrderResult => {
