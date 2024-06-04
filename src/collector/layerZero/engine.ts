@@ -34,6 +34,7 @@ export interface LayerZeroWorkerData {
     monitorPort: MessagePort;
     loggerOptions: LoggerOptions;
 }
+
 function loadGlobalLayerZeroConfig(configService: ConfigService): GlobalLayerZeroConfig {
     const layerZeroConfig = configService.ambsConfig.get('layerZero');
     if (layerZeroConfig == undefined) {
@@ -57,6 +58,7 @@ function loadGlobalLayerZeroConfig(configService: ConfigService): GlobalLayerZer
         privateKey,
     };
 }
+
 async function loadWorkerData(
     configService: ConfigService,
     monitorService: MonitorService,
@@ -94,12 +96,14 @@ async function loadWorkerData(
         loggerOptions: loggerService.loggerOptions,
     };
 }
+
 export default async (moduleInterface: CollectorModuleInterface) => {
     const { configService, monitorService, loggerService } = moduleInterface;
 
     const globalLayerZeroConfig = loadGlobalLayerZeroConfig(configService);
 
-    const workers: Record<string, Worker | null> = {};
+    const GARPWorkers: Record<string, Worker | null> = {};
+    const ULNBaseWorkers: Record<string, Worker | null> = {};
 
     for (const [chainId, chainConfig] of configService.chainsConfig) {
         const workerData = await loadWorkerData(
@@ -110,36 +114,65 @@ export default async (moduleInterface: CollectorModuleInterface) => {
             globalLayerZeroConfig,
         );
 
-        const worker = new Worker(join(__dirname, 'worker.js'), {
+        const GARPWorker = new Worker(join(__dirname, 'GARPWorker.js'), {
             workerData,
             transferList: [workerData.monitorPort]
         });
-        workers[workerData.chainId] = worker;
+        GARPWorkers[workerData.chainId] = GARPWorker;
 
-        worker.on('error', (error) =>
-            loggerService.fatal(error, 'Error on Layer Zero collector service worker.'),
+        GARPWorker.on('error', (error) =>
+            loggerService.fatal(error, 'Error on GARP worker.'),
         );
 
-        worker.on('exit', (exitCode) => {
-            workers[chainId] = null;
+        GARPWorker.on('exit', (exitCode) => {
+            GARPWorkers[chainId] = null;
             loggerService.info(
                 { exitCode, chainId },
-                `Layer Zero collector service worker exited.`,
+                `GARP worker exited.`,
+            );
+        });
+
+        const ULNBaseWorker = new Worker(join(__dirname, 'ULNBaseWorker.js'), {
+            workerData,
+            transferList: [workerData.monitorPort]
+        });
+        ULNBaseWorkers[workerData.chainId] = ULNBaseWorker;
+
+        ULNBaseWorker.on('error', (error) =>
+            loggerService.fatal(error, 'Error on ULNBase worker.'),
+        );
+
+        ULNBaseWorker.on('exit', (exitCode) => {
+            ULNBaseWorkers[chainId] = null;
+            loggerService.info(
+                { exitCode, chainId },
+                `ULNBase worker exited.`,
             );
         });
     };
 
     // Initiate status log interval
     const logStatus = () => {
-        const activeWorkers = [];
-        const inactiveWorkers = [];
-        for (const chainId of Object.keys(workers)) {
-            if (workers[chainId] != null) activeWorkers.push(chainId);
-            else inactiveWorkers.push(chainId);
+        const activeGARPWorkers = [];
+        const inactiveGARPWorkers = [];
+        const activeULNBaseWorkers = [];
+        const inactiveULNBaseWorkers = [];
+
+        for (const chainId of Object.keys(GARPWorkers)) {
+            if (GARPWorkers[chainId] != null) activeGARPWorkers.push(chainId);
+            else inactiveGARPWorkers.push(chainId);
         }
+
+        for (const chainId of Object.keys(ULNBaseWorkers)) {
+            if (ULNBaseWorkers[chainId] != null) activeULNBaseWorkers.push(chainId);
+            else inactiveULNBaseWorkers.push(chainId);
+        }
+
         const status = {
-            activeWorkers,
-            inactiveWorkers,
+            activeGARPWorkers,
+            inactiveGARPWorkers: inactiveGARPWorkers,
+            activeULNBaseWorkers,
+            inactiveULNBaseWorkers,
         };
         loggerService.info(status, 'Layer Zero collector workers status.');
     };

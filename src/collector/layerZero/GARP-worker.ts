@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { Store } from '../../store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { LayerZeroWorkerData } from './engine'; 
+import { LayerZeroWorkerData } from './engine';
 import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface';
 import { Resolver, loadResolver } from '../../resolvers/resolver';
@@ -12,12 +12,11 @@ import { AmbMessage } from 'src/store/types/store.types';
 
 const abi = AbiCoder.defaultAbiCoder();
 
-class LayerZeroCollectorWorker {
+class LayerZeroGARPWorker {
 
     private readonly config: LayerZeroWorkerData;
 
     private readonly chainId: string;
-    private readonly endpointAddress: string;
     private readonly incentivesAddress: string;
     private readonly ibcEventEmitterInterface: IbcEventEmitterInterface;
     private readonly filterTopics: string[][];
@@ -44,7 +43,6 @@ class LayerZeroCollectorWorker {
             this.logger
         );
 
-        this.endpointAddress = this.config.bridgeAddress;
         this.incentivesAddress = this.config.incentivesAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
         this.filterTopics = [
@@ -56,7 +54,7 @@ class LayerZeroCollectorWorker {
 
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'collector-layerzero',
+            worker: 'collector-GARP-worker',
             chain: chainId,
         });
     }
@@ -80,7 +78,7 @@ class LayerZeroCollectorWorker {
     }
 
     async run(): Promise<void> {
-        this.logger.info({ endpointAddress: this.endpointAddress }, `LayerZero collector sniffer worker started.`);
+        this.logger.info({ incentivesAddress: this.incentivesAddress }, `GARP worker started.`);
 
         let fromBlock = null;
         while (fromBlock == null) {
@@ -108,7 +106,7 @@ class LayerZeroCollectorWorker {
                     toBlock = fromBlock + this.config.maxBlocks;
                 }
 
-                this.logger.info({ fromBlock, toBlock }, `Scanning LayerZero messages.`);
+                this.logger.info({ fromBlock, toBlock }, `Scanning SendPacket events.`);
                 await this.queryAndProcessEvents(fromBlock, toBlock);
 
                 if (toBlock >= stopBlock) {
@@ -118,7 +116,7 @@ class LayerZeroCollectorWorker {
 
                 fromBlock = toBlock + 1;
             } catch (error) {
-                this.logger.error(error, `Error on layerzero.worker`);
+                this.logger.error(error, `Error on GARP worker`);
                 await wait(this.config.retryInterval);
             }
 
@@ -136,7 +134,7 @@ class LayerZeroCollectorWorker {
             try {
                 await this.handleEvent(log);
             } catch (error) {
-                this.logger.error({ log, error }, `Failed to process event on layerzero collector sniffer worker.`);
+                this.logger.error({ log, error }, `Failed to process event on GARP worker.`);
             }
         }
     }
@@ -156,7 +154,7 @@ class LayerZeroCollectorWorker {
                 logs = await this.provider.getLogs(filter);
             } catch (error) {
                 i++;
-                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on layerzero collector sniffer. Worker blocked until successful query.`);
+                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on GARP worker. Worker blocked until successful query.`);
                 await wait(this.config.retryInterval);
             }
         }
@@ -168,7 +166,7 @@ class LayerZeroCollectorWorker {
         const parsedLog = this.ibcEventEmitterInterface.parseLog(log);
 
         if (parsedLog == null) {
-            this.logger.error({ topics: log.topics, data: log.data }, `Failed to parse a layerzero contract event.`);
+            this.logger.error({ topics: log.topics, data: log.data }, `Failed to parse a SendPacket event.`);
             return;
         }
 
@@ -196,7 +194,7 @@ class LayerZeroCollectorWorker {
 
         const amb: AmbMessage = {
             messageIdentifier,
-            amb: 'polymer',
+            amb: 'layerZero',
             sourceChain: this.chainId,
             destinationChain,
             sourceEscrow: event.sourcePortAddress,
@@ -209,8 +207,9 @@ class LayerZeroCollectorWorker {
 
         await this.store.setAmb(amb, log.transactionHash);
 
-        this.logger.info({ messageIdentifier: amb.messageIdentifier, destinationChainId: destinationChain }, `LayerZero message found.`);
+        this.logger.info({ messageIdentifier: amb.messageIdentifier, destinationChainId: destinationChain }, `SendPacket event processed.`);
     }
 }
 
-void new LayerZeroCollectorWorker().run();
+void new LayerZeroGARPWorker().run();
+
