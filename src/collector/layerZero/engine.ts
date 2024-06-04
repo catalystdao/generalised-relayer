@@ -29,6 +29,7 @@ export interface LayerZeroWorkerData {
     processingInterval: number;
     maxBlocks: number | null;
     incentivesAddress: string;
+    bridgeAddress: string;
     privateKey: string;
     monitorPort: MessagePort;
     loggerOptions: LoggerOptions;
@@ -65,10 +66,16 @@ async function loadWorkerData(
 ): Promise<LayerZeroWorkerData> {
     const chainId = chainConfig.chainId;
     const rpc = chainConfig.rpc;
+    const bridgeAddress: string | undefined = configService.getAMBConfig(
+        'layerZero',
+        'bridgeAddress',
+        chainId,
+    ) as string;
 
     const incentivesAddress = configService.getAMBConfig(
         'layerZero',
         'incentivesAddress',
+        chainId,
     ) as string;
 
     return {
@@ -81,6 +88,7 @@ async function loadWorkerData(
         processingInterval: chainConfig.getter.processingInterval ?? globalConfig.processingInterval,
         maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
         incentivesAddress,
+        bridgeAddress,
         privateKey: globalConfig.privateKey,
         monitorPort: await monitorService.attachToMonitor(chainId),
         loggerOptions: loggerService.loggerOptions,

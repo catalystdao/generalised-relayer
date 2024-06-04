@@ -1,6 +1,5 @@
 import pino from 'pino';
 import { Store } from '../../store/store.lib';
-import { LayerZeroMessage } from '../../store/types/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import { LayerZeroWorkerData } from './engine'; 
 import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
@@ -8,10 +7,12 @@ import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface
 import { Resolver, loadResolver } from '../../resolvers/resolver';
 import { IbcEventEmitter__factory } from 'src/contracts/factories/IbcEventEmitter__factory';
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
+import { tryErrorToString, wait } from 'src/common/utils';
+import { AmbMessage } from 'src/store/types/store.types';
 
 const abi = AbiCoder.defaultAbiCoder();
 
-class LayerZeroCollectorSnifferWorker {
+class LayerZeroCollectorWorker {
 
     private readonly config: LayerZeroWorkerData;
 
@@ -43,7 +44,7 @@ class LayerZeroCollectorSnifferWorker {
             this.logger
         );
 
-        this.endpointAddress = this.config.endpointAddress;
+        this.endpointAddress = this.config.bridgeAddress;
         this.incentivesAddress = this.config.incentivesAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
         this.filterTopics = [
@@ -182,7 +183,7 @@ class LayerZeroCollectorSnifferWorker {
     private async handleSendPacketEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const event = parsedLog.args as unknown as SendPacketEvent.OutputObject;
 
-        const destinationChain: string | undefined = this.config.layerZeroChannels[event.sourceChannelId];
+        const destinationChain: string | undefined = this.config.chainId;
         if (destinationChain === undefined) {
             this.logger.debug(`DestinationChain: ${destinationChain} not found in config.`);
             return;
@@ -193,9 +194,9 @@ class LayerZeroCollectorSnifferWorker {
 
         const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
 
-        const lzMessage: LayerZeroMessage = {
+        const amb: AmbMessage = {
             messageIdentifier,
-            lz: 'layerzero',
+            amb: 'polymer',
             sourceChain: this.chainId,
             destinationChain,
             sourceEscrow: event.sourcePortAddress,
@@ -206,10 +207,10 @@ class LayerZeroCollectorSnifferWorker {
             transactionHash: log.transactionHash
         };
 
-        await this.store.setLayerZeroMessage(lzMessage, log.transactionHash);
+        await this.store.setAmb(amb, log.transactionHash);
 
-        this.logger.info({ messageIdentifier: lzMessage.messageIdentifier, destinationChainId: destinationChain }, `LayerZero message found.`);
+        this.logger.info({ messageIdentifier: amb.messageIdentifier, destinationChainId: destinationChain }, `LayerZero message found.`);
     }
 }
 
-void new LayerZeroCollectorSnifferWorker().run();
+void new LayerZeroCollectorWorker().run();
