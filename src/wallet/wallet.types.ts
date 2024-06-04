@@ -4,27 +4,50 @@ import { TransactionRequest, TransactionReceipt, TransactionResponse } from "eth
 
 // Port Channels Types
 // ************************************************************************************************
-export interface WalletServiceRoutingMessage<T = any> {
-    portId: number;
-    data: T;
+
+export const WALLET_WORKER_CRASHED_MESSAGE_ID = -1;
+
+export interface WalletPortData {
+    chainId: string;
+    messageId: number;
+    message: WalletMessage;
 }
+
+export interface WalletServiceRoutingData {
+    portId: number;
+    messageId: number;
+    message: WalletMessage;
+}
+
+export enum WalletMessageType {
+    TransactionRequest,
+    TransactionRequestResponse,
+    WalletCrashed,
+}
+
+export type WalletMessage = WalletTransactionRequestMessage | WalletTransactionRequestResponseMessage | WalletCrashedMessage;
+
 
 //TODO add 'priority'
 export interface WalletTransactionRequestMessage<T = any> {
-    messageId: number;
+    type: WalletMessageType.TransactionRequest,
     txRequest: TransactionRequest;
     metadata: T;
     options?: WalletTransactionOptions;
 }
 
 export interface WalletTransactionRequestResponseMessage<T = any> {
-    messageId: number;
+    type: WalletMessageType.TransactionRequestResponse,
     txRequest: TransactionRequest;
     metadata: T;
     tx?: TransactionResponse;
     txReceipt?: TransactionReceipt;
     submissionError?: any;
     confirmationError?: any;
+}
+
+export interface WalletCrashedMessage {
+    type: WalletMessageType.WalletCrashed,
 }
 
 

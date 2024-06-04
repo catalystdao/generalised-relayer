@@ -1,7 +1,6 @@
 import { TransactionReceipt, TransactionRequest, TransactionResponse } from 'ethers6';
 import { MessagePort } from 'worker_threads';
-import { WalletTransactionOptions, WalletTransactionRequestMessage, WalletTransactionRequestResponseMessage } from './wallet.types';
-import { WALLET_WORKER_CRASHED_MESSAGE_ID } from './wallet.service';
+import { WALLET_WORKER_CRASHED_MESSAGE_ID, WalletMessageType, WalletPortData, WalletTransactionOptions, WalletTransactionRequestMessage, WalletTransactionRequestResponseMessage } from './wallet.types';
 
 export interface TransactionResult<T = any> {
     txRequest: TransactionRequest;
@@ -22,6 +21,7 @@ export class WalletInterface {
     }
 
     async submitTransaction<T>(
+        chainId: string,
         transaction: TransactionRequest,
         metadata?: T,
         options?: WalletTransactionOptions
@@ -30,22 +30,25 @@ export class WalletInterface {
         const messageId = this.getNextPortMessageId();
 
         const resultPromise = new Promise<TransactionResult<T>>(resolve => {
-            const listener = (data: any) => {
+            const listener = (data: WalletPortData) => {
                 if (data.messageId === messageId) {
                     this.port.off("message", listener);
 
-                    const walletResponse = data as WalletTransactionRequestResponseMessage<T>;
+                    const walletResponse = data.message as WalletTransactionRequestResponseMessage<T>;
 
                     const result = {
                         txRequest: walletResponse.txRequest,
                         metadata: walletResponse.metadata,
                         tx: walletResponse.tx,
                         txReceipt: walletResponse.txReceipt,
-                        submissionError: data.submissionError,
-                        confirmationError: data.confirmationError
+                        submissionError: walletResponse.submissionError,
+                        confirmationError: walletResponse.confirmationError
                     };
                     resolve(result);
-                } else if (data.messageId === WALLET_WORKER_CRASHED_MESSAGE_ID) {
+                } else if (
+                    data.messageId === WALLET_WORKER_CRASHED_MESSAGE_ID
+                    && data.chainId == chainId
+                ) {
                     this.port.off("message", listener);
 
                     const result = {
@@ -59,13 +62,19 @@ export class WalletInterface {
             };
             this.port.on("message", listener);
 
-            const request: WalletTransactionRequestMessage = {
-                messageId,
+            const message: WalletTransactionRequestMessage = {
+                type: WalletMessageType.TransactionRequest,
                 txRequest: transaction,
                 metadata,
                 options
             };
-            this.port.postMessage(request);
+
+            const portData: WalletPortData = {
+                chainId,
+                messageId,
+                message,
+            }
+            this.port.postMessage(portData);
         });
 
         return resultPromise;

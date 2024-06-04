@@ -108,6 +108,7 @@ class SubmitterWorker {
             maxTries,
             incentivesContracts,
             walletPublicKey,
+            chainId,
             wallet,
             logger,
         );
