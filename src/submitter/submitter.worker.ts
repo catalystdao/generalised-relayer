@@ -74,7 +74,6 @@ class SubmitterWorker {
                 },
                 this.pricing,
                 this.wallet,
-                this.provider,
                 this.logger,
             );
 
@@ -103,7 +102,6 @@ class SubmitterWorker {
         bountyEvaluationConfig: BountyEvaluationConfig,
         pricing: PricingInterface,
         wallet: WalletInterface,
-        provider: JsonRpcProvider,
         logger: pino.Logger,
     ): [EvalQueue, SubmitQueue] {
         const evalQueue = new EvalQueue(
@@ -115,7 +113,7 @@ class SubmitterWorker {
             chainId,
             bountyEvaluationConfig,
             pricing,
-            provider,
+            wallet,
             logger,
         );
 
