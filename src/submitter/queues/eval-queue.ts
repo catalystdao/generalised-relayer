@@ -132,7 +132,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             } else {
                 this.logger.info(
                     orderDescription,
-                    `Successful bounty evaluation: drop order.`,
+                    `Successful bounty evaluation: do not submit order.`,
                 );
             }
         } else {
