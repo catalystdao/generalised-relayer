@@ -147,6 +147,8 @@ const SUBMITTER_SCHEMA = {
         maxPendingTransactions: { $ref: "positive-number-schema" },
 
         //TODO define 'evaluation' configuration somewhere else?
+        evaluationRetryInterval: { $ref: "positive-number-schema" },
+        maxEvaluationDuration: { $ref: "positive-number-schema" },
         unrewardedDeliveryGas: { $ref: "gas-field-schema" },
         minDeliveryReward: { $ref: "positive-number-schema" },
         relativeMinDeliveryReward: { $ref: "positive-number-schema" },

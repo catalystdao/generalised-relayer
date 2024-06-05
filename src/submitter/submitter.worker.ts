@@ -10,7 +10,7 @@ import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/Ince
 import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { BountyEvaluationConfig, EvalOrder, NewOrder } from './submitter.types';
+import { BountyEvaluationConfig, EvalOrder, PendingOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
@@ -32,7 +32,7 @@ class SubmitterWorker {
     private readonly pricing: PricingInterface;
     private readonly wallet: WalletInterface;
 
-    private readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
+    private readonly pendingQueue: PendingOrder<EvalOrder>[] = [];
     private readonly evalQueue: EvalQueue;
     private readonly submitQueue: SubmitQueue;
 
@@ -65,6 +65,8 @@ class SubmitterWorker {
                 this.loadIncentivesContracts(this.config.incentivesAddresses),
                 this.config.chainId,
                 {
+                    evaluationRetryInterval: this.config.evaluationRetryInterval,
+                    maxEvaluationDuration: this.config.maxEvaluationDuration,
                     unrewardedDeliveryGas: this.config.unrewardedDeliveryGas,
                     minDeliveryReward: this.config.minDeliveryReward,
                     relativeMinDeliveryReward: this.config.relativeMinDeliveryReward,
@@ -140,7 +142,7 @@ class SubmitterWorker {
         const logStatus = () => {
             const status = {
                 capacity: this.getSubmitterCapacity(),
-                newOrdersQueue: this.newOrdersQueue.length,
+                pendingQueue: this.pendingQueue.length,
                 evalQueue: this.evalQueue.size,
                 evalRetryQueue: this.evalQueue.retryQueue.length,
                 submitQueue: this.submitQueue.size,
@@ -181,18 +183,54 @@ class SubmitterWorker {
         await this.listenForOrders();
 
         while (true) {
-            const evalOrders = await this.processNewOrdersQueue();
+            const evalOrders = await this.processPendingQueue();
 
             await this.evalQueue.addOrders(...evalOrders);
             await this.evalQueue.processOrders();
 
-            const [newSubmitOrders, ,] = this.evalQueue.getFinishedOrders();
+            const [newSubmitOrders, noSubmitEvalOrders,] = this.evalQueue.getFinishedOrders();
+            this.processNoSubmitEvalOrders(noSubmitEvalOrders);
             await this.submitQueue.addOrders(...newSubmitOrders);
             await this.submitQueue.processOrders();
+
+            //TODO process failed submissions in any way?
 
             this.submitQueue.getFinishedOrders(); // Flush the internal queues
 
             await wait(this.config.processingInterval);
+        }
+    }
+
+    private processNoSubmitEvalOrders(evalOrders: EvalOrder[]): void {
+        for (const order of evalOrders) {
+            if (order.retryEvaluation) {
+
+                // Clear the 'retryEvaluation' flag to avoid unexpected retries.
+                order.retryEvaluation = undefined;
+
+                const nextEvaluationTime = Date.now() + this.config.evaluationRetryInterval;
+                if (nextEvaluationTime > order.evaluationDeadline) {
+                    this.logger.info(
+                        {
+                            messageIdentifier: order.messageIdentifier,
+                            nextEvaluationTime,
+                            evaluationDeadline: order.evaluationDeadline,
+                        },
+                        'Dropping evaluation order.'
+                    );
+                }
+                else {
+                    this.logger.info(
+                        {
+                            messageIdentifier: order.messageIdentifier,
+                            nextEvaluationTime,
+                            evaluationDeadline: order.evaluationDeadline,
+                        },
+                        'Queueing order for reevaluation.'
+                    );
+                    this.addPendingOrder(nextEvaluationTime, order);
+                }
+            }
         }
     }
 
@@ -247,48 +285,69 @@ class SubmitterWorker {
             `Submit order received.`,
         );
         if (priority) {
-            // Push directly into the submit queue
+            // Push directly into the eval queue
             await this.evalQueue.addOrders({
                 amb,
                 messageIdentifier,
                 message,
                 messageCtx,
                 priority: true,
+                evaluationDeadline: Date.now() + this.config.maxEvaluationDuration,
                 incentivesPayload,
             });
         } else {
-            // Push into the evaluation queue
-            this.newOrdersQueue.push({
-                processAt: Date.now() + this.config.newOrdersDelay,
-                order: {
+            // Push into the pending queue
+            this.addPendingOrder(
+                Date.now() + this.config.newOrdersDelay,
+                {
                     amb,
                     messageIdentifier,
                     message,
                     messageCtx,
                     priority: false,
+                    evaluationDeadline: Date.now() + this.config.maxEvaluationDuration,
                     incentivesPayload,
                 },
-            });
+            );
         }
     }
 
-    /***************  New Order Queue  ***************/
+    /***************  Pending Orders Queue  ***************/
 
-    private async processNewOrdersQueue(): Promise<EvalOrder[]> {
+    private addPendingOrder(processAt: number, order: EvalOrder): void {
+        
+        // Insert the new order into the 'pendingQueue' keeping the queue order.
+        const insertIndex = this.pendingQueue.findIndex(order => {
+            return order.processAt > processAt;
+        });
+
+        const pendingOrder: PendingOrder<EvalOrder> = {
+            order,
+            processAt
+        };
+
+        if (insertIndex == -1) {
+            this.pendingQueue.push(pendingOrder);
+        } else {
+            this.pendingQueue.splice(insertIndex, 0, pendingOrder);
+        }
+    }
+
+    private async processPendingQueue(): Promise<EvalOrder[]> {
         const currentTimestamp = Date.now();
         const capacity = this.getSubmitterCapacity();
 
         let i;
-        for (i = 0; i < this.newOrdersQueue.length; i++) {
-            const nextNewOrder = this.newOrdersQueue[i]!;
+        for (i = 0; i < this.pendingQueue.length; i++) {
+            const nextPendingOrder = this.pendingQueue[i]!;
 
-            if (nextNewOrder.processAt > currentTimestamp || i + 1 > capacity) {
+            if (nextPendingOrder.processAt > currentTimestamp || i + 1 > capacity) {
                 break;
             }
         }
 
-        const ordersToEval = this.newOrdersQueue.splice(0, i).map((newOrder) => {
-            return newOrder.order;
+        const ordersToEval = this.pendingQueue.splice(0, i).map((pendingOrder) => {
+            return pendingOrder.order;
         });
 
         return ordersToEval;

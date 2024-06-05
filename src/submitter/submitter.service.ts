@@ -15,6 +15,8 @@ const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
+const EVALUATION_RETRY_INTERVAL_DEFAULT = 60 * 60 * 1000;
+const MAX_EVALUATION_DURATION_DEFAULT = 24 * 60 * 60 * 1000;
 const UNREWARDED_DELIVERY_GAS_DEFAULT = 0n;
 const MIN_DELIVERY_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
@@ -29,6 +31,8 @@ interface GlobalSubmitterConfig {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
+    evaluationRetryInterval: number;
+    maxEvaluationDuration: number;
     unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
@@ -48,6 +52,8 @@ export interface SubmitterWorkerData {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
+    evaluationRetryInterval: number;
+    maxEvaluationDuration: number;
     unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
@@ -132,6 +138,10 @@ export class SubmitterService {
         const maxPendingTransactions =
             submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
 
+        const evaluationRetryInterval =
+            submitterConfig.evaluationRetryInterval ?? EVALUATION_RETRY_INTERVAL_DEFAULT;
+        const maxEvaluationDuration =
+            submitterConfig.maxEvaluationDuration ?? MAX_EVALUATION_DURATION_DEFAULT;
         const unrewardedDeliveryGas = 
             submitterConfig.unrewardedDeliveryGas ?? UNREWARDED_DELIVERY_GAS_DEFAULT;
         const minDeliveryReward =
@@ -155,6 +165,8 @@ export class SubmitterService {
             maxTries,
             maxPendingTransactions,
             walletPublicKey,
+            evaluationRetryInterval,
+            maxEvaluationDuration,
             unrewardedDeliveryGas,
             minDeliveryReward,
             relativeMinDeliveryReward,
@@ -205,9 +217,17 @@ export class SubmitterService {
                 chainConfig.submitter.maxPendingTransactions ??
                 globalConfig.maxPendingTransactions,
             
+            evaluationRetryInterval:
+                chainConfig.submitter.evaluationRetryInterval ??
+                globalConfig.evaluationRetryInterval,
+        
             unrewardedDeliveryGas:
                 chainConfig.submitter.unrewardedDeliveryGas ??
                 globalConfig.unrewardedDeliveryGas,
+
+            maxEvaluationDuration:
+                chainConfig.submitter.maxEvaluationDuration ??
+                globalConfig.maxEvaluationDuration,
         
             minDeliveryReward:
                 chainConfig.submitter.minDeliveryReward ??

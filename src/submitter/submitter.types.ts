@@ -10,6 +10,8 @@ export interface Order {
 
 export interface EvalOrder extends Order {
     priority: boolean;
+    evaluationDeadline: number;
+    retryEvaluation?: boolean;
 }
 
 export interface SubmitOrder extends Order {
@@ -24,13 +26,15 @@ export interface SubmitOrderResult extends SubmitOrder {
     txReceipt: TransactionReceipt;
 }
 
-export interface NewOrder<OrderType> {
+export interface PendingOrder<OrderType> {
     order: OrderType;
     processAt: number;
 }
 
 
 export interface BountyEvaluationConfig {
+    evaluationRetryInterval: number,
+    maxEvaluationDuration: number,
     unrewardedDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number,

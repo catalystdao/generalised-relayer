@@ -80,6 +80,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             // Move the order to the submit queue
             return { result: { ...order, gasLimit: gasEstimation, isDelivery } };
         } else {
+            // Request the order to be retried in the future.
+            order.retryEvaluation = true;
+
             return null;
         }
     }
