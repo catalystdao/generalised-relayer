@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { Store } from '../../store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { LayerZeroWorkerData } from './engine';
+import { LayerZeroWorkerData } from './layerZero';
 import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface';
 import { Resolver, loadResolver } from '../../resolvers/resolver';
@@ -54,7 +54,7 @@ class LayerZeroGARPWorker {
 
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'collector-GARP-worker',
+            worker: 'collector-LayerZero-GARP-worker',
             chain: chainId,
         });
     }

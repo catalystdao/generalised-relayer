@@ -1,21 +1,23 @@
 import pino from 'pino';
 import { Store } from '../../store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { LayerZeroWorkerData } from './engine';
-import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
+import { LayerZeroWorkerData } from './layerZero';
+import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue, Wallet, keccak256, SigningKey } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface';
 import { Resolver, loadResolver } from '../../resolvers/resolver';
 import { ULNBaseInterface } from 'src/contracts/ULNBase';
 import { ULNBase__factory } from 'src/contracts/factories/ULNBase__factory';
-import { tryErrorToString, wait } from 'src/common/utils';
+import { convertHexToDecimal, decodePacketMessage, encodeMessage, encodeSignature, tryErrorToString, wait } from 'src/common/utils';
+import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
 
 const abi = AbiCoder.defaultAbiCoder();
 
-class ULNBaseWorker {
+class LayerZeroCollectorWorker {
 
     private readonly config: LayerZeroWorkerData;
 
     private readonly chainId: string;
+    private readonly signingKey: SigningKey;
     private readonly incentivesAddress: string;
     private readonly ulnBaseInterface: ULNBaseInterface;
     private readonly filterTopics: string[][];
@@ -32,6 +34,8 @@ class ULNBaseWorker {
         this.config = workerData as LayerZeroWorkerData;
 
         this.chainId = this.config.chainId;
+        // Create the key that will sign the cross chain messages
+        this.signingKey = this.initializeSigningKey(this.config.privateKey);
 
         this.store = new Store(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
@@ -51,21 +55,29 @@ class ULNBaseWorker {
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
+    // Initialize the logger
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'collector-ULNBase-worker',
+            worker: 'collector-LayerZero-ULNBase-worker',
             chain: chainId,
         });
     }
 
+    // Initialize the provider
     private initializeProvider(rpc: string): JsonRpcProvider {
         return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
     }
 
+    // Load the resolver
     private loadResolver(resolver: string | null, provider: JsonRpcProvider, logger: pino.Logger): Resolver {
         return loadResolver(resolver, provider, logger);
     }
 
+    private initializeSigningKey(privateKey: string): SigningKey {
+        return new Wallet(privateKey).signingKey;
+    }
+
+    // Start listening to the monitor service
     private startListeningToMonitor(port: MessagePort): MonitorInterface {
         const monitor = new MonitorInterface(port);
 
@@ -76,6 +88,7 @@ class ULNBaseWorker {
         return monitor;
     }
 
+    // Main run method
     async run(): Promise<void> {
         this.logger.info({ incentivesAddress: this.incentivesAddress }, `ULNBase worker started.`);
 
@@ -126,6 +139,7 @@ class ULNBaseWorker {
         await this.store.quit();
     }
 
+    // Query and process events
     private async queryAndProcessEvents(fromBlock: number, toBlock: number): Promise<void> {
         const logs = await this.queryLogs(fromBlock, toBlock);
 
@@ -133,11 +147,12 @@ class ULNBaseWorker {
             try {
                 await this.handleEvent(log);
             } catch (error) {
-                this.logger.error({ log, error }, `Failed to process event on payload-verified worker.`);
+                this.logger.error({ log, error }, `Failed to process event on ULNBase worker.`);
             }
         }
     }
 
+    // Query logs from the provider
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filter = {
             address: this.incentivesAddress,
@@ -153,7 +168,7 @@ class ULNBaseWorker {
                 logs = await this.provider.getLogs(filter);
             } catch (error) {
                 i++;
-                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on payload-verified worker. Worker blocked until successful query.`);
+                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on ULNBase worker. Worker blocked until successful query.`);
                 await wait(this.config.retryInterval);
             }
         }
@@ -161,6 +176,7 @@ class ULNBaseWorker {
         return logs;
     }
 
+    // Handle an individual log event
     private async handleEvent(log: Log): Promise<void> {
         const parsedLog = this.ulnBaseInterface.parseLog(log);
 
@@ -177,16 +193,59 @@ class ULNBaseWorker {
         await this.handlePayloadVerifiedEvent(log, parsedLog);
     }
 
+    // Handle the PayloadVerified event
     private async handlePayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const event = parsedLog.args as unknown as { packet: string };
 
+        // Extract the message identifier from the packet
         const packet = (event.packet.startsWith('0x') ? event.packet.slice(2) : event.packet).slice(32 * 2);
-        const messageIdentifier = '0x' + packet.slice(2, 2 + 32 * 2);
-
+        const decodedPacket = decodePacketMessage(packet);
+        const messageIdentifier = decodedPacket.messageIdentifier;
         this.logger.info({ messageIdentifier }, `PayloadVerified event found for message: ${messageIdentifier}`);
 
-        // Update the store or handle the PayloadVerified event as needed.
+        // Verify if the message belongs to the relayer by consulting the store
+        const ambMessage = await this.store.getAmb(messageIdentifier);
+
+        if (ambMessage) {
+            this.logger.info({ messageIdentifier }, `Message ${messageIdentifier} belongs to the relayer. Processing the event.`);
+
+            // // Register the destination address for the bounty
+            // await this.store.registerDestinationAddress({
+            //     messageIdentifier: ambMessage.messageIdentifier,
+            //     destinationAddress: event.recipient, // Assuming the event contains the destination address
+            // });
+
+            // Encode and sign the message for delivery
+            const encodedMessage = encodeMessage(this.incentivesAddress, packet);
+            const signature = this.signingKey.sign(keccak256(encodedMessage));
+            const executionContext = encodeSignature(signature);
+
+            const destinationChainId = convertHexToDecimal(ambMessage.destinationChain);
+
+            // Construct the AmbPayload
+            const ambPayload: AmbPayload = {
+                messageIdentifier: ambMessage.messageIdentifier,
+                amb: 'layerZero',
+                destinationChainId,
+                message: encodedMessage,
+                messageCtx: executionContext,
+            };
+
+            this.logger.info(
+                {
+                    messageIdentifier: ambPayload.messageIdentifier,
+                    destinationChainId: ambPayload.destinationChainId,
+                },
+                `LayerZero message found.`,
+            );
+
+            // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
+            await this.store.submitProof(destinationChainId, ambPayload);
+        } else {
+            this.logger.warn({ messageIdentifier }, `Message ${messageIdentifier} does not belong to the relayer. Ignoring the event.`);
+        }
     }
 }
 
-void new ULNBaseWorker().run();
+// Instantiate and run the ULNBaseWorker
+void new LayerZeroCollectorWorker().run();
