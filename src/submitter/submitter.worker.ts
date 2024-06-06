@@ -73,6 +73,7 @@ class SubmitterWorker {
                     unrewardedAckGas: this.config.unrewardedAckGas,
                     minAckReward: this.config.minAckReward,
                     relativeMinAckReward: this.config.relativeMinAckReward,
+                    profitabilityFactor: this.config.profitabilityFactor,
                 },
                 this.pricing,
                 this.wallet,

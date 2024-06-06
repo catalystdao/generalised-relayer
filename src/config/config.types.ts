@@ -53,6 +53,7 @@ export interface SubmitterGlobalConfig {
   unrewardedAckGas?: bigint;
   minAckReward?: number;
   relativeMinAckReward?: number;
+  profitabilityFactor?: number;
 }
 
 export interface SubmitterConfig extends SubmitterGlobalConfig {}

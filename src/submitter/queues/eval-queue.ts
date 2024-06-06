@@ -14,9 +14,13 @@ import { ParsePayload, MessageContext } from 'src/payload/decode.payload';
 import { PricingInterface } from 'src/pricing/pricing.interface';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 
+const DECIMAL_BASE = 10000;
+const DECIMAL_BASE_BIG_INT = BigInt(DECIMAL_BASE);
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     readonly relayerAddress: string;
+
+    private readonly profitabilityFactor: bigint;
 
     constructor(
         retryInterval: number,
@@ -32,6 +36,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     ) {
         super(retryInterval, maxTries);
         this.relayerAddress = zeroPadValue(relayerAddress, 32);
+        this.profitabilityFactor = BigInt(this.evaluationConfig.profitabilityFactor * DECIMAL_BASE);
     }
 
     protected async handleOrder(
@@ -249,7 +254,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             bounty.fromChainId
         );
 
-        const deliveryFiatProfit = deliveryFiatReward - deliveryFiatCost;
+        const deliveryFiatProfit = (deliveryFiatReward - deliveryFiatCost) / this.evaluationConfig.profitabilityFactor;
         const deliveryRelativeProfit = deliveryFiatProfit / deliveryFiatCost;
 
         const relayDelivery = (
@@ -270,6 +275,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 maxAckLoss: maxAckLoss.toString(),
                 deliveryFiatCost: deliveryFiatCost.toString(),
                 deliveryFiatReward: deliveryFiatReward.toString(),
+                profitabilityFactor: this.evaluationConfig.profitabilityFactor,
                 deliveryFiatProfit: deliveryFiatProfit,
                 deliveryRelativeProfit: deliveryRelativeProfit,
                 minDeliveryReward: this.evaluationConfig.minDeliveryReward,
@@ -303,7 +309,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             bounty.priceOfAckGas
         );
 
-        const ackProfit = ackReward - ackCost;      // ! In source chain gas value
+        const ackProfit = (ackReward - ackCost)
+            * DECIMAL_BASE_BIG_INT
+            / this.profitabilityFactor;             // ! In source chain gas value
         const ackFiatProfit = await this.getGasCostFiatPrice(ackProfit, this.chainId);
         const ackRelativeProfit = Number(ackProfit) / Number(ackCost);
 
@@ -344,6 +352,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 sourceGasPrice: sourceGasPrice.toString(),
                 ackCost: ackCost.toString(),
                 ackReward: ackReward.toString(),
+                profitabilityFactor: this.evaluationConfig.profitabilityFactor,
                 ackFiatProfit: ackFiatProfit.toString(),
                 ackRelativeProfit: ackRelativeProfit,
                 minAckReward: this.evaluationConfig.minAckReward,

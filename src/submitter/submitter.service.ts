@@ -23,6 +23,7 @@ const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
 const UNREWARDED_ACK_GAS_DEFAULT = 0n;
 const MIN_ACK_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_ACK_REWARD_DEFAULT = 0;
+const PROFITABILITY_FACTOR_DEFAULT = 1;
 
 interface GlobalSubmitterConfig {
     enabled: boolean;
@@ -39,6 +40,7 @@ interface GlobalSubmitterConfig {
     unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
+    profitabilityFactor: number;
     walletPublicKey: string;
 }
 
@@ -60,6 +62,7 @@ export interface SubmitterWorkerData {
     unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
+    profitabilityFactor: number;
     pricingPort: MessagePort;
     walletPublicKey: string;
     walletPort: MessagePort;
@@ -154,6 +157,8 @@ export class SubmitterService {
             submitterConfig.minAckReward ?? MIN_ACK_REWARD_DEFAULT;
         const relativeMinAckReward =
             submitterConfig.relativeMinAckReward ?? RELATIVE_MIN_ACK_REWARD_DEFAULT;
+        const profitabilityFactor =
+            submitterConfig.profitabilityFactor ?? PROFITABILITY_FACTOR_DEFAULT;
 
         const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
 
@@ -173,6 +178,7 @@ export class SubmitterService {
             unrewardedAckGas,
             minAckReward,
             relativeMinAckReward,
+            profitabilityFactor,
         };
     }
 
@@ -248,6 +254,10 @@ export class SubmitterService {
             relativeMinAckReward:
                 chainConfig.submitter.relativeMinAckReward ??
                 globalConfig.relativeMinAckReward,
+
+            profitabilityFactor:
+                chainConfig.submitter.profitabilityFactor ??
+                globalConfig.profitabilityFactor,
 
 
             pricingPort: await this.pricingService.attachToPricing(),

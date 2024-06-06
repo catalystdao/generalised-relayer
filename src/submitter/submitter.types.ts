@@ -41,4 +41,5 @@ export interface BountyEvaluationConfig {
     unrewardedAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
+    profitabilityFactor: number;
 }

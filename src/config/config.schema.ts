@@ -155,6 +155,7 @@ const SUBMITTER_SCHEMA = {
         unrewardedAckGas: { $ref: "gas-field-schema" },
         minAckReward: { $ref: "positive-number-schema" },
         relativeMinAckReward: { $ref: "positive-number-schema" },
+        profitabilityFactor: { $ref: "positive-number-schema" },
     },
     additionalProperties: false
 }

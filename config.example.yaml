@@ -27,6 +27,8 @@ global:
     unrewardedAckGas: '50000'           # Gas amount that will be unrewarded on ack submission.
     minAckReward: 0.001                 # In the 'pricingDenomination' specified below
     relativeMinAckReward: 0.001
+    profitabilityFactor: 1.0            # Profitiability evaluation adjustment factor. A larger
+                                        # factor implies a larger profitability guarantee.
 
   pricing:
     provider: 'coin-gecko'
