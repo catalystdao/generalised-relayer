@@ -72,51 +72,58 @@ global:
 
 # AMBs configuration
 ambs:
+  # Mock is used for internal testnets. For production it should never be used.
+  - name: mock
+    enabled: false                      # Defaults to 'true' if the key is missing
+    incentivesAddress: '0x0000000000000000000000000000000000000000'
+    privateKey: ''
+
+  # While we can't relay packages for Polymer, we to still collect the packages for the underwriter to work.
+  - name: polymer
+
   - name: wormhole
-    isTestnet: false
+    isTestnet: true
 
 # Chain configuration
 chains:
-  - chainId: 10
-    name: 'OP Mainnet'
-    rpc: 'https://mainnet.optimism.io'
+  - chainId: 11155111
+    name: 'Sepolia'
+    rpc: 'https://eth-sepolia-public.unifra.io'
 
     # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
     # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
 
     # Overrides
     monitor:
-      interval: 1000
-
-    pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      blockDelay: 2
+      interval: 5000
 
     # AMB configuration
     wormhole:
-      wormholeChainId: 24
-      incentivesAddress: '0x8C8727276725b7Da11fDA6e2646B2d2448E5B3c5'
-      bridgeAddress: '0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722'
+      wormholeChainId: 10002
+      incentivesAddress: '0x294F41D30D058C9e5A71810A6C758E595b7aC170'
+      bridgeAddress: '0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78'
 
-  - chainId: 81457
-    name: 'Blast Mainnet'
-    rpc: 'https://rpc.blast.io'
-    monitor:
-      interval: 1000
-    pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+  - chainId: 11155420
+    name: 'OP Sepolia'
+    rpc: 'https://sepolia.optimism.io'
+    wormhole:
+      wormholeChainId: 10005
+      incentivesAddress: '0x198cDD55d90277726f3222D5A8111AdB8b0af9ee'
+      bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
+
+  - chainId: 84532
+    name: 'Base Sepolia'
+    rpc: 'https://sepolia.base.org'
+    wormhole:
+      wormholeChainId: 10004
+      incentivesAddress: '0x63B4E24DC9814fAcDe241fB4dEFcA04d5fc6d763'
+      bridgeAddress: '0x79A1027a6A159502049F10906D333EC57E95F083'
+
+  - chainId: 168587773
+    name: 'Blast Testnet'
+    rpc: 'https://sepolia.blast.io'
     wormhole:
       wormholeChainId: 36
-      incentivesAddress: '0x3C5C5436BCa59042cBC835276E51428781366d85'
-      bridgeAddress: '0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6'
-  
-  - chainId: 8453
-    name: 'Base Mainnet'
-    rpc: 'https://mainnet.base.org'
-    monitor:
-      interval: 1000
-    pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
-    wormhole:
-      wormholeChainId: 30
-      incentivesAddress: '0x3C5C5436BCa59042cBC835276E51428781366d85'
-      bridgeAddress: '0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6'
+      incentivesAddress: '0x9524ACA1fF46fAd177160F0a803189Cb552A3780'
+      bridgeAddress: '0x473e002D7add6fB67a4964F13bFd61280Ca46886'
