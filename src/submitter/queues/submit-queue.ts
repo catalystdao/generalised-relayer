@@ -39,6 +39,8 @@ export class SubmitQueue extends ProcessingQueue<
             `Handling submit order`,
         );
 
+        return null;
+
         // Simulate the packet submission as a static call. Skip if it's the first submission try,
         // as in that case the packet 'evaluation' will have been executed shortly before.
         const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
