@@ -23,6 +23,13 @@ export class CoinGeckoPricingProvider extends PricingProvider<CoinGeckoPricingCo
         logger: pino.Logger,
     ) {
         super(config, logger);
+        this.validateCoinGeckoConfig(config);
+    }
+
+    private validateCoinGeckoConfig(config: CoinGeckoPricingConfig): void {
+        if (config.coinId == undefined) {
+            throw new Error('Invalid CoinGecko config: no coinId specified.')
+        }
     }
 
     async queryCoinPrice(): Promise<number> {
