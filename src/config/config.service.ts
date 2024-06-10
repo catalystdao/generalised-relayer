@@ -191,8 +191,14 @@ export class ConfigService {
         if (config.unrewardedDeliveryGas != undefined) {
             config.unrewardedDeliveryGas = BigInt(config.unrewardedDeliveryGas);
         }
+        if (config.verificationDeliveryGas != undefined) {
+            config.verificationDeliveryGas = BigInt(config.verificationDeliveryGas);
+        }
         if (config.unrewardedAckGas != undefined) {
             config.unrewardedAckGas = BigInt(config.unrewardedAckGas);
+        }
+        if (config.verificationAckGas != undefined) {
+            config.verificationAckGas = BigInt(config.verificationAckGas);
         }
         return config as SubmitterGlobalConfig;
     }

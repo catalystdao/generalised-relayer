@@ -48,9 +48,11 @@ export interface SubmitterGlobalConfig {
   evaluationRetryInterval?: number;
   maxEvaluationDuration?: number;
   unrewardedDeliveryGas?: bigint;
+  verificationDeliveryGas?: bigint;
   minDeliveryReward?: number;
   relativeMinDeliveryReward?: number;
   unrewardedAckGas?: bigint;
+  verificationAckGas?: bigint;
   minAckReward?: number;
   relativeMinAckReward?: number;
   profitabilityFactor?: number;

@@ -18,9 +18,11 @@ const NEW_ORDERS_DELAY_DEFAULT = 0;
 const EVALUATION_RETRY_INTERVAL_DEFAULT = 60 * 60 * 1000;
 const MAX_EVALUATION_DURATION_DEFAULT = 24 * 60 * 60 * 1000;
 const UNREWARDED_DELIVERY_GAS_DEFAULT = 0n;
+const VERIFICATION_DELIVERY_GAS_DEFAULT = 0n;
 const MIN_DELIVERY_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
 const UNREWARDED_ACK_GAS_DEFAULT = 0n;
+const VERIFICATION_ACK_GAS_DEFAULT = 0n;
 const MIN_ACK_REWARD_DEFAULT = 0;
 const RELATIVE_MIN_ACK_REWARD_DEFAULT = 0;
 const PROFITABILITY_FACTOR_DEFAULT = 1;
@@ -35,9 +37,11 @@ interface GlobalSubmitterConfig {
     evaluationRetryInterval: number;
     maxEvaluationDuration: number;
     unrewardedDeliveryGas: bigint;
+    verificationDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
     unrewardedAckGas: bigint;
+    verificationAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
     profitabilityFactor: number;
@@ -57,9 +61,11 @@ export interface SubmitterWorkerData {
     evaluationRetryInterval: number;
     maxEvaluationDuration: number;
     unrewardedDeliveryGas: bigint;
+    verificationDeliveryGas: bigint;
     minDeliveryReward: number;
     relativeMinDeliveryReward: number;
     unrewardedAckGas: bigint;
+    verificationAckGas: bigint;
     minAckReward: number;
     relativeMinAckReward: number;
     profitabilityFactor: number;
@@ -147,12 +153,16 @@ export class SubmitterService {
             submitterConfig.maxEvaluationDuration ?? MAX_EVALUATION_DURATION_DEFAULT;
         const unrewardedDeliveryGas = 
             submitterConfig.unrewardedDeliveryGas ?? UNREWARDED_DELIVERY_GAS_DEFAULT;
+        const verificationDeliveryGas = 
+            submitterConfig.verificationDeliveryGas ?? VERIFICATION_DELIVERY_GAS_DEFAULT;
         const minDeliveryReward =
             submitterConfig.minDeliveryReward ?? MIN_DELIVERY_REWARD_DEFAULT;
         const relativeMinDeliveryReward =
             submitterConfig.relativeMinDeliveryReward ?? RELATIVE_MIN_DELIVERY_REWARD_DEFAULT;
         const unrewardedAckGas = 
             submitterConfig.unrewardedAckGas ?? UNREWARDED_ACK_GAS_DEFAULT;
+        const verificationAckGas = 
+            submitterConfig.verificationAckGas ?? VERIFICATION_ACK_GAS_DEFAULT;
         const minAckReward =
             submitterConfig.minAckReward ?? MIN_ACK_REWARD_DEFAULT;
         const relativeMinAckReward =
@@ -173,9 +183,11 @@ export class SubmitterService {
             evaluationRetryInterval,
             maxEvaluationDuration,
             unrewardedDeliveryGas,
+            verificationDeliveryGas,
             minDeliveryReward,
             relativeMinDeliveryReward,
             unrewardedAckGas,
+            verificationAckGas,
             minAckReward,
             relativeMinAckReward,
             profitabilityFactor,
@@ -230,6 +242,10 @@ export class SubmitterService {
             unrewardedDeliveryGas:
                 chainConfig.submitter.unrewardedDeliveryGas ??
                 globalConfig.unrewardedDeliveryGas,
+        
+            verificationDeliveryGas:
+                chainConfig.submitter.verificationDeliveryGas ??
+                globalConfig.verificationDeliveryGas,
 
             maxEvaluationDuration:
                 chainConfig.submitter.maxEvaluationDuration ??
@@ -246,6 +262,10 @@ export class SubmitterService {
             unrewardedAckGas:
                 chainConfig.submitter.unrewardedAckGas ??
                 globalConfig.unrewardedAckGas,
+        
+            verificationAckGas:
+                chainConfig.submitter.verificationAckGas ??
+                globalConfig.verificationAckGas,
 
             minAckReward:
                 chainConfig.submitter.minAckReward ??
