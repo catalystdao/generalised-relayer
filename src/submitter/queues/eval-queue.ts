@@ -230,12 +230,10 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             bounty.priceOfDeliveryGas
         );
 
-        // Consider the worst 'ack' submission loss, as in that case no one will desire to submit
-        // the 'ack', and this relayer will have to submit it in order to get the payment for the
-        // delivery.
         const maxAckLoss = this.calcMaxGasLoss(             // ! In source chain gas value
             sourceGasPrice,
             this.evaluationConfig.unrewardedAckGas,
+            this.evaluationConfig.verificationAckGas,
             BigInt(bounty.maxGasAck),
             bounty.priceOfAckGas,
         );
@@ -248,7 +246,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.chainId
         );
 
-        const correctedDeliveryReward = deliveryReward - maxAckLoss;
+        const correctedDeliveryReward = deliveryReward + maxAckLoss;
         const deliveryFiatReward = await this.getGasCostFiatPrice(
             correctedDeliveryReward,
             bounty.fromChainId
@@ -399,24 +397,42 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     private calcMaxGasLoss(
         gasPrice: bigint,
         unrewardedGas: bigint,
+        verificationGas: bigint,
         bountyMaxGas: bigint,
         bountyPriceOfGas: bigint,
     ): bigint {
-        // Evaluate the worst possible loss of a submission. There are 2 possible scenarios:
-        //   - The provided `bountyPriceOfGas` covers the current gas price: the worst loss
-        //     will occur if no gas is used for the submission logic (and hence there is no bounty 
-        //     reward).
-        //   - The provided `bountyPriceOfGas' does *not* cover the current gas price: the 
-        //     worst loss will occur if the maximum allowed amount of gas is used for the 
-        //     submission logic.
 
-        const fixedCost = unrewardedGas * gasPrice;
+        // The gas used for the 'ack' submission is composed of 3 amounts:
+        //   - Logic overhead: is never computed for the reward.
+        //   - Verification logic: is only computed for the reward if the source application's
+        //     'ack' handler does not use all of the 'ack' gas allowance ('bountyMaxGas').
+        //   - Source application's 'ack' handler: it is always computed for the reward (up to a
+        //     maximum of 'bountyMaxGas').
 
-        const worstCaseVariableCost = gasPrice > bountyPriceOfGas
-            ? bountyMaxGas * (gasPrice - bountyPriceOfGas)
+        // Evaluate the minimum expected profit from the 'ack' delivery. There are 2 possible
+        // scenarios:
+        //   - No gas is used by the source application's 'ack' handler.
+        //   - The maximum allowed amount of gas is used by the source application's 'ack' handler.
+
+        // NOTE: strictly speaking, 'verificationGas' should be upperbounded by 'bountyMaxGas' on
+        // the following line. However, this is not necessary, as in such a case
+        // 'maximumGasUsageProfit' will always return a smaller profit than 'minimumGasUsageProfit'.
+        const minimumGasUsageReward = verificationGas * bountyPriceOfGas;
+        const minimumGasUsageCost = (unrewardedGas + verificationGas) * gasPrice;
+        const minimumGasUsageProfit = minimumGasUsageReward - minimumGasUsageCost;
+
+        const maximumGasUsageReward = bountyMaxGas * bountyPriceOfGas;
+        const maximumGasUsageCost = (unrewardedGas + verificationGas + bountyMaxGas) * gasPrice;
+        const maximumGasUsageProfit = maximumGasUsageReward - maximumGasUsageCost;
+
+        const worstCaseProfit =  minimumGasUsageProfit < maximumGasUsageProfit
+            ? minimumGasUsageProfit
+            : maximumGasUsageProfit;
+
+        // Only return the 'worstCaseProfit' if it's negative.
+        return worstCaseProfit < 0n
+            ? worstCaseProfit
             : 0n;
-
-        return fixedCost + worstCaseVariableCost;
     }
 
     private async getGasPrice(chainId: string): Promise<bigint> {
