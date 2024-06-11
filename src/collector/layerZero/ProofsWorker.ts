@@ -29,6 +29,14 @@ import {
 import { arrayify } from 'ethers/lib/utils';
 import { AmbPayload } from 'src/store/types/store.types';
 
+type GARPDecodedMessage = {
+  context: string; // Context of the message, returned as a hexadecimal string
+  messageIdentifier: string; // Unique identifier of the message, as a hex string
+  sender: string; // Ethereum address of the sender
+  destination: string; // Ethereum address of the destination
+  payload: string; // The actual message content as a string
+};
+
 type PacketHeader = {
   version: number; // Corresponds to PACKET_VERSION
   nonce: number | bigint; // Nonce, a counter or similar (make sure to match the actual data type used in Solidity)
@@ -60,7 +68,10 @@ class LayerZeroCollectorWorker {
     this.signingKey = new Wallet(this.config.privateKey).signingKey;
     this.store = new Store(this.chainId);
     this.provider = new JsonRpcProvider(this.config.rpc);
-    this.recieveULN302 = RecieveULN302__factory.connect(this.config.bridgeAddress, this.provider);
+    this.recieveULN302 = RecieveULN302__factory.connect(
+      this.config.bridgeAddress,
+      this.provider,
+    );
     this.logger = pino(this.config.loggerOptions).child({
       worker: 'collector-LayerZero-ULNBase-worker',
       chain: this.chainId,
@@ -150,7 +161,7 @@ class LayerZeroCollectorWorker {
       } catch (error) {
         this.logger.error(
           { log, error },
-          `Failed to process event on ULNBase worker.`,
+          `Failed to process event on Layer Zero Proofs Collector Worker.`,
         );
       }
     }
@@ -203,7 +214,12 @@ class LayerZeroCollectorWorker {
     log: Log,
     parsedLog: LogDescription,
   ): Promise<void> {
-    const { dvn, header, confirmations, payloadHash: payloadHash } = parsedLog.args as any;
+    const {
+      dvn,
+      header,
+      confirmations,
+      payloadHash: payloadHash,
+    } = parsedLog.args as any;
     const decodedHeader = this.decodePacketHeader(arrayify(header));
     if (decodedHeader.sender == this.config.incentivesAddress) {
       this.logger.info(
@@ -211,36 +227,47 @@ class LayerZeroCollectorWorker {
         'PayloadVerified event decoded.',
       );
 
+      const GARPMessageDecoded = await decodeMessageWithContext(payloadHash);
       try {
-        const config = await getConfigData(this.recieveULN302, dvn, decodedHeader.dstEid);
-        const isVerifiable = await checkIfVerifiable(this.recieveULN302, config, header, payloadHash);
+        const config = await getConfigData(
+          this.recieveULN302,
+          dvn,
+          decodedHeader.dstEid,
+        );
+        const isVerifiable = await checkIfVerifiable(
+          this.recieveULN302,
+          config,
+          header,
+          payloadHash,
+        );
         this.logger.info({ dvn, isVerifiable }, 'Verification result checked.');
         if (isVerifiable) {
           await this.store.setAmb(
             {
-                messageIdentifier:payloadHash,
-                amb: 'LayerZero',
-                sourceChain: decodedHeader.srcEid.toString(),
-                destinationChain: decodedHeader.dstEid.toString(), 
-                sourceEscrow: decodedHeader.sender,
-                payload: payloadHash,
-                recoveryContext: 'None',
+              messageIdentifier: GARPMessageDecoded.messageIdentifier,
+              amb: 'LayerZero',
+              sourceChain: decodedHeader.srcEid.toString(),
+              destinationChain: decodedHeader.dstEid.toString(),
+              sourceEscrow: decodedHeader.sender,
+              payload: GARPMessageDecoded.payload,
+              recoveryContext: 'None',
             },
-            payloadHash,
-        );
-        const ambPayload: AmbPayload = {
-          messageIdentifier: payloadHash,
-          amb: 'LayerZero',
-          destinationChainId:  decodedHeader.dstEid.toString(),
-          message: payloadHash,
-          messageCtx: 'Doesnt exits',
-      };
-      this.logger.info(
-          { payloadHash },
-          `LayerZero proof found.`,
-      );
+            log.transactionHash,
+          );
+          
+          const ambPayload: AmbPayload = {
+            messageIdentifier: GARPMessageDecoded.messageIdentifier,
+            amb: 'LayerZero',
+            destinationChainId: decodedHeader.dstEid.toString(),
+            message: payloadHash,
+            messageCtx: GARPMessageDecoded.context,
+          };
+          this.logger.info({ payloadHash }, `LayerZero proof found.`);
 
-      await this.store.submitProof(decodedHeader.dstEid.toString(), ambPayload);
+          await this.store.submitProof(
+            decodedHeader.dstEid.toString(),
+            ambPayload,
+          );
         }
       } catch (error) {
         this.logger.error(
@@ -279,6 +306,31 @@ class LayerZeroCollectorWorker {
     return { version, nonce, srcEid, sender, dstEid, receiver };
   }
 }
+
+async function decodeMessageWithContext(
+  encodedMessage: string,
+): Promise<GARPDecodedMessage> {
+  // Convert the encoded message string to a byte array
+  const messageBytes = arrayify(encodedMessage);
+
+  // Decode parts of the message
+  const context = messageBytes[0] || ''; // First byte for context
+  const messageIdentifier = ethers.hexlify(messageBytes.slice(1, 33)); // Next 32 bytes for message identifier
+  const sender = ethers.getAddress(ethers.hexlify(messageBytes.slice(33, 53))); // Next 20 bytes for sender address
+  const destination = ethers.getAddress(
+    ethers.hexlify(messageBytes.slice(53, 73)),
+  ); // Next 20 bytes for destination address
+  const payload = ethers.toUtf8String(messageBytes.slice(73)); // Remaining bytes for message payload
+
+  return {
+    context: context.toString(16), // Convert context byte to hex string
+    messageIdentifier,
+    sender,
+    destination,
+    payload,
+  };
+}
+
 async function checkIfVerifiable(
   recieveULN302: RecieveULN302,
   config: UlnConfigStruct,
