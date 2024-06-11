@@ -197,36 +197,36 @@ export default async (moduleInterface: CollectorModuleInterface) => {
       globalLayerZeroConfig,
     );
 
-    // Create and initialize GARP worker.
-    const GARPWorker = new Worker(join(__dirname, 'GARPWorker.js'), {
+    // Create and initialize Layer Zero Message Sniffer Worker.
+    const GARPWorker = new Worker(join(__dirname, 'MessageSnifferWorker.js'), {
       workerData: GARPWorkerData,
       transferList: [GARPWorkerData.monitorPort],
     });
     GARPWorkers[GARPWorkerData.chainId] = GARPWorker;
 
-    // Handle errors and exit events for GARP worker.
+    // Handle errors and exit events for Layer Zero Message Sniffer Worker.
     GARPWorker.on('error', (error) =>
-      loggerService.fatal(error, 'Error on GARP worker.'),
+      loggerService.fatal(error, 'Error on Layer Zero Message Sniffer Worker.'),
     );
     GARPWorker.on('exit', (exitCode) => {
       GARPWorkers[chainId] = null;
-      loggerService.info({ exitCode, chainId }, `GARP worker exited.`);
+      loggerService.info({ exitCode, chainId }, `Layer Zero Message Sniffer Worker exited.`);
     });
 
-    // Create and initialize ULNBase worker.
-    const ULNBaseWorker = new Worker(join(__dirname, 'ULNBaseWorker.js'), {
+    // Create and initialize Layer Zero Proofs Collector Worker.
+    const ULNBaseWorker = new Worker(join(__dirname, 'ProofsWorker.js'), {
       workerData: ULNBaseWorkerData,
       transferList: [ULNBaseWorkerData.monitorPort],
     });
     ULNBaseWorkers[ULNBaseWorkerData.chainId] = ULNBaseWorker;
 
-    // Handle errors and exit events for ULNBase worker.
+    // Handle errors and exit events for Layer Zero Proofs Collector Worker.
     ULNBaseWorker.on('error', (error) =>
-      loggerService.fatal(error, 'Error on ULNBase worker.'),
+      loggerService.fatal(error, 'Error on Layer Zero Proofs Collector Worker'),
     );
     ULNBaseWorker.on('exit', (exitCode) => {
       ULNBaseWorkers[chainId] = null;
-      loggerService.info({ exitCode, chainId }, `ULNBase worker exited.`);
+      loggerService.info({ exitCode, chainId }, `Layer Zero Proofs Collector Worker exited.`);
     });
   }
 

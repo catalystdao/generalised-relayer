@@ -28,7 +28,7 @@ import {
 } from 'src/contracts/RecieveULN302';
 import { arrayify } from 'ethers/lib/utils';
 import { AmbPayload } from 'src/store/types/store.types';
-const abi = AbiCoder.defaultAbiCoder();
+
 type PacketHeader = {
   version: number; // Corresponds to PACKET_VERSION
   nonce: number | bigint; // Nonce, a counter or similar (make sure to match the actual data type used in Solidity)
@@ -43,6 +43,7 @@ class LayerZeroCollectorWorker {
   private recieveULN302: RecieveULN302;
   private readonly signingKey: SigningKey;
   private readonly incentivesAddress: string;
+  private readonly bridgeAddress: string;
   private readonly recieveULN302Interface =
     RecieveULN302__factory.createInterface();
   private readonly filterTopics: string[][];
@@ -70,10 +71,12 @@ class LayerZeroCollectorWorker {
       this.logger,
     );
     this.incentivesAddress = this.config.incentivesAddress;
+    this.bridgeAddress = this.config.bridgeAddress;
+
     this.filterTopics = [
       [
         this.recieveULN302Interface.getEvent('PayloadVerified').topicHash,
-        zeroPadValue(this.incentivesAddress, 32),
+        zeroPadValue(this.bridgeAddress, 32),
       ],
     ];
     this.monitor = this.startListeningToMonitor(this.config.monitorPort);
