@@ -54,7 +54,7 @@ class LayerZeroGARPWorker {
 
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'collector-LayerZero-GARP-worker',
+            worker: 'collector-LayerZero-Layer-Zero-Send-Sniffer-worker',
             chain: chainId,
         });
     }
@@ -78,7 +78,7 @@ class LayerZeroGARPWorker {
     }
 
     async run(): Promise<void> {
-        this.logger.info({ incentivesAddress: this.incentivesAddress }, `GARP worker started.`);
+        this.logger.info({ incentivesAddress: this.incentivesAddress }, `Layer Zero Send Sniffer worker started.`);
 
         let fromBlock = null;
         while (fromBlock == null) {
@@ -116,7 +116,7 @@ class LayerZeroGARPWorker {
 
                 fromBlock = toBlock + 1;
             } catch (error) {
-                this.logger.error(error, `Error on GARP worker`);
+                this.logger.error(error, `Error on Layer Zero Send Sniffer worker`);
                 await wait(this.config.retryInterval);
             }
 
@@ -134,7 +134,7 @@ class LayerZeroGARPWorker {
             try {
                 await this.handleEvent(log);
             } catch (error) {
-                this.logger.error({ log, error }, `Failed to process event on GARP worker.`);
+                this.logger.error({ log, error }, `Failed to process event on Layer Zero Send Sniffer worker.`);
             }
         }
     }
@@ -154,7 +154,7 @@ class LayerZeroGARPWorker {
                 logs = await this.provider.getLogs(filter);
             } catch (error) {
                 i++;
-                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on GARP worker. Worker blocked until successful query.`);
+                this.logger.warn({ ...filter, error: tryErrorToString(error), try: i }, `Failed to 'getLogs' on Layer Zero Send Sniffer worker. Worker blocked until successful query.`);
                 await wait(this.config.retryInterval);
             }
         }
