@@ -74,7 +74,7 @@ async function loadWorkerData(
 
     const polymerAddress: string | undefined = configService.getAMBConfig(
         'polymer',
-        'bridgeAddress',
+        'endpointAddress',
         chainConfig.chainId,
     );
 

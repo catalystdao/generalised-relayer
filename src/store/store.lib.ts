@@ -606,4 +606,20 @@ export class Store {
         await this.postMessage(emitToChannel, ambPayload);
     }
 
+
+    async setPayloadLayerZeroAmb(
+        payloadHash: string,
+        ambMessage: AmbMessage // Assuming AmbMessage is a structured object containing all necessary fields
+    ): Promise<void> {
+        const ambKey = `amb:${payloadHash}`;
+        const ambData = JSON.stringify(ambMessage);
+        await this.redis.set(ambKey, ambData);
+    }
+    
+    async getAmbByPayloadHash(payloadHash: string): Promise<AmbMessage | null> {
+        const ambKey = `amb:${payloadHash}`;
+        const result = await this.redis.get(ambKey);
+        return result ? JSON.parse(result) : null;
+    }
+    
 }
