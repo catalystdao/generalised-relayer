@@ -256,7 +256,7 @@ class LayerZeroCollectorWorker {
                         amb: 'LayerZero',
                         destinationChainId: decodedHeader.dstEid.toString(),
                         message: payloadData.payload,
-                        messageCtx: payloadData.recoveryContext,
+                        messageCtx: '',
                     };
                     this.logger.info({ payloadHash }, `LayerZero proof found.`);
 

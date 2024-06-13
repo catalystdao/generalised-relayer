@@ -6,23 +6,14 @@ import {
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
 import { tryErrorToString, wait } from '../../common/utils';
-import { AbiCoder, JsonRpcProvider, Log, ethers, zeroPadValue } from 'ethers6';
+import { JsonRpcProvider, Log, ethers, zeroPadValue } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { LayerZeroWorkerData } from './layerZero';
-import { arrayify } from 'ethers/lib/utils';
 import { LayerZeroEnpointV2Interface } from 'src/contracts/LayerZeroEnpointV2';
+import { ParsePayload } from 'src/payload/decode.payload';
 
 
-
-const defaultAbiCoder = AbiCoder.defaultAbiCoder();
-type GARPDecodedMessage = {
-  context: string; // Context of the message, returned as a hexadecimal string
-  messageIdentifier: string; // Unique identifier of the message, as a hex string
-  sender: string; // Ethereum address of the sender
-  destination: string; // Ethereum address of the destination
-  payload: string; // The actual message content as a string
-};
 class SendMessageSnifferWorker {
   
     private readonly store: Store;
@@ -236,6 +227,7 @@ class SendMessageSnifferWorker {
     
 
     private async handleLogPacketSentEvent(log: Log): Promise<void> {
+        this.logger.info(`Processing log: ${JSON.stringify(log)}`);
         try {
             const decodedLog = new ethers.Interface([
                 'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',
@@ -248,7 +240,10 @@ class SendMessageSnifferWorker {
     
                 // Decode the packet details
                 const packet = this.decodePacket(encodedPacket);
-                const decodedMessage = await decodeMessageWithContext(packet.message);
+                const decodedMessage = ParsePayload(packet.message);
+                if (decodedMessage === undefined) {
+                    throw new Error('Failed to decode message payload.');
+                }
     
                 this.logger.info(
                     {
@@ -269,6 +264,7 @@ class SendMessageSnifferWorker {
                         'Processing packet from specific sender.',
                     );
     
+                    //
                     const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
                         log.blockNumber,
                     );
@@ -281,8 +277,8 @@ class SendMessageSnifferWorker {
                             sourceChain: packet.srcEid,
                             destinationChain: packet.dstEid,
                             sourceEscrow: packet.sender,
-                            payload: decodedMessage.payload,
-                            recoveryContext: decodedMessage.context,
+                            payload: decodedMessage.message,
+                            recoveryContext: '',
                             blockNumber: log.blockNumber,
                             transactionBlockNumber,
                             blockHash: log.blockHash,
@@ -299,16 +295,8 @@ class SendMessageSnifferWorker {
                         payloadHash,
                         {
                             messageIdentifier: decodedMessage.messageIdentifier,
-                            amb: 'LayerZero',
-                            sourceChain: packet.srcEid,
                             destinationChain: packet.dstEid,
-                            sourceEscrow: packet.sender,
-                            payload: decodedMessage.payload,
-                            recoveryContext: decodedMessage.context,
-                            blockNumber: log.blockNumber,
-                            transactionBlockNumber,
-                            blockHash: log.blockHash,
-                            transactionHash: log.transactionHash,
+                            payload: encodedPacket,
                         }
                     );
     
@@ -334,26 +322,21 @@ class SendMessageSnifferWorker {
     
     
     private calculatePayloadHash(guid: string, message: string): string {
-        const payload = defaultAbiCoder.encode(['bytes32', 'bytes'], [guid, message]);
+        const payload = `0x${guid}${message}`
         return ethers.keccak256(payload);
     }
     
 
     // Helper function to decode the packet data
     private decodePacket(encodedPacket: string): any {
-        const decodedBytes = arrayify(encodedPacket);
-        const decoded = defaultAbiCoder.decode(
-            ['uint64', 'uint32', 'address', 'uint32', 'address', 'bytes32', 'bytes'],
-            decodedBytes,
-        );
         return {
-            nonce: decoded[0],
-            srcEid: decoded[1],
-            sender: ethers.getAddress(decoded[2]),
-            dstEid: decoded[3],
-            receiver: ethers.getAddress(decoded[4]),
-            guid: decoded[5],
-            message: decoded[6],
+            nonce: encodedPacket.slice(2+2,2+2+16),
+            srcEid: encodedPacket.slice(2+18, 2+18+8),
+            sender: encodedPacket.slice(2+26, 2+26+64),
+            dstEid: encodedPacket.slice(2+90, 2+90+8),
+            receiver: encodedPacket.slice(2+98, 2+98+64),
+            guid: encodedPacket.slice(2+162, 2+162+64),
+            message: encodedPacket.slice(2+226),
         };
     }
     /**
@@ -364,27 +347,5 @@ class SendMessageSnifferWorker {
    */
   
 }
-async function decodeMessageWithContext(
-    encodedMessage: string,
-): Promise<GARPDecodedMessage> {
-    // Convert the encoded message string to a byte array
-    const messageBytes = arrayify(encodedMessage);
 
-    // Decode parts of the message
-    const context = messageBytes[0] || ''; // First byte for context
-    const messageIdentifier = ethers.hexlify(messageBytes.slice(1, 33)); // Next 32 bytes for message identifier
-    const sender = ethers.getAddress(ethers.hexlify(messageBytes.slice(33, 53))); // Next 20 bytes for sender address
-    const destination = ethers.getAddress(
-        ethers.hexlify(messageBytes.slice(53, 73)),
-    ); // Next 20 bytes for destination address
-    const payload = ethers.toUtf8String(messageBytes.slice(73)); // Remaining bytes for message payload
-
-    return {
-        context: context.toString(16), // Convert context byte to hex string
-        messageIdentifier,
-        sender,
-        destination,
-        payload,
-    };
-}
 void new SendMessageSnifferWorker().run();

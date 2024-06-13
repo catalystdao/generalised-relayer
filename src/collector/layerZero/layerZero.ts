@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { Worker, MessageChannel, MessagePort } from 'worker_threads';
+import { Worker, MessagePort } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';
 import {
     DEFAULT_GETTER_RETRY_INTERVAL,
@@ -119,10 +119,9 @@ async function loadWorkerData(
         if (bridgeAddress == undefined) {
             throw Error(`Failed to load Layer Zero module: 'bridgeAddress' missing`);
         }
-        const { port1 } = new MessageChannel();
 
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        monitorService.attachToMonitor(chainId);
+        const port1= await monitorService.attachToMonitor(chainId);
         console.log(`Monitor attached to chainId: ${chainId}`);
 
         return {

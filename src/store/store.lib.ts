@@ -609,14 +609,14 @@ export class Store {
 
     async setPayloadLayerZeroAmb(
         payloadHash: string,
-        ambMessage: AmbMessage // Assuming AmbMessage is a structured object containing all necessary fields
+        ambMessage: any // Assuming AmbMessage is a structured object containing all necessary fields
     ): Promise<void> {
         const ambKey = `amb:${payloadHash}`;
         const ambData = JSON.stringify(ambMessage);
         await this.redis.set(ambKey, ambData);
     }
     
-    async getAmbByPayloadHash(payloadHash: string): Promise<AmbMessage | null> {
+    async getAmbByPayloadHash(payloadHash: string): Promise<any | null> {
         const ambKey = `amb:${payloadHash}`;
         const result = await this.redis.get(ambKey);
         return result ? JSON.parse(result) : null;
