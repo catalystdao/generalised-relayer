@@ -25,6 +25,7 @@ import {
 } from 'src/contracts/RecieveULN302';
 import { AmbPayload } from 'src/store/types/store.types';
 import { BigNumber } from 'ethers';
+import { LayerZeroEnpointV2, LayerZeroEnpointV2__factory } from 'src/contracts';
 
 const eidToChainId: Record<number, string> = {
     40232: "11155420",
@@ -242,10 +243,10 @@ class LayerZeroCollectorWorker {
                     //TODO: Add on the source the 0x for messageIdentifier
                     const ambPayload: AmbPayload = {
                         messageIdentifier: '0x'+payloadData.messageIdentifier,
-                        amb: 'LayerZero',
+                        amb: 'layerZero',
                         destinationChainId: decodedHeader.dstEid.toString(),
                         message: payloadData.payload,
-                        messageCtx: '',
+                        messageCtx: '0x',
                     };
                     this.logger.info({ proofHash }, `LayerZero proof found.`);
 

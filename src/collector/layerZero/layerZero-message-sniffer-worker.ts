@@ -26,7 +26,6 @@ class SendMessageSnifferWorker {
     private readonly provider: JsonRpcProvider;
 
     private readonly chainId: string;
-    private readonly layerZeroEnpointV2: LayerZeroEnpointV2;
     private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
 
     private readonly resolver: Resolver;
@@ -51,10 +50,6 @@ class SendMessageSnifferWorker {
             this.logger,
         );
 
-        this.layerZeroEnpointV2 = this.initializeLayerZeroEndpointContract(
-            this.config.endpointAddress,
-            this.provider,
-        );
         this.endpointAddress = this.config.endpointAddress;
         this.layerZeroEnpointV2Interface = LayerZeroEnpointV2__factory.createInterface();
         this.filterTopics = [
@@ -92,14 +87,6 @@ class SendMessageSnifferWorker {
         return loadResolver(resolver, provider, logger);
     }
 
-    private initializeLayerZeroEndpointContract(
-        endpointAddress: string,
-        provider: JsonRpcProvider,
-    ): LayerZeroEnpointV2 {
-        return LayerZeroEnpointV2__factory.connect(endpointAddress, provider);
-    }
-
-
     private startListeningToMonitor(port: MessagePort): MonitorInterface {
         const monitor = new MonitorInterface(port);
 
@@ -119,13 +106,9 @@ class SendMessageSnifferWorker {
         );
 
         let fromBlock = null;
-        this.logger.info('Initializing fromBlock...');
         while (fromBlock == null) {
-            this.logger.info('Waiting for currentStatus to be set...');
             if (this.currentStatus != null) {
-                this.logger.info('Current status is not null. Setting fromBlock...');
                 fromBlock = this.config.startingBlock ?? this.currentStatus.blockNumber;
-                this.logger.info(`fromBlock set to ${fromBlock}`);
             } else {
                 this.logger.info('Current status is still null.');
             }
@@ -274,12 +257,12 @@ class SendMessageSnifferWorker {
                     await this.store.setAmb(
                         {
                             messageIdentifier: decodedMessage.messageIdentifier,
-                            amb: 'LayerZero',
+                            amb: 'layerZero',
                             sourceChain: packet.srcEid,
                             destinationChain: packet.dstEid,
                             sourceEscrow: packet.sender,
                             payload: decodedMessage.message,
-                            recoveryContext: '',
+                            recoveryContext: '0x',
                             blockNumber: log.blockNumber,
                             transactionBlockNumber,
                             blockHash: log.blockHash,
