@@ -13,6 +13,7 @@ export interface EvalOrder extends Order {
 
 export interface SubmitOrder extends Order {
     priority: boolean;
+    value?: bigint;
     gasLimit: bigint | undefined;
     requeueCount?: number;
 }

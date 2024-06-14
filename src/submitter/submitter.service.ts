@@ -31,6 +31,7 @@ export interface SubmitterWorkerData {
     rpc: string;
     relayerPrivateKey: string;
     incentivesAddresses: Map<string, string>;
+    packetCosts: Map<string, bigint>;
     newOrdersDelay: number;
     retryInterval: number;
     processingInterval: number;
@@ -151,11 +152,27 @@ export class SubmitterService {
             }
         });
 
+        const packetCosts = new Map<string, bigint>();
+        this.configService.ambsConfig.forEach((amb) => {
+            const packetCost: string = this.configService.getAMBConfig(
+                amb.name,
+                'packetCost',
+                chainConfig.chainId
+            );
+            if (packetCost != undefined) {
+                packetCosts.set(
+                    amb.name,
+                    BigInt(packetCost), //TODO add log error if this fails
+                );
+            }
+        });
+
         return {
             chainId,
             rpc,
             relayerPrivateKey,
             incentivesAddresses,
+            packetCosts,
 
             newOrdersDelay:
                 chainConfig.submitter.newOrdersDelay ?? globalConfig.newOrdersDelay,
