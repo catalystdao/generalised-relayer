@@ -12,7 +12,6 @@ import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { LayerZeroWorkerData } from './layerZero';
 import { LayerZeroEnpointV2Interface } from 'src/contracts/LayerZeroEnpointV2';
 import { ParsePayload } from 'src/payload/decode.payload';
-import { BigNumber } from 'ethers';
 
 
 class SendMessageSnifferWorker {
@@ -315,9 +314,9 @@ class SendMessageSnifferWorker {
     private decodePacket(encodedPacket: string): any {
         return {
             nonce: encodedPacket.slice(2+2,2+2+16),
-            srcEid: BigNumber.from('0x' + encodedPacket.slice(20, 28)).toNumber(),
+            srcEid: Number('0x' + encodedPacket.slice(20, 28)),
             sender: encodedPacket.slice(2+26, 2+26+64),
-            dstEid: BigNumber.from('0x' + encodedPacket.slice(60, 68)).toNumber(),
+            dstEid: Number('0x' + encodedPacket.slice(2+90, 2+98)),
             receiver: encodedPacket.slice(2+98, 2+98+64),
             guid: encodedPacket.slice(2+162, 2+162+64),
             message: encodedPacket.slice(2+226),
