@@ -1,4 +1,4 @@
-import { AbiCoder, Signature, solidityPacked } from "ethers6";
+import { AbiCoder, Signature, ethers, solidityPacked } from "ethers6";
 
 export const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
@@ -102,3 +102,10 @@ export const decodeEventMessage = (
 export const decodeMessageIdentifierFromPayload = (message: string): string => {
     return add0X(message.slice(2 + 1 * 2, 2 + 1 * 2 + 32 * 2)); // See MessagePayload.sol for reference (GeneralisedIncentives repo)
 };
+
+export function paddedToNormalAddress(paddedAddress: string): string {
+    // Remove leading zeros and add '0x' prefix
+    const normalAddress = '0x' + paddedAddress.slice(-40);
+    return ethers.getAddress(normalAddress); // Ensure checksum casing
+};
+  

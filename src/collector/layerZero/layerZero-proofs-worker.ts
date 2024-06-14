@@ -7,47 +7,33 @@ import {
     Log,
     LogDescription,
     zeroPadValue,
-    Wallet,
-    SigningKey,
     BytesLike,
-    ethers,
     BigNumberish,
 } from 'ethers6';
 import {
     MonitorInterface,
     MonitorStatus,
 } from '../../monitor/monitor.interface';
-import { Resolver, loadResolver } from '../../resolvers/resolver';
 import { RecieveULN302__factory } from 'src/contracts/factories/RecieveULN302__factory';
 import { wait, tryErrorToString } from 'src/common/utils';
 import {
     RecieveULN302,
+    RecieveULN302Interface,
     UlnConfigStruct,
     UlnConfigStructOutput,
 } from 'src/contracts/RecieveULN302';
-import { arrayify } from 'ethers/lib/utils';
 import { AmbPayload } from 'src/store/types/store.types';
+import { BigNumber } from 'ethers';
 
 
-type PacketHeader = {
-  version: number; // Corresponds to PACKET_VERSION
-  nonce: number | bigint; // Nonce, a counter or similar (make sure to match the actual data type used in Solidity)
-  srcEid: number | bigint; // Source EID, possibly an ID or a unique identifier for the source
-  sender: string; // Sender address in a string form (though in Solidity it is bytes32, in TS we use string for addresses)
-  dstEid: number | bigint; // Destination EID, similar to srcEid
-  receiver: string; // Receiver address
-};
 class LayerZeroCollectorWorker {
     private readonly config: LayerZeroWorkerData;
     private readonly chainId: string;
     private recieveULN302: RecieveULN302;
-    private readonly signingKey: SigningKey;
     private readonly incentivesAddress: string;
-    private readonly endpointAddress: string;
-    private readonly recieveULN302Interface =
-        RecieveULN302__factory.createInterface();
+    private readonly recieverBridgeAddress: string;
+    private readonly recieveULN302Interface: RecieveULN302Interface;
     private readonly filterTopics: string[][];
-    private readonly resolver: Resolver;
     private readonly store: Store;
     private readonly provider: JsonRpcProvider;
     private readonly logger: pino.Logger;
@@ -57,7 +43,6 @@ class LayerZeroCollectorWorker {
     constructor() {
         this.config = workerData as LayerZeroWorkerData;
         this.chainId = this.config.chainId;
-        this.signingKey = new Wallet(this.config.privateKey).signingKey;
         this.store = new Store(this.chainId);
         this.provider = new JsonRpcProvider(this.config.rpc);
         this.recieveULN302 = RecieveULN302__factory.connect(
@@ -68,18 +53,14 @@ class LayerZeroCollectorWorker {
             worker: 'collector-LayerZero-ULNBase-worker',
             chain: this.chainId,
         });
-        this.resolver = loadResolver(
-            this.config.resolver,
-            this.provider,
-            this.logger,
-        );
         this.incentivesAddress = this.config.incentivesAddress;
-        this.endpointAddress = this.config.endpointAddress;
-
+        this.recieverBridgeAddress = this.config.recieverBridgeAddress;
+        this.recieveULN302Interface =
+        RecieveULN302__factory.createInterface();
         this.filterTopics = [
             [
                 this.recieveULN302Interface.getEvent('PayloadVerified').topicHash,
-                zeroPadValue(this.endpointAddress, 32),
+                zeroPadValue(this.recieverBridgeAddress, 32),
             ],
         ];
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
@@ -213,7 +194,7 @@ class LayerZeroCollectorWorker {
             confirmations,
             payloadHash,
         } = parsedLog.args as any;
-        const decodedHeader = this.decodePacketHeader(arrayify(header));
+        const decodedHeader = this.decodeHeader(header);
 
         if (decodedHeader.sender === this.config.incentivesAddress) {
             this.logger.info(
@@ -273,33 +254,23 @@ class LayerZeroCollectorWorker {
             }
         }
     }
-    private decodePacketHeader(encodedHeader: Uint8Array): PacketHeader {
-        const decoder = new TextDecoder('utf-8');
-        let offset = 0;
-        const version = parseInt(
-            decoder.decode(encodedHeader.slice(offset, offset + 1)),
-        );
-        offset += 1;
-        const nonce = parseInt(
-            decoder.decode(encodedHeader.slice(offset, offset + 8)),
-        );
-        offset += 8;
-        const srcEid = parseInt(
-            decoder.decode(encodedHeader.slice(offset, offset + 8)),
-        );
-        offset += 8;
-        const sender = ethers.getAddress(
-            ethers.hexlify(encodedHeader.slice(offset, offset + 32)),
-        );
-        offset += 32;
-        const dstEid = parseInt(
-            decoder.decode(encodedHeader.slice(offset, offset + 8)),
-        );
-        offset += 8;
-        const receiver = ethers.getAddress(
-            ethers.hexlify(encodedHeader.slice(offset)),
-        );
-        return { version, nonce, srcEid, sender, dstEid, receiver };
+    // Helper function to decode the packet header data
+    private decodeHeader(encodedHeader: string): any {
+        const version = encodedHeader.slice(2, 2 + 2);
+        const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
+        const srcEid = encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8);
+        const sender = encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24); // Last 20 bytes
+        const dstEid = encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8);
+        const receiver = encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24); // Last 20 bytes
+
+        return {
+            version,
+            nonce: BigNumber.from('0x' + nonce).toNumber(),
+            srcEid: BigNumber.from('0x' + srcEid).toNumber(),
+            sender: '0x' + sender,
+            dstEid: BigNumber.from('0x' + dstEid).toNumber(),
+            receiver: '0x' + receiver,
+        };
     }
 }
 

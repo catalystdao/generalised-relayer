@@ -609,15 +609,21 @@ export class Store {
 
     async setPayloadLayerZeroAmb(
         payloadHash: string,
-        ambMessage: any // Assuming AmbMessage is a structured object containing all necessary fields
+        ambDataToStore: any 
     ): Promise<void> {
-        const ambKey = `amb:${payloadHash}`;
-        const ambData = JSON.stringify(ambMessage);
+        const ambKey =  Store.combineString(
+            Store.relayerStorePrefix,
+            `ambMessageLayerZero:${payloadHash}`
+        );
+        const ambData = JSON.stringify(ambDataToStore);
         await this.redis.set(ambKey, ambData);
     }
     
     async getAmbByPayloadHash(payloadHash: string): Promise<any | null> {
-        const ambKey = `amb:${payloadHash}`;
+        const ambKey =  Store.combineString(
+            Store.relayerStorePrefix,
+            `ambMessageLayerZero:${payloadHash}`
+        );
         const result = await this.redis.get(ambKey);
         return result ? JSON.parse(result) : null;
     }

@@ -5,13 +5,14 @@ import {
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { tryErrorToString, wait } from '../../common/utils';
+import { paddedToNormalAddress, tryErrorToString, wait } from '../../common/utils';
 import { JsonRpcProvider, Log, ethers, zeroPadValue } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { LayerZeroWorkerData } from './layerZero';
 import { LayerZeroEnpointV2Interface } from 'src/contracts/LayerZeroEnpointV2';
 import { ParsePayload } from 'src/payload/decode.payload';
+import { BigNumber } from 'ethers';
 
 
 class SendMessageSnifferWorker {
@@ -255,7 +256,7 @@ class SendMessageSnifferWorker {
                     'PacketSent event processed.',
                 );
     
-                if (packet.sender === this.config.incentivesAddress) {
+                if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
                     this.logger.info(
                         {
                             sender: packet.sender,
@@ -331,9 +332,9 @@ class SendMessageSnifferWorker {
     private decodePacket(encodedPacket: string): any {
         return {
             nonce: encodedPacket.slice(2+2,2+2+16),
-            srcEid: encodedPacket.slice(2+18, 2+18+8),
+            srcEid: BigNumber.from('0x' + encodedPacket.slice(20, 28)).toNumber(),
             sender: encodedPacket.slice(2+26, 2+26+64),
-            dstEid: encodedPacket.slice(2+90, 2+90+8),
+            dstEid: BigNumber.from('0x' + encodedPacket.slice(60, 68)).toNumber(),
             receiver: encodedPacket.slice(2+98, 2+98+64),
             guid: encodedPacket.slice(2+162, 2+162+64),
             message: encodedPacket.slice(2+226),

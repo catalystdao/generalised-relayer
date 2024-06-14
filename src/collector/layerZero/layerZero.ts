@@ -31,9 +31,10 @@ export interface LayerZeroWorkerData {
   retryInterval: number;
   processingInterval: number;
   maxBlocks: number | null;
+  eid: number;
   endpointAddress: string;
   incentivesAddress: string;
-  bridgeAddress: string;
+  recieverBridgeAddress: string;
   privateKey: string;
   monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
@@ -88,6 +89,12 @@ async function loadWorkerData(
     const chainId = chainConfig.chainId;
     const rpc = chainConfig.rpc;
     try {
+        const eid: number | undefined =
+      configService.getAMBConfig<number>(
+          'layerZero',
+          'eid',
+          chainId.toString(),
+      );
         const endpointAddress: string | undefined =
       configService.getAMBConfig<string>(
           'layerZero',
@@ -101,11 +108,16 @@ async function loadWorkerData(
           'incentivesAddress',
           chainId.toString(),
       );
-        const bridgeAddress: string | undefined = configService.getAMBConfig(
+        const recieverBridgeAddress: string | undefined = configService.getAMBConfig(
             'layerZero',
-            'bridgeAddress',
+            'recieverBridgeAddress',
             chainId.toString(),
         );
+        if (eid == undefined) {
+            throw Error(
+                `Failed to load Layer Zero module: 'eid' missing`,
+            );
+        }
         if (endpointAddress == undefined) {
             throw Error(
                 `Failed to load Layer Zero module: 'endpointAddress' missing`,
@@ -116,7 +128,7 @@ async function loadWorkerData(
                 `Failed to load Layer Zero module: 'incentivesAddress' missing`,
             );
         }
-        if (bridgeAddress == undefined) {
+        if (recieverBridgeAddress == undefined) {
             throw Error(`Failed to load Layer Zero module: 'bridgeAddress' missing`);
         }
 
@@ -136,9 +148,10 @@ async function loadWorkerData(
         chainConfig.getter.processingInterval ??
         globalConfig.processingInterval,
             maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
+            eid,
             endpointAddress,
             incentivesAddress,
-            bridgeAddress,
+            recieverBridgeAddress,
             privateKey: globalConfig.privateKey,
             monitorPort: port1,
             loggerOptions: loggerService.loggerOptions,
