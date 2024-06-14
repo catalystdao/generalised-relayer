@@ -9,6 +9,7 @@ import {
     zeroPadValue,
     BytesLike,
     BigNumberish,
+    keccak256,
 } from 'ethers6';
 import {
     MonitorInterface,
@@ -25,6 +26,12 @@ import {
 import { AmbPayload } from 'src/store/types/store.types';
 import { BigNumber } from 'ethers';
 
+const eidToChainId: Record<number, string> = {
+    40232: "11155420",
+    40243: "168587773",
+    40245: "84532",
+
+}
 
 class LayerZeroCollectorWorker {
     private readonly config: LayerZeroWorkerData;
@@ -46,7 +53,7 @@ class LayerZeroCollectorWorker {
         this.store = new Store(this.chainId);
         this.provider = new JsonRpcProvider(this.config.rpc);
         this.recieveULN302 = RecieveULN302__factory.connect(
-            this.config.endpointAddress,
+            this.config.recieverBridgeAddress,
             this.provider,
         );
         this.logger = pino(this.config.loggerOptions).child({
@@ -143,7 +150,7 @@ class LayerZeroCollectorWorker {
 
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filter = {
-            address: this.incentivesAddress,
+            address: this.recieverBridgeAddress,
             topics: this.filterTopics,
             fromBlock,
             toBlock,
@@ -192,22 +199,22 @@ class LayerZeroCollectorWorker {
             dvn,
             header,
             confirmations,
-            payloadHash,
+            proofHash,
         } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
 
-        if (decodedHeader.sender === this.config.incentivesAddress) {
+        if (decodedHeader.sender.toLowerCase() === this.config.incentivesAddress.toLowerCase()) {
             this.logger.info(
-                { dvn, decodedHeader, confirmations, payloadHash},
+                { dvn, decodedHeader, confirmations, proofHash},
                 'PayloadVerified event decoded.',
             );
 
             // Fetch data using the payloadHash
-            const payloadData = await this.store.getAmbByPayloadHash(payloadHash);
+            const payloadData = await this.store.getAmbByPayloadHash(proofHash);
 
             if (!payloadData) {
                 this.logger.error(
-                    { payloadHash },
+                    { proofHash },
                     'No data found in database for the given payloadHash.',
                 );
                 return;
@@ -227,22 +234,24 @@ class LayerZeroCollectorWorker {
                 const isVerifiable = await checkIfVerifiable(
                     this.recieveULN302,
                     config,
-                    header,
-                    payloadHash,
+                    keccak256(header),
+                    proofHash,
                 );
                 this.logger.info({ dvn, isVerifiable }, 'Verification result checked.');
                 if (isVerifiable) {
+                    //TODO: Add on the source the 0x for messageIdentifier
                     const ambPayload: AmbPayload = {
-                        messageIdentifier: payloadData.messageIdentifier,
+                        messageIdentifier: '0x'+payloadData.messageIdentifier,
                         amb: 'LayerZero',
                         destinationChainId: decodedHeader.dstEid.toString(),
                         message: payloadData.payload,
                         messageCtx: '',
                     };
-                    this.logger.info({ payloadHash }, `LayerZero proof found.`);
+                    this.logger.info({ proofHash }, `LayerZero proof found.`);
 
                     await this.store.submitProof(
-                        decodedHeader.dstEid.toString(),
+                        //TODO: Remove exclamation. BAD PRACTICE!!
+                        eidToChainId[decodedHeader.dstEid]!,
                         ambPayload,
                     );
                 }
@@ -282,9 +291,19 @@ async function checkIfVerifiable(
     payloadHash: BytesLike,
 ): Promise<boolean> {
     try {
-    // Call the `verifiable` method on your contract instance
+        //TODO: requiredDVNs AND optionalDVNs check
+        // Call the `verifiable` method on your contract instance
+        const formatConfig: UlnConfigStruct = {
+            confirmations: '0x'+config.confirmations.toString(16).padStart(16, '0'),
+            requiredDVNCount: '0x'+config.requiredDVNCount.toString(16).padStart(2, '0'),
+            optionalDVNCount: '0x'+config.optionalDVNCount.toString(16).padStart(2, '0'),
+            optionalDVNThreshold: '0x'+config.optionalDVNThreshold.toString(16).padStart(2, '0'),
+            requiredDVNs: [config.requiredDVNs.toString()],
+            optionalDVNs: [],
+        };
+
         const isVerifiable = await recieveULN302.verifiable(
-            config,
+            formatConfig,
             headerHash,
             payloadHash,
         );
@@ -302,7 +321,7 @@ async function getConfigData(
 ): Promise<UlnConfigStructOutput> {
     try {
     // Call the `getUlnConfig` method on your contract instance
-        const config = await recieveULN302.getUlnConfig(dvn, remoteEid);
+        const config = await recieveULN302.getUlnConfig(dvn, '0x'+remoteEid.toString(16).padStart(8, '0'));
         console.log('Configuration Data: ', config);
         return config;
     } catch (error) {

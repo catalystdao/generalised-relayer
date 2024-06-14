@@ -256,7 +256,7 @@ class SendMessageSnifferWorker {
                     'PacketSent event processed.',
                 );
     
-                if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
+                if (paddedToNormalAddress( packet.sender) === this.config.incentivesAddress) {
                     this.logger.info(
                         {
                             sender: packet.sender,

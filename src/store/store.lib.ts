@@ -613,7 +613,7 @@ export class Store {
     ): Promise<void> {
         const ambKey =  Store.combineString(
             Store.relayerStorePrefix,
-            `ambMessageLayerZero:${payloadHash}`
+            `ambMessageLayerZero:${payloadHash.toLowerCase()}`
         );
         const ambData = JSON.stringify(ambDataToStore);
         await this.redis.set(ambKey, ambData);
@@ -622,7 +622,7 @@ export class Store {
     async getAmbByPayloadHash(payloadHash: string): Promise<any | null> {
         const ambKey =  Store.combineString(
             Store.relayerStorePrefix,
-            `ambMessageLayerZero:${payloadHash}`
+            `ambMessageLayerZero:${payloadHash.toLowerCase()}`
         );
         const result = await this.redis.get(ambKey);
         return result ? JSON.parse(result) : null;
