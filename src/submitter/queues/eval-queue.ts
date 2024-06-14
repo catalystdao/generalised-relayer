@@ -19,6 +19,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         maxTries: number,
         private readonly store: Store,
         private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
+        private readonly packetCosts: Map<string, bigint>,
         private readonly chainId: string,
         private readonly gasLimitBuffer: Record<string, number>,
         relayerAddress: string,
@@ -32,11 +33,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         order: EvalOrder,
         _retryCount: number,
     ): Promise<HandleOrderResult<SubmitOrder> | null> {
-        const gasLimit = await this.evaluateBounty(order);
+        const transactionParameters = await this.evaluateBounty(order);
 
-        if (gasLimit > 0) {
+        if (transactionParameters != null) {
             // Move the order to the submit queue
-            return { result: { ...order, gasLimit } };
+            return { result: { ...order, ...transactionParameters } };
         } else {
             return null;
         }
@@ -114,7 +115,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         return this.store.getBounty(messageIdentifier);
     }
 
-    private async evaluateBounty(order: EvalOrder): Promise<bigint> {
+    private async evaluateBounty(order: EvalOrder): Promise<{ gasLimit: bigint, value?: bigint} | null> {
         const messageIdentifier = order.messageIdentifier;
         const bounty = await this.queryBountyInfo(messageIdentifier);
         if (bounty === null || bounty === undefined) {
@@ -132,7 +133,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     { messageIdentifier },
                     `Bounty evaluation (source to destination). Bounty already delivered.`,
                 );
-                return 0n; // Do not relay packet
+                return null; // Do not relay packet
             }
         } else {
             // Destination to Source
@@ -141,15 +142,21 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     { messageIdentifier },
                     `Bounty evaluation (destination to source). Bounty already acked.`,
                 );
-                return 0n; // Do not relay packet
+                return null; // Do not relay packet
             }
         }
 
         const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
+
+        const value = isDelivery
+            ? this.packetCosts.get(order.amb)
+            : 0n;
+
         const gasEstimation = await contract.processPacket.estimateGas(
             order.messageCtx,
             order.message,
             this.relayerAddress,
+            { value }
         );
 
         const gasLimitBuffer = this.getGasLimitBuffer(order.amb);
@@ -173,8 +180,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const isGasLimitEnough = gasLimit >= gasEstimation;
             const relayDelivery = order.priority || isGasLimitEnough;
             return relayDelivery
-                ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
-                : 0n;
+                ? {
+                    gasLimit:(isGasLimitEnough ? gasLimit : gasEstimation), // Return the largest of gasLimit and gasEstimation
+                    value,
+                }
+                : null;
         } else {
             // Destination to Source
             const gasLimit = BigInt(bounty.maxGasAck + gasLimitBuffer);
@@ -193,11 +203,14 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             const isGasLimitEnough = gasLimit >= gasEstimation;
             const relayAck = order.priority || isGasLimitEnough;
             return relayAck
-                ? (isGasLimitEnough ? gasLimit : gasEstimation) // Return the largest of gasLimit and gasEstimation
-                : 0n;
+                ? {
+                    gasLimit: (isGasLimitEnough ? gasLimit : gasEstimation), // Return the largest of gasLimit and gasEstimation
+                    value,
+                }
+                : null;
         }
 
-        return 0n; // Do not relay packet
+        return null; // Do not relay packet
     }
 
     private getGasLimitBuffer(amb: string): number {

@@ -46,6 +46,7 @@ export class SubmitQueue extends ProcessingQueue<
                 order.message,
                 this.relayerAddress,
                 {
+                    value: order.value,
                     gasLimit: order.gasLimit,
                 },
             );
@@ -61,6 +62,7 @@ export class SubmitQueue extends ProcessingQueue<
         const txRequest: TransactionRequest = {
             to: await contract.getAddress(),
             data: txData,
+            value: order.value,
             gasLimit: order.gasLimit,
         };
 
