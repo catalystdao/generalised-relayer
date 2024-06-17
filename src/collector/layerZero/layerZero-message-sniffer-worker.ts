@@ -18,7 +18,7 @@ class SendMessageSnifferWorker {
   
     private readonly store: Store;
     private readonly logger: pino.Logger;
-    private readonly endpointAddress: string;
+    private readonly bridgeAddress: string;
     private readonly filterTopics: string[][];
     private readonly config: LayerZeroWorkerData;
 
@@ -49,12 +49,12 @@ class SendMessageSnifferWorker {
             this.logger,
         );
 
-        this.endpointAddress = this.config.endpointAddress;
+        this.bridgeAddress = this.config.bridgeAddress;
         this.layerZeroEnpointV2Interface = LayerZeroEnpointV2__factory.createInterface();
         this.filterTopics = [
             [
                 this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
-                zeroPadValue(this.endpointAddress, 32),
+                zeroPadValue(this.bridgeAddress, 32),
             ],
         ];
 
@@ -100,7 +100,7 @@ class SendMessageSnifferWorker {
     // ********************************************************************************************
     async run(): Promise<void> {
         this.logger.info(
-            { endpointAddress: this.config.endpointAddress },
+            { bridgeAddress: this.config.bridgeAddress },
             `Layer Zero Message Sniffer Worker started.`,
         );
 
@@ -185,7 +185,7 @@ class SendMessageSnifferWorker {
     
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filter = {
-            address: this.endpointAddress,
+            address: this.bridgeAddress,
             topics: this.filterTopics,
             fromBlock,
             toBlock,

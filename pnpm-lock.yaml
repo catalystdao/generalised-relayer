@@ -7258,7 +7258,7 @@ packages:
     dev: true
 
   /iterare@1.2.1:
-    resolution: {integrity: sha512-RKYVTCjAnRthyJes037NX/IiqeidgN1xc3j1RjFfECFp28A1GVwK9nA+i0rJPaHqSZwygLzRnFlzUuHFoWWy+Q==}
+    resolution: {integrity: sha512-RKYVTCjAnRthyJes037NX/IiqlayerZeroChainIdgN1xc3j1RjFfECFp28A1GVwK9nA+i0rJPaHqSZwygLzRnFlzUuHFoWWy+Q==}
     engines: {node: '>=6'}
 
   /jackspeak@2.3.6:

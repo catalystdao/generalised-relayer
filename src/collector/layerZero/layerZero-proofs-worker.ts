@@ -25,9 +25,8 @@ import {
 } from 'src/contracts/RecieveULN302';
 import { AmbPayload } from 'src/store/types/store.types';
 import { BigNumber } from 'ethers';
-import { LayerZeroEnpointV2, LayerZeroEnpointV2__factory } from 'src/contracts';
 
-const eidToChainId: Record<number, string> = {
+const layerZeroChainIdToChainId: Record<number, string> = {
     40232: "11155420",
     40243: "168587773",
     40245: "84532",
@@ -39,7 +38,7 @@ class LayerZeroCollectorWorker {
     private readonly chainId: string;
     private recieveULN302: RecieveULN302;
     private readonly incentivesAddress: string;
-    private readonly recieverBridgeAddress: string;
+    private readonly receiverAddress: string;
     private readonly recieveULN302Interface: RecieveULN302Interface;
     private readonly filterTopics: string[][];
     private readonly store: Store;
@@ -54,7 +53,7 @@ class LayerZeroCollectorWorker {
         this.store = new Store(this.chainId);
         this.provider = new JsonRpcProvider(this.config.rpc);
         this.recieveULN302 = RecieveULN302__factory.connect(
-            this.config.recieverBridgeAddress,
+            this.config.receiverAddress,
             this.provider,
         );
         this.logger = pino(this.config.loggerOptions).child({
@@ -62,13 +61,13 @@ class LayerZeroCollectorWorker {
             chain: this.chainId,
         });
         this.incentivesAddress = this.config.incentivesAddress;
-        this.recieverBridgeAddress = this.config.recieverBridgeAddress;
+        this.receiverAddress = this.config.receiverAddress;
         this.recieveULN302Interface =
         RecieveULN302__factory.createInterface();
         this.filterTopics = [
             [
                 this.recieveULN302Interface.getEvent('PayloadVerified').topicHash,
-                zeroPadValue(this.recieverBridgeAddress, 32),
+                zeroPadValue(this.receiverAddress, 32),
             ],
         ];
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
@@ -151,7 +150,7 @@ class LayerZeroCollectorWorker {
 
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filter = {
-            address: this.recieverBridgeAddress,
+            address: this.receiverAddress,
             topics: this.filterTopics,
             fromBlock,
             toBlock,
@@ -252,7 +251,7 @@ class LayerZeroCollectorWorker {
 
                     await this.store.submitProof(
                         //TODO: Remove exclamation. BAD PRACTICE!!
-                        eidToChainId[decodedHeader.dstEid]!,
+                        layerZeroChainIdToChainId[decodedHeader.dstEid]!,
                         ambPayload,
                     );
                 }

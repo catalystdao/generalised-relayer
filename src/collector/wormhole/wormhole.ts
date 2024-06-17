@@ -89,7 +89,7 @@ function loadWormholeChainConfig(
 
     const wormholeAddress: string | undefined = configService.getAMBConfig(
         'wormhole',
-        'endpointAddress',
+        'bridgeAddress',
         chainId,
     );
 

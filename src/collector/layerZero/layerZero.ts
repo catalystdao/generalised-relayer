@@ -19,7 +19,6 @@ interface GlobalLayerZeroConfig {
   retryInterval: number;
   processingInterval: number;
   maxBlocks: number | null;
-  privateKey: string;
 }
 
 export interface LayerZeroWorkerData {
@@ -31,11 +30,10 @@ export interface LayerZeroWorkerData {
   retryInterval: number;
   processingInterval: number;
   maxBlocks: number | null;
-  eid: number;
-  endpointAddress: string;
+  layerZeroChainId: number;
+  bridgeAddress: string;
   incentivesAddress: string;
-  recieverBridgeAddress: string;
-  privateKey: string;
+  receiverAddress: string;
   monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
 }
@@ -63,19 +61,12 @@ function loadGlobalLayerZeroConfig(
     getterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
     const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
-    // Retrieve private key from global configuration.
-    const privateKey = configService.globalConfig.privateKey;
-    // Throw an error if private key is missing.
-    if (privateKey == undefined) {
-        throw Error(`Failed to load Layer Zero module: 'privateKey' missing`);
-    }
 
     // Return global Layer Zero configuration settings.
     return {
         retryInterval,
         processingInterval,
         maxBlocks,
-        privateKey,
     };
 }
 
@@ -89,16 +80,16 @@ async function loadWorkerData(
     const chainId = chainConfig.chainId;
     const rpc = chainConfig.rpc;
     try {
-        const eid: number | undefined =
+        const layerZeroChainId: number | undefined =
       configService.getAMBConfig<number>(
           'layerZero',
-          'eid',
+          'layerZeroChainId',
           chainId.toString(),
       );
-        const endpointAddress: string | undefined =
+        const bridgeAddress: string | undefined =
       configService.getAMBConfig<string>(
           'layerZero',
-          'endpointAddress',
+          'bridgeAddress',
           chainId.toString(),
       );
 
@@ -108,19 +99,19 @@ async function loadWorkerData(
           'incentivesAddress',
           chainId.toString(),
       );
-        const recieverBridgeAddress: string | undefined = configService.getAMBConfig(
+        const receiverAddress: string | undefined = configService.getAMBConfig(
             'layerZero',
-            'recieverBridgeAddress',
+            'receiverAddress',
             chainId.toString(),
         );
-        if (eid == undefined) {
+        if (layerZeroChainId == undefined) {
             throw Error(
-                `Failed to load Layer Zero module: 'eid' missing`,
+                `Failed to load Layer Zero module: 'layerZeroChainId' missing`,
             );
         }
-        if (endpointAddress == undefined) {
+        if (bridgeAddress == undefined) {
             throw Error(
-                `Failed to load Layer Zero module: 'endpointAddress' missing`,
+                `Failed to load Layer Zero module: 'bridgeAddress' missing`,
             );
         }
         if (incentivesAddress == undefined) {
@@ -128,7 +119,7 @@ async function loadWorkerData(
                 `Failed to load Layer Zero module: 'incentivesAddress' missing`,
             );
         }
-        if (recieverBridgeAddress == undefined) {
+        if (receiverAddress == undefined) {
             throw Error(`Failed to load Layer Zero module: 'bridgeAddress' missing`);
         }
 
@@ -148,11 +139,10 @@ async function loadWorkerData(
         chainConfig.getter.processingInterval ??
         globalConfig.processingInterval,
             maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
-            eid,
-            endpointAddress,
+            layerZeroChainId,
+            bridgeAddress,
             incentivesAddress,
-            recieverBridgeAddress,
-            privateKey: globalConfig.privateKey,
+            receiverAddress,
             monitorPort: port1,
             loggerOptions: loggerService.loggerOptions,
         };
