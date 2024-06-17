@@ -307,7 +307,6 @@ async function checkIfVerifiable(
             headerHash,
             payloadHash,
         );
-        console.log('Is verifiable: ', isVerifiable);
         return isVerifiable;
     } catch (error) {
         console.error('Failed to verify the configuration: ', error);
@@ -322,10 +321,8 @@ async function getConfigData(
     try {
     // Call the `getUlnConfig` method on your contract instance
         const config = await recieveULN302.getUlnConfig(dvn, '0x'+remoteEid.toString(16).padStart(8, '0'));
-        console.log('Configuration Data: ', config);
         return config;
     } catch (error) {
-        console.error('Failed to get configuration data: ', error);
         throw new Error('Error fetching configuration data.');
     }
 }
