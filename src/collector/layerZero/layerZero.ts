@@ -54,7 +54,8 @@ function loadGlobalLayerZeroConfig(
     getterConfig.retryInterval ?? DEFAULT_GETTER_RETRY_INTERVAL;
   const processingInterval =
     getterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
-  const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
+  const maxBlocks =
+    getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
   return {
     retryInterval,
@@ -153,7 +154,7 @@ async function loadWorkerData(
   }
 }
 
-// Main function for initializing Layer Zero workers.
+// Main function for initializing Layer Zero worker.
 export default async (moduleInterface: CollectorModuleInterface) => {
   const { configService, monitorService, loggerService } = moduleInterface;
 
@@ -177,10 +178,13 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   loggerService.info({ layerZeroChainIdMap }, 'Layer Zero Chain ID Map loaded.');
 
   for (const workerData of workerDataArray) {
+    // Attach the mapping to each worker data
+    const workerDataWithMapping = { ...workerData, layerZeroChainIdMap };
     const worker = new Worker(
       join(__dirname, 'layerZero.worker.js'),
       {
-        workerData: workerData,
+        execArgv: ['--inspect'],
+        workerData: workerDataWithMapping,
         transferList: [workerData.monitorPort],
       },
     );

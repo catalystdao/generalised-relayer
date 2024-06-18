@@ -18,14 +18,15 @@ interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
     layerZeroChainIdMap: Record<number, string>;
 }
 
-class CombinedWorker {
+class LayerZeroWorker {
     private readonly config: LayerZeroWorkerDataWithMapping;
     private readonly chainId: string;
     private readonly store: Store;
     private readonly provider: JsonRpcProvider;
     private readonly logger: pino.Logger;
     private readonly bridgeAddress: string;
-    private readonly filterTopics: string[][];
+    private readonly filterTopicPacketSent: string[][];
+    private readonly filterTopicPayloadVerified: string[][];
     private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
     private readonly recieveULN302: RecieveULN302;
     private readonly recieveULN302Interface: RecieveULN302Interface;
@@ -47,11 +48,13 @@ class CombinedWorker {
         this.bridgeAddress = this.config.bridgeAddress;
         this.receiverAddress = this.config.receiverAddress;
         this.layerZeroEnpointV2Interface = LayerZeroEnpointV2__factory.createInterface();
-        this.filterTopics = [
+        this.filterTopicPacketSent = [
             [
                 this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
                 zeroPadValue(this.bridgeAddress, 32),
-            ],
+            ]
+        ];
+        this.filterTopicPayloadVerified = [
             [
                 this.recieveULN302Interface.getEvent('PayloadVerified').topicHash,
                 zeroPadValue(this.receiverAddress, 32),
@@ -66,7 +69,7 @@ class CombinedWorker {
 
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'combined-layerzero-worker',
+            worker: 'collector-layerzero',
             chain: chainId,
         });
     }
@@ -91,7 +94,8 @@ class CombinedWorker {
     // ********************************************************************************************
 
     async run(): Promise<void> {
-        this.logger.info({ bridgeAddress: this.config.bridgeAddress }, `Combined Layer Zero Worker started.`);
+        this.logger.info({ bridgeAddress: this.config.bridgeAddress }, `Layer Zero Worker montoring Endpoint contract.`);
+        this.logger.info({ receiverAddress: this.config.receiverAddress }, `Layer Zero Worker monitoring ReceiverULN contract.`);
         let fromBlock = null;
         while (fromBlock == null) {
             if (this.currentStatus != null) {
@@ -118,8 +122,8 @@ class CombinedWorker {
                 if (this.config.maxBlocks != null && blocksToProcess > this.config.maxBlocks) {
                     toBlock = fromBlock + this.config.maxBlocks;
                 }
-                this.logger.info({ fromBlock, toBlock }, `Scanning LayerZero Endpoint messages.`);
                 await this.queryAndProcessEvents(fromBlock, toBlock);
+                this.logger.info({ fromBlock, toBlock }, `Scanning LayerZero Endpoint messages.`);
                 if (toBlock >= stopBlock) {
                     this.logger.info({ stopBlock: toBlock }, `Finished processing blocks. Exiting worker.`);
                     break;
@@ -149,13 +153,13 @@ class CombinedWorker {
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filterPacketSent = {
             address: this.bridgeAddress,
-            topics: this.filterTopics[0],
+            topics: this.filterTopicPacketSent,
             fromBlock,
             toBlock
         };
         const filterPayloadVerified = {
             address: this.receiverAddress,
-            topics: this.filterTopics[1],
+            topics: this.filterTopicPayloadVerified,
             fromBlock,
             toBlock
         };
@@ -211,7 +215,8 @@ class CombinedWorker {
 
         switch (parsedLog.name) {
             case 'PacketSent':
-                await this.handlePacketSentEvent(log, parsedLog);
+                debugger;
+                await this.handlePacketSentEvent(log);
                 break;
 
             case 'PayloadVerified':
@@ -226,55 +231,89 @@ class CombinedWorker {
         }
     }
 
-    private async handlePacketSentEvent(log: Log, parsedLog: LogDescription): Promise<void> {
-        const decodedLog = parsedLog.args;
-        const encodedPacket = decodedLog['encodedPacket'];
-        const options = decodedLog['options'];
-        const sendLibrary = decodedLog['sendLibrary'];
-        const packet = this.decodePacket(encodedPacket);
-        const decodedMessage = ParsePayload(packet.message);
-
-        if (decodedMessage === undefined) {
-            throw new Error('Failed to decode message payload.');
-        }
-
-        this.logger.info(
-            { transactionHash: log.transactionHash, packet, options, sendLibrary },
-            'PacketSent event processed.',
-        );
-
-        if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
-            this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
-            const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
-            await this.store.setAmb({
-                messageIdentifier: decodedMessage.messageIdentifier,
-                amb: 'layerZero',
-                sourceChain: packet.srcEid,
-                destinationChain: packet.dstEid,
-                sourceEscrow: packet.sender,
-                payload: decodedMessage.message,
-                recoveryContext: '0x',
-                blockNumber: log.blockNumber,
-                transactionBlockNumber,
-                blockHash: log.blockHash,
-                transactionHash: log.transactionHash,
-            }, log.transactionHash);
-            const payloadHash = this.calculatePayloadHash(packet.guid, packet.message);
-            await this.store.setPayloadLayerZeroAmb(payloadHash, {
-                messageIdentifier: decodedMessage.messageIdentifier,
-                destinationChain: packet.dstEid,
-                payload: encodedPacket,
-            });
+    private async handlePacketSentEvent(log: Log): Promise<void> {
+        debugger;
+        try {
+            const decodedLog = new ethers.Interface([
+                'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',
+            ]).parseLog(log);
+    
+            if (decodedLog === null) {
+                throw new Error('Failed to decode PacketSent log.');
+            }
+    
+            const encodedPacket = decodedLog.args['encodedPacket'];
+            const options = decodedLog.args['options'];
+            const sendLibrary = decodedLog.args['sendLibrary'];
+    
+            // Decode the packet details
+            const packet = this.decodePacket(encodedPacket);
+            const srcEidMapped = this.layerZeroChainIdMap[packet.srcEid];
+            const dstEidMapped = this.layerZeroChainIdMap[packet.dstEid];
+            const decodedMessage = ParsePayload(packet.message);
+            if (decodedMessage === undefined) {
+                throw new Error('Failed to decode message payload.');
+            }
+            if (srcEidMapped === undefined || dstEidMapped === undefined) {
+                throw new Error('Failed to map srcEidMapped or dstEidMapped.');
+            }
             this.logger.info(
-                { payloadHash, transactionHash: log.transactionHash },
-                'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb.',
+                { transactionHash: log.transactionHash, packet, options, sendLibrary },
+                'PacketSent event found.',
             );
+    
+            if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
+                this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
+    
+                try {
+                    const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
+                    await this.store.setAmb({
+                        messageIdentifier: decodedMessage.messageIdentifier,
+                        amb: 'layerZero',
+                        sourceChain: srcEidMapped.toString(),
+                        destinationChain: dstEidMapped.toString(),
+                        sourceEscrow: packet.sender,
+                        payload: decodedMessage.message,
+                        recoveryContext: '0x',
+                        blockNumber: log.blockNumber,
+                        transactionBlockNumber,
+                        blockHash: log.blockHash,
+                        transactionHash: log.transactionHash,
+                    }, log.transactionHash);
+    
+                    this.logger.info(
+                        { transactionHash: log.transactionHash },
+                        'Primary AMB message created using setAmb.',
+                    );
+    
+                    const payloadHash = this.calculatePayloadHash(packet.guid, packet.message);
+                    await this.store.setPayloadLayerZeroAmb(payloadHash, {
+                        messageIdentifier: decodedMessage.messageIdentifier,
+                        destinationChain: dstEidMapped,
+                        payload: encodedPacket,
+                    });
+    
+                    this.logger.info(
+                        { payloadHash, transactionHash: log.transactionHash },
+                        'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb.',
+                    );
+                } catch (innerError) {
+                    this.logger.error({ innerError, log }, 'Failed to process specific sender packet.');
+                    throw innerError; 
+                }
+            }
+        } catch (error) {
+            this.logger.error({ error, log }, 'Failed to handle PacketSent event.');
         }
     }
 
     private async handlePayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
+        const dstEidMapped = this.layerZeroChainIdMap[decodedHeader.dstEid];
+        if (dstEidMapped === undefined) {
+            throw new Error('Failed to map srcEidMapped or dstEidMapped.');
+        }
         if (decodedHeader.sender.toLowerCase() === this.config.incentivesAddress.toLowerCase()) {
             this.logger.info({ dvn, decodedHeader, confirmations, proofHash }, 'PayloadVerified event decoded.');
             const payloadData = await this.store.getAmbByPayloadHash(proofHash);
@@ -291,7 +330,7 @@ class CombinedWorker {
                     const ambPayload: AmbPayload = {
                         messageIdentifier: '0x' + payloadData.messageIdentifier,
                         amb: 'layerZero',
-                        destinationChainId: decodedHeader.dstEid.toString(),
+                        destinationChainId: dstEidMapped.toString(),
                         message: payloadData.payload,
                         messageCtx: '0x',
                     };
@@ -304,17 +343,18 @@ class CombinedWorker {
         }
     }
 
-    private decodePacket(encodedPacket: string): any {
-        return {
-            nonce: encodedPacket.slice(2 + 2, 2 + 2 + 16),
-            srcEid: Number('0x' + encodedPacket.slice(20, 28)),
-            sender: encodedPacket.slice(2 + 26, 2 + 26 + 64),
-            dstEid: Number('0x' + encodedPacket.slice(2 + 90, 2 + 98)),
-            receiver: encodedPacket.slice(2 + 98, 2 + 98 + 64),
-            guid: encodedPacket.slice(2 + 162, 2 + 162 + 64),
-            message: encodedPacket.slice(2 + 226),
-        };
-    }
+ // Helper function to decode the packet data
+ private decodePacket(encodedPacket: string): any {
+    return {
+        nonce: encodedPacket.slice(2+2,2+2+16),
+        srcEid: Number('0x' + encodedPacket.slice(20, 28)),
+        sender: encodedPacket.slice(2+26, 2+26+64),
+        dstEid: Number('0x' + encodedPacket.slice(2+90, 2+98)),
+        receiver: encodedPacket.slice(2+98, 2+98+64),
+        guid: encodedPacket.slice(2+162, 2+162+64),
+        message: encodedPacket.slice(2+226),
+    };
+}
 
     private decodeHeader(encodedHeader: string): any {
         const version = encodedHeader.slice(2, 2 + 2);
@@ -366,4 +406,4 @@ async function getConfigData(recieveULN302: RecieveULN302, dvn: string, remoteEi
     }
 }
 
-void new CombinedWorker().run();
+void new LayerZeroWorker().run();
