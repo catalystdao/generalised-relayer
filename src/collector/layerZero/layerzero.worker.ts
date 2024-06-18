@@ -14,14 +14,12 @@ import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface } from 'src/contracts/LayerZeroEnpointV2';
 
-const layerZeroChainIdToChainId: Record<number, string> = {
-    40232: "11155420",
-    40243: "168587773",
-    40245: "84532",
-};
+interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
+    layerZeroChainIdMap: Record<number, string>;
+}
 
 class CombinedWorker {
-    private readonly config: LayerZeroWorkerData;
+    private readonly config: LayerZeroWorkerDataWithMapping;
     private readonly chainId: string;
     private readonly store: Store;
     private readonly provider: JsonRpcProvider;
@@ -33,12 +31,14 @@ class CombinedWorker {
     private readonly recieveULN302Interface: RecieveULN302Interface;
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
+    private readonly layerZeroChainIdMap: Record<number, string>;
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
     constructor() {
-        this.config = workerData as LayerZeroWorkerData;
+        this.config = workerData as LayerZeroWorkerDataWithMapping;
         this.chainId = this.config.chainId;
+        this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
         this.store = new Store(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
@@ -135,29 +135,18 @@ class CombinedWorker {
         await this.store.quit();
     }
 
-    private async queryAndProcessEvents(
-        fromBlock: number,
-        toBlock: number
-    ): Promise<void> {
-
+    private async queryAndProcessEvents(fromBlock: number, toBlock: number): Promise<void> {
         const logs = await this.queryLogs(fromBlock, toBlock);
-
         for (const log of logs) {
             try {
                 await this.handleEvent(log);
             } catch (error) {
-                this.logger.error(
-                    { log, error },
-                    `Failed to process event on getter worker.`
-                );
+                this.logger.error({ log, error }, `Failed to process event on getter worker.`);
             }
         }
     }
 
-    private async queryLogs(
-        fromBlock: number,
-        toBlock: number
-    ): Promise<Log[]> {
+    private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const filterPacketSent = {
             address: this.bridgeAddress,
             topics: this.filterTopics[0],
@@ -166,7 +155,7 @@ class CombinedWorker {
         };
         const filterPayloadVerified = {
             address: this.receiverAddress,
-            topics: this.filterTopics[1],  // Cambiado de filterTopics[0] a filterTopics[1] si es necesario
+            topics: this.filterTopics[1],
             fromBlock,
             toBlock
         };
@@ -199,7 +188,7 @@ class CombinedWorker {
     
         return (logsPacketSent ?? []).concat(logsPayloadVerified ?? []);
     }
-    
+
     // Event handlers
     // ********************************************************************************************
 
@@ -307,7 +296,7 @@ class CombinedWorker {
                         messageCtx: '0x',
                     };
                     this.logger.info({ proofHash }, `LayerZero proof found.`);
-                    await this.store.submitProof(layerZeroChainIdToChainId[decodedHeader.dstEid]!, ambPayload);
+                    await this.store.submitProof(this.layerZeroChainIdMap[decodedHeader.dstEid]!, ambPayload);
                 }
             } catch (error) {
                 this.logger.error({ error: tryErrorToString(error) }, 'Error during configuration verification.');

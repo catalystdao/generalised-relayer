@@ -63,6 +63,16 @@ function loadGlobalLayerZeroConfig(
   };
 }
 
+function loadLayerZeroChainIdMap(
+  workerDataArray: LayerZeroWorkerData[],
+): Record<number, string> {
+  const layerZeroChainIdMap: Record<number, string> = {};
+  for (const workerData of workerDataArray) {
+    layerZeroChainIdMap[workerData.layerZeroChainId] = workerData.chainId;
+  }
+  return layerZeroChainIdMap;
+}
+
 async function loadWorkerData(
   configService: ConfigService,
   monitorService: MonitorService,
@@ -106,7 +116,6 @@ async function loadWorkerData(
     }
     if (incentivesAddress == undefined) {
       throw Error(
-
         `Failed to load Layer Zero module: 'incentivesAddress' missing`,
       );
     }
@@ -152,6 +161,7 @@ export default async (moduleInterface: CollectorModuleInterface) => {
 
   const workers: Record<string, Worker | null> = {};
 
+  const workerDataArray: LayerZeroWorkerData[] = [];
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const workerData = await loadWorkerData(
       configService,
@@ -160,8 +170,15 @@ export default async (moduleInterface: CollectorModuleInterface) => {
       chainConfig,
       globalLayerZeroConfig,
     );
+    workerDataArray.push(workerData);
+  }
+
+  const layerZeroChainIdMap = loadLayerZeroChainIdMap(workerDataArray);
+  loggerService.info({ layerZeroChainIdMap }, 'Layer Zero Chain ID Map loaded.');
+
+  for (const workerData of workerDataArray) {
     const worker = new Worker(
-      join(__dirname, 'layerzero.worker.js'),
+      join(__dirname, 'layerZero.worker.js'),
       {
         workerData: workerData,
         transferList: [workerData.monitorPort],
@@ -173,9 +190,9 @@ export default async (moduleInterface: CollectorModuleInterface) => {
       loggerService.fatal(error, 'Error on Layer Zero Worker.'),
     );
     worker.on('exit', (exitCode) => {
-      workers[chainId] = null;
+      workers[workerData.chainId] = null;
       loggerService.info(
-        { exitCode, chainId },
+        { exitCode, chainId: workerData.chainId },
         `Layer Zero Worker exited.`,
       );
     });
