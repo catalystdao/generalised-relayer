@@ -31,7 +31,6 @@ class CombinedWorker {
     private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
     private readonly recieveULN302: RecieveULN302;
     private readonly recieveULN302Interface: RecieveULN302Interface;
-    private readonly incentivesAddress: string;
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
     private currentStatus: MonitorStatus | null = null;
@@ -58,7 +57,6 @@ class CombinedWorker {
                 zeroPadValue(this.receiverAddress, 32),
             ]
         ];
-        this.incentivesAddress = this.config.incentivesAddress;
         this.resolver = this.loadResolver(this.config.resolver, this.provider, this.logger);
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
@@ -68,7 +66,7 @@ class CombinedWorker {
 
     private initializeLogger(chainId: string): pino.Logger {
         return pino(this.config.loggerOptions).child({
-            worker: 'collector-layerzero',
+            worker: 'combined-layerzero-worker',
             chain: chainId,
         });
     }
@@ -137,114 +135,155 @@ class CombinedWorker {
         await this.store.quit();
     }
 
-    private async queryAndProcessEvents(fromBlock: number, toBlock: number): Promise<void> {
+    private async queryAndProcessEvents(
+        fromBlock: number,
+        toBlock: number
+    ): Promise<void> {
+
         const logs = await this.queryLogs(fromBlock, toBlock);
+
         for (const log of logs) {
             try {
-                if (log.topics[0] === this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash) {
-                    await this.handlePacketSentEvent(log);
-                } else if (log.topics[0] === this.recieveULN302Interface.getEvent('PayloadVerified').topicHash) {
-                    await this.handlePayloadVerifiedEvent(log);
-                }
+                await this.handleEvent(log);
             } catch (error) {
-                this.logger.error({ log, error }, `Failed to process event on Combined Layer Zero Worker.`);
+                this.logger.error(
+                    { log, error },
+                    `Failed to process event on getter worker.`
+                );
             }
         }
     }
 
-    private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
-        const filter = {
-            address: [this.bridgeAddress, this.receiverAddress],
-            topics: this.filterTopics,
+    private async queryLogs(
+        fromBlock: number,
+        toBlock: number
+    ): Promise<Log[]> {
+        const filterPacketSent = {
+            address: this.bridgeAddress,
+            topics: this.filterTopics[0],
             fromBlock,
-            toBlock,
+            toBlock
         };
-        let logs: Log[] | undefined;
+        const filterPayloadVerified = {
+            address: this.receiverAddress,
+            topics: this.filterTopics[1],  // Cambiado de filterTopics[0] a filterTopics[1] si es necesario
+            fromBlock,
+            toBlock
+        };
+    
+        let logsPacketSent: Log[] | undefined;
+        let logsPayloadVerified: Log[] | undefined;
+    
         let i = 0;
-        while (logs === undefined) {
+        while (logsPacketSent == undefined || logsPayloadVerified == undefined) {
             try {
-                logs = await this.provider.getLogs(filter);
+                if (logsPacketSent == undefined) {
+                    logsPacketSent = await this.provider.getLogs(filterPacketSent);
+                }
+                if (logsPayloadVerified == undefined) {
+                    logsPayloadVerified = await this.provider.getLogs(filterPayloadVerified);
+                }
             } catch (error) {
                 i++;
                 this.logger.warn(
-                    { ...filter, error: tryErrorToString(error), try: i },
-                    `Failed to 'getLogs' on Combined Layer Zero Worker. Worker blocked until successful query.`,
+                    { ...filterPacketSent, error: tryErrorToString(error), try: i },
+                    `Failed to 'getLogs' for PacketSent. Worker blocked until successful query.`
+                );
+                this.logger.warn(
+                    { ...filterPayloadVerified, error: tryErrorToString(error), try: i },
+                    `Failed to 'getLogs' for PayloadVerified. Worker blocked until successful query.`
                 );
                 await wait(this.config.retryInterval);
             }
         }
-        return logs;
+    
+        return (logsPacketSent ?? []).concat(logsPayloadVerified ?? []);
     }
-
+    
     // Event handlers
     // ********************************************************************************************
 
-    private async handlePacketSentEvent(log: Log): Promise<void> {
-        this.logger.info(`Processing log: ${JSON.stringify(log)}`);
-        try {
-            const decodedLog = new ethers.Interface([
-                'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',
-            ]).parseLog(log);
-            if (decodedLog !== null) {
-                const encodedPacket = decodedLog.args['encodedPacket'];
-                const options = decodedLog.args['options'];
-                const sendLibrary = decodedLog.args['sendLibrary'];
-                const packet = this.decodePacket(encodedPacket);
-                const decodedMessage = ParsePayload(packet.message);
-                if (decodedMessage === undefined) {
-                    throw new Error('Failed to decode message payload.');
-                }
-                this.logger.info(
-                    { transactionHash: log.transactionHash, packet, options, sendLibrary },
-                    'PacketSent event processed.',
+    private async handleEvent(log: Log): Promise<void> {
+        let parsedLog: LogDescription | null = null;
+
+        if (log.address === this.bridgeAddress) {
+            parsedLog = this.layerZeroEnpointV2Interface.parseLog(log);
+        } else if (log.address === this.receiverAddress) {
+            parsedLog = this.recieveULN302Interface.parseLog(log);
+        }
+
+        if (parsedLog == null) {
+            this.logger.error(
+                { topics: log.topics, data: log.data },
+                `Failed to parse event.`,
+            );
+            return;
+        }
+
+        switch (parsedLog.name) {
+            case 'PacketSent':
+                await this.handlePacketSentEvent(log, parsedLog);
+                break;
+
+            case 'PayloadVerified':
+                await this.handlePayloadVerifiedEvent(log, parsedLog);
+                break;
+
+            default:
+                this.logger.warn(
+                    { name: parsedLog.name, topic: parsedLog.topic },
+                    `Event with unknown name/topic received.`,
                 );
-                if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
-                    this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
-                    const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
-                    await this.store.setAmb({
-                        messageIdentifier: decodedMessage.messageIdentifier,
-                        amb: 'layerZero',
-                        sourceChain: packet.srcEid,
-                        destinationChain: packet.dstEid,
-                        sourceEscrow: packet.sender,
-                        payload: decodedMessage.message,
-                        recoveryContext: '0x',
-                        blockNumber: log.blockNumber,
-                        transactionBlockNumber,
-                        blockHash: log.blockHash,
-                        transactionHash: log.transactionHash,
-                    }, log.transactionHash);
-                    const payloadHash = this.calculatePayloadHash(packet.guid, packet.message);
-                    await this.store.setPayloadLayerZeroAmb(payloadHash, {
-                        messageIdentifier: decodedMessage.messageIdentifier,
-                        destinationChain: packet.dstEid,
-                        payload: encodedPacket,
-                    });
-                    this.logger.info(
-                        { payloadHash, transactionHash: log.transactionHash },
-                        'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb.',
-                    );
-                }
-            }
-        } catch (error) {
-            this.logger.error({ error: tryErrorToString(error), log }, 'Error processing PacketSent event.');
         }
     }
 
-    private async handlePayloadVerifiedEvent(log: Log): Promise<void> {
-        const parsedLog = this.recieveULN302Interface.parseLog(log);
-        if (parsedLog === null) {
-            this.logger.error({ topics: log.topics, data: log.data }, `Failed to parse a PayloadVerified event.`);
-            return;
+    private async handlePacketSentEvent(log: Log, parsedLog: LogDescription): Promise<void> {
+        const decodedLog = parsedLog.args;
+        const encodedPacket = decodedLog['encodedPacket'];
+        const options = decodedLog['options'];
+        const sendLibrary = decodedLog['sendLibrary'];
+        const packet = this.decodePacket(encodedPacket);
+        const decodedMessage = ParsePayload(packet.message);
+
+        if (decodedMessage === undefined) {
+            throw new Error('Failed to decode message payload.');
         }
-        if (parsedLog.name !== 'PayloadVerified') {
-            this.logger.warn({ name: parsedLog.name, topic: parsedLog.topic }, `Event with unknown name/topic received.`);
-            return;
+
+        this.logger.info(
+            { transactionHash: log.transactionHash, packet, options, sendLibrary },
+            'PacketSent event processed.',
+        );
+
+        if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
+            this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
+            const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
+            await this.store.setAmb({
+                messageIdentifier: decodedMessage.messageIdentifier,
+                amb: 'layerZero',
+                sourceChain: packet.srcEid,
+                destinationChain: packet.dstEid,
+                sourceEscrow: packet.sender,
+                payload: decodedMessage.message,
+                recoveryContext: '0x',
+                blockNumber: log.blockNumber,
+                transactionBlockNumber,
+                blockHash: log.blockHash,
+                transactionHash: log.transactionHash,
+            }, log.transactionHash);
+            const payloadHash = this.calculatePayloadHash(packet.guid, packet.message);
+            await this.store.setPayloadLayerZeroAmb(payloadHash, {
+                messageIdentifier: decodedMessage.messageIdentifier,
+                destinationChain: packet.dstEid,
+                payload: encodedPacket,
+            });
+            this.logger.info(
+                { payloadHash, transactionHash: log.transactionHash },
+                'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb.',
+            );
         }
-        await this.handleDecodedPayloadVerifiedEvent(log, parsedLog);
     }
 
-    private async handleDecodedPayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
+    private async handlePayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
         if (decodedHeader.sender.toLowerCase() === this.config.incentivesAddress.toLowerCase()) {

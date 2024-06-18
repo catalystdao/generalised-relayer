@@ -106,6 +106,7 @@ async function loadWorkerData(
     }
     if (incentivesAddress == undefined) {
       throw Error(
+
         `Failed to load Layer Zero module: 'incentivesAddress' missing`,
       );
     }
@@ -159,7 +160,6 @@ export default async (moduleInterface: CollectorModuleInterface) => {
       chainConfig,
       globalLayerZeroConfig,
     );
-
     const worker = new Worker(
       join(__dirname, 'layerzero.worker.js'),
       {
