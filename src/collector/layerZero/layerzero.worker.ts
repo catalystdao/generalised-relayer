@@ -110,7 +110,7 @@ class LayerZeroWorker {
         this.logger.info('fromBlock initialized.');
         const stopBlock = this.config.stoppingBlock ?? Infinity;
         this.logger.info(`Stop block set to ${stopBlock}`);
-        while (true) {
+        while (true) {;
             try {
                 let toBlock = this.currentStatus?.blockNumber;
                 if (!toBlock || fromBlock > toBlock) {
@@ -233,6 +233,7 @@ class LayerZeroWorker {
     }
 
     private async handlePacketSentEvent(log: Log): Promise<void> {
+        debugger;
         try {
             const decodedLog = new ethers.Interface([
                 'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',

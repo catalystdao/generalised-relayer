@@ -44,11 +44,6 @@ function loadGlobalLayerZeroConfig(
   configService: ConfigService,
 ): GlobalLayerZeroConfig {
   const layerZeroConfig = configService.ambsConfig.get('layerZero');
-  if (layerZeroConfig == undefined) {
-    throw Error(
-      `Failed to load Layer Zero module: 'layerZero' configuration not found.`,
-    );
-  }
 
   const getterConfig = configService.globalConfig.getter;
   const retryInterval =
@@ -95,45 +90,31 @@ async function loadWorkerData(
   const chainId = chainConfig.chainId;
   const rpc = chainConfig.rpc;
   try {
-    const layerZeroChainId: number | undefined =
+
+    const layerZeroChainId: number =
       configService.getAMBConfig<number>(
         'layerZero',
         'layerZeroChainId',
         chainId.toString(),
       );
-    const bridgeAddress: string | undefined =
+    const bridgeAddress: string  =
       configService.getAMBConfig<string>(
         'layerZero',
         'bridgeAddress',
         chainId.toString(),
       );
-    const incentivesAddress: string | undefined =
+    const incentivesAddress: string=
       configService.getAMBConfig<string>(
         'layerZero',
         'incentivesAddress',
         chainId.toString(),
       );
-    const receiverAddress: string | undefined = configService.getAMBConfig(
+    const receiverAddress: string= configService.getAMBConfig(
       'layerZero',
       'receiverAddress',
       chainId.toString(),
     );
-    if (layerZeroChainId == undefined) {
-      throw Error(
-        `Failed to load Layer Zero module: 'layerZeroChainId' missing`,
-      );
-    }
-    if (bridgeAddress == undefined) {
-      throw Error(`Failed to load Layer Zero module: 'bridgeAddress' missing`);
-    }
-    if (incentivesAddress == undefined) {
-      throw Error(
-        `Failed to load Layer Zero module: 'incentivesAddress' missing`,
-      );
-    }
-    if (receiverAddress == undefined) {
-      throw Error(`Failed to load Layer Zero module: 'receiverAddress' missing`);
-    }
+    
 
     const port1 = await monitorService.attachToMonitor(chainId);
 
@@ -169,19 +150,18 @@ async function loadWorkerData(
 // Main function for initializing Layer Zero worker.
 export default async (moduleInterface: CollectorModuleInterface) => {
   const { configService, monitorService, loggerService } = moduleInterface;
-
+  if (configService.ambsConfig.get('layerZero') == undefined) {
+    loggerService.warn(
+      'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
+    );
+    return ;
+  }
   const globalLayerZeroConfig = loadGlobalLayerZeroConfig(configService);
 
   const workers: Record<string, Worker | null> = {};
 
   const workerDataArray: LayerZeroWorkerData[] = [];
 
-  if (workerDataArray.length === 0) {
-    loggerService.warn(
-      'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
-    );
-    return;
-  }
 
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const workerData = await loadWorkerData(
@@ -191,7 +171,10 @@ export default async (moduleInterface: CollectorModuleInterface) => {
       chainConfig,
       globalLayerZeroConfig,
     );
+
+      if (workerData.layerZeroChainId !== undefined) {
     workerDataArray.push(workerData);
+  }
   }
 
 
