@@ -7,35 +7,41 @@ import pino from 'pino';
 import { Store } from 'src/store/store.lib';
 import { Bounty } from 'src/store/types/store.types';
 import { BountyStatus } from 'src/store/types/bounty.enum';
-import { IncentivizedMessageEscrow } from 'src/contracts';
+import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { tryErrorToString } from 'src/common/utils';
-import { BytesLike, MaxUint256, zeroPadValue } from 'ethers6';
+import { AbstractProvider, BytesLike, MaxUint256, TransactionRequest, zeroPadValue } from 'ethers6';
 import { ParsePayload, MessageContext } from 'src/payload/decode.payload';
 import { PricingInterface } from 'src/pricing/pricing.interface';
 import { WalletInterface } from 'src/wallet/wallet.interface';
+import { Resolver } from 'src/resolvers/resolver';
+import { IncentivizedMockEscrowInterface } from 'src/contracts/IncentivizedMockEscrow';
 
 const DECIMAL_BASE = 10000;
 const DECIMAL_BASE_BIG_INT = BigInt(DECIMAL_BASE);
 
 export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
-    readonly relayerAddress: string;
+    readonly paddedRelayerAddress: string;
+    private readonly escrowInterface: IncentivizedMockEscrowInterface;
 
     private readonly profitabilityFactor: bigint;
 
     constructor(
         retryInterval: number,
         maxTries: number,
-        relayerAddress: string,
+        private readonly relayerAddress: string,
+        private readonly resolver: Resolver,
         private readonly store: Store,
-        private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
+        private readonly incentivesContracts: Map<string, string>,
         private readonly chainId: string,
         private readonly evaluationConfig: BountyEvaluationConfig,
         private readonly pricing: PricingInterface,
+        private readonly provider: AbstractProvider,
         private readonly wallet: WalletInterface,
         private readonly logger: pino.Logger,
     ) {
         super(retryInterval, maxTries);
-        this.relayerAddress = zeroPadValue(relayerAddress, 32);
+        this.paddedRelayerAddress = zeroPadValue(relayerAddress, 32);
+        this.escrowInterface = IncentivizedMockEscrow__factory.createInterface();
         this.profitabilityFactor = BigInt(this.evaluationConfig.profitabilityFactor * DECIMAL_BASE);
     }
 
@@ -72,18 +78,34 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             }
         }
 
-        const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
-        const gasEstimation = await contract.processPacket.estimateGas(
+        const contractAddress = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
+
+        const transactionData = this.escrowInterface.encodeFunctionData("processPacket", [
             order.messageCtx,
             order.message,
-            this.relayerAddress,
-        );
+            this.paddedRelayerAddress,
+        ]);
 
-        const submitRelay = await this.evaluateRelaySubmission(gasEstimation, bounty, order);
+        const transactionRequest: TransactionRequest = {
+            from: this.relayerAddress,
+            to: contractAddress,
+            data: transactionData,
+        }
+
+        const gasEstimation = await this.provider.estimateGas(transactionRequest);
+        const additionalFeeEstimation = await this.resolver.estimateAdditionalFee(transactionRequest);
+
+        const submitRelay = await this.evaluateRelaySubmission(
+            gasEstimation,
+            additionalFeeEstimation,
+            bounty,
+            order
+        );
 
         if (submitRelay) {
             // Move the order to the submit queue
-            return { result: { ...order, gasLimit: gasEstimation, isDelivery } };
+            transactionRequest.gasLimit = gasEstimation;
+            return { result: { ...order, transactionRequest, isDelivery } };
         } else {
             // Request the order to be retried in the future.
             order.retryEvaluation = true;
@@ -129,7 +151,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         };
 
         if (success) {
-            if (result?.gasLimit != null && result.gasLimit > 0) {
+            if (result != null) {
                 this.logger.info(
                     orderDescription,
                     `Successful bounty evaluation: submit order.`,
@@ -166,6 +188,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
     private async evaluateRelaySubmission(
         gasEstimation: bigint,
+        additionalFeeEstimation: bigint,
         bounty: Bounty,
         order: EvalOrder,
     ): Promise<boolean> {
@@ -189,7 +212,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 return true;
             }
 
-            return this.evaluateDeliverySubmission(gasEstimation, bounty);
+            return this.evaluateDeliverySubmission(gasEstimation, additionalFeeEstimation, bounty);
         } else {
             // Destination to Source
             if (order.priority) {
@@ -206,12 +229,13 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 return true;
             }
 
-            return this.evaluateAckSubmission(gasEstimation, bounty, order.incentivesPayload);
+            return this.evaluateAckSubmission(gasEstimation, additionalFeeEstimation, bounty, order.incentivesPayload);
         }
     }
 
     private async evaluateDeliverySubmission(
         deliveryGasEstimation: bigint,
+        additionalFeeEstimation: bigint,
         bounty: Bounty
     ): Promise<boolean> {
         
@@ -220,7 +244,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
         const deliveryCost = this.calcGasCost(              // ! In destination chain gas value
             deliveryGasEstimation,
-            destinationGasPrice
+            destinationGasPrice,
+            additionalFeeEstimation
         );
 
         const deliveryReward = this.calcGasReward(          // ! In source chain gas value
@@ -288,6 +313,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
     private async evaluateAckSubmission(
         ackGasEstimation: bigint,
+        additionalFeeEstimation: bigint,
         bounty: Bounty,
         incentivesPayload?: BytesLike,
     ): Promise<boolean> {
@@ -297,7 +323,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
 
         const ackCost = this.calcGasCost(           // ! In source chain gas value
             ackGasEstimation,
-            sourceGasPrice
+            sourceGasPrice,
+            additionalFeeEstimation
         );
 
         const ackReward = this.calcGasReward(       // ! In source chain gas value
@@ -369,8 +396,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     private calcGasCost(
         gas: bigint,
         gasPrice: bigint,
+        additionalFee?: bigint,
     ): bigint {
-        return gas * gasPrice;
+        return gas * gasPrice + (additionalFee ?? 0n);
     }
 
     private calcGasReward(

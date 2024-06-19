@@ -51,7 +51,7 @@ interface GlobalSubmitterConfig {
 export interface SubmitterWorkerData {
     chainId: string;
     rpc: string;
-    relayerPrivateKey: string;
+    resolver: string | null;
     incentivesAddresses: Map<string, string>;
     newOrdersDelay: number;
     retryInterval: number;
@@ -200,7 +200,6 @@ export class SubmitterService {
     ): Promise<SubmitterWorkerData> {
         const chainId = chainConfig.chainId;
         const rpc = chainConfig.rpc;
-        const relayerPrivateKey = this.configService.globalConfig.privateKey;
 
         const incentivesAddresses = new Map<string, string>();
         this.configService.ambsConfig.forEach((amb) => {
@@ -216,7 +215,7 @@ export class SubmitterService {
         return {
             chainId,
             rpc,
-            relayerPrivateKey,
+            resolver: chainConfig.resolver,
             incentivesAddresses,
 
             newOrdersDelay:
