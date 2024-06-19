@@ -36,6 +36,7 @@ export interface LayerZeroWorkerData {
   receiverAddress: string;
   monitorPort: MessagePort;
   loggerOptions: LoggerOptions;
+  incentivesAddresses: Record<number, string>;
 }
 
 // Function to load global configuration settings specific to Layer Zero.
@@ -72,6 +73,16 @@ function loadLayerZeroChainIdMap(
     layerZeroChainIdMap[workerData.layerZeroChainId] = workerData.chainId;
   }
   return layerZeroChainIdMap;
+}
+
+function loadIncentivesAddresses(
+  workerDataArray: LayerZeroWorkerData[],
+): Record<string, string> {
+  const incentivesAddresses: Record<string, string> = {};
+  for (const workerData of workerDataArray) {
+    incentivesAddresses[workerData.layerZeroChainId] = workerData.incentivesAddress;
+  }
+  return incentivesAddresses;
 }
 
 async function loadWorkerData(
@@ -144,6 +155,7 @@ async function loadWorkerData(
       receiverAddress,
       monitorPort: port1,
       loggerOptions: loggerService.loggerOptions,
+      incentivesAddresses: {},
     };
   } catch (error) {
     loggerService.error(
@@ -173,7 +185,7 @@ export default async (moduleInterface: CollectorModuleInterface) => {
     );
     workerDataArray.push(workerData);
   }
-  
+
   if (workerDataArray.length === 0) {
     loggerService.warn(
       'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
@@ -182,11 +194,13 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   }
 
   const layerZeroChainIdMap = loadLayerZeroChainIdMap(workerDataArray);
+  const incentivesAddresses = loadIncentivesAddresses(workerDataArray);  
+
   loggerService.info({ layerZeroChainIdMap }, 'Layer Zero Chain ID Map loaded.');
 
   for (const workerData of workerDataArray) {
     // Attach the mapping to each worker data
-    const workerDataWithMapping = { ...workerData, layerZeroChainIdMap };
+    const workerDataWithMapping = { ...workerData, layerZeroChainIdMap, incentivesAddresses };  // Modify this line
     const worker = new Worker(
       join(__dirname, 'layerZero.worker.js'),
       {

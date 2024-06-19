@@ -33,6 +33,7 @@ class LayerZeroWorker {
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
     private readonly layerZeroChainIdMap: Record<number, string>;
+    private readonly incentivesAddresses: Record<string, string>;  
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
@@ -40,6 +41,7 @@ class LayerZeroWorker {
         this.config = workerData as LayerZeroWorkerDataWithMapping;
         this.chainId = this.config.chainId;
         this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
+        this.incentivesAddresses = this.config.incentivesAddresses;
         this.store = new Store(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
@@ -246,8 +248,8 @@ class LayerZeroWorker {
     
             // Decode the packet details
             const packet = this.decodePacket(encodedPacket);
-            const srcEidMapped = this.layerZeroChainIdMap[packet.srcEid];
-            const dstEidMapped = this.layerZeroChainIdMap[packet.dstEid];
+            const srcEidMapped = this.layerZeroChainIdMap[Number(packet.srcEid)];
+            const dstEidMapped = this.layerZeroChainIdMap[Number(packet.dstEid)];
             const decodedMessage = ParsePayload(packet.message);
             if (decodedMessage === undefined) {
                 throw new Error('Failed to decode message payload.');
@@ -260,7 +262,7 @@ class LayerZeroWorker {
                 'PacketSent event found.',
             );
     
-            if (paddedToOxAddress(packet.sender) === this.config.incentivesAddress) {
+            if (paddedToOxAddress(packet.sender) === this.incentivesAddresses[srcEidMapped]) { 
                 this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
     
                 try {
@@ -308,11 +310,12 @@ class LayerZeroWorker {
     private async handlePayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
-        const dstEidMapped = this.layerZeroChainIdMap[decodedHeader.dstEid];
-        if (dstEidMapped === undefined) {
+        const srcEidMapped = this.layerZeroChainIdMap[Number(decodedHeader.srcEid)];
+        const dstEidMapped = this.layerZeroChainIdMap[Number(decodedHeader.dstEid)];
+        if (srcEidMapped === undefined || dstEidMapped === undefined) {
             throw new Error('Failed to map srcEidMapped or dstEidMapped.');
         }
-        if (decodedHeader.sender.toLowerCase() === this.config.incentivesAddress.toLowerCase()) {
+        if (decodedHeader.sender.toLowerCase() === this.incentivesAddresses[srcEidMapped]?.toLowerCase()) {  // Modify this line
             this.logger.info({ dvn, decodedHeader, confirmations, proofHash }, 'PayloadVerified event decoded.');
             const payloadData = await this.store.getAmbByPayloadHash(proofHash);
             if (!payloadData) {
