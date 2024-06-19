@@ -175,6 +175,14 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   const workers: Record<string, Worker | null> = {};
 
   const workerDataArray: LayerZeroWorkerData[] = [];
+
+  if (workerDataArray.length === 0) {
+    loggerService.warn(
+      'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
+    );
+    return;
+  }
+
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const workerData = await loadWorkerData(
       configService,
@@ -186,12 +194,6 @@ export default async (moduleInterface: CollectorModuleInterface) => {
     workerDataArray.push(workerData);
   }
 
-  if (workerDataArray.length === 0) {
-    loggerService.warn(
-      'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
-    );
-    return;
-  }
 
   const layerZeroChainIdMap = loadLayerZeroChainIdMap(workerDataArray);
   const incentivesAddresses = loadIncentivesAddresses(workerDataArray);  
