@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from "ethers6";
+import { JsonRpcProvider, TransactionRequest } from "ethers6";
 import pino from "pino";
 
 export const RESOLVER_TYPE_DEFAULT = 'default';
@@ -78,4 +78,10 @@ export class Resolver {
     ): Promise<number> {
         return new Promise((resolve) => resolve(observedBlockNumber));
     };
+
+    estimateAdditionalFee(
+        _transactionRequest: TransactionRequest
+    ): Promise<bigint> {
+        return new Promise((resolve) => resolve(0n));
+    }
 }

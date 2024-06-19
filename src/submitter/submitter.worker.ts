@@ -1,12 +1,6 @@
-import {
-    BytesLike,
-    JsonRpcProvider,
-    Wallet,
-} from 'ethers6';
+import { BytesLike, JsonRpcProvider } from 'ethers6';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
-import { IncentivizedMessageEscrow } from 'src/contracts';
-import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/IncentivizedMessageEscrow__factory';
 import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
@@ -17,6 +11,7 @@ import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 import { PricingInterface } from 'src/pricing/pricing.interface';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
 
 class SubmitterWorker {
     private readonly store: Store;
@@ -25,9 +20,10 @@ class SubmitterWorker {
     private readonly config: SubmitterWorkerData;
 
     private readonly provider: JsonRpcProvider;
-    private readonly signer: Wallet;
 
     private readonly chainId: string;
+
+    private readonly resolver: Resolver;
 
     private readonly pricing: PricingInterface;
     private readonly wallet: WalletInterface;
@@ -51,7 +47,12 @@ class SubmitterWorker {
         this.provider = new JsonRpcProvider(this.config.rpc, undefined, {
             staticNetwork: true,
         });
-        this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
+
+        this.resolver = loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
 
         this.pricing = new PricingInterface(this.config.pricingPort);
         this.wallet = new WalletInterface(this.config.walletPort);
@@ -61,8 +62,9 @@ class SubmitterWorker {
                 this.config.retryInterval,
                 this.config.maxTries,
                 this.config.walletPublicKey,
+                this.resolver,
                 this.store,
-                this.loadIncentivesContracts(this.config.incentivesAddresses),
+                this.config.incentivesAddresses,
                 this.config.chainId,
                 {
                     evaluationRetryInterval: this.config.evaluationRetryInterval,
@@ -78,6 +80,7 @@ class SubmitterWorker {
                     profitabilityFactor: this.config.profitabilityFactor,
                 },
                 this.pricing,
+                this.provider,
                 this.wallet,
                 this.logger,
             );
@@ -101,11 +104,13 @@ class SubmitterWorker {
         retryInterval: number,
         maxTries: number,
         walletPublicKey: string,
+        resolver: Resolver,
         store: Store,
-        incentivesContracts: Map<string, IncentivizedMessageEscrow>,
+        incentivesContracts: Map<string, string>,
         chainId: string,
         bountyEvaluationConfig: BountyEvaluationConfig,
         pricing: PricingInterface,
+        provider: JsonRpcProvider,
         wallet: WalletInterface,
         logger: pino.Logger,
     ): [EvalQueue, SubmitQueue] {
@@ -113,11 +118,13 @@ class SubmitterWorker {
             retryInterval,
             maxTries,
             walletPublicKey,
+            resolver,
             store,
             incentivesContracts,
             chainId,
             bountyEvaluationConfig,
             pricing,
+            provider,
             wallet,
             logger,
         );
@@ -126,9 +133,8 @@ class SubmitterWorker {
             retryInterval,
             maxTries,
             store,
-            incentivesContracts,
-            walletPublicKey,
             chainId,
+            provider,
             wallet,
             logger,
         );
@@ -157,26 +163,10 @@ class SubmitterWorker {
         setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
-    private loadIncentivesContracts(
-        incentivesAddresses: Map<string, string>,
-    ): Map<string, IncentivizedMessageEscrow> {
-        const incentivesContracts = new Map<string, IncentivizedMessageEscrow>();
-
-        incentivesAddresses.forEach((address: string, amb: string) => {
-            const contract = IncentivizedMessageEscrow__factory.connect(
-                address,
-                this.signer,
-            );
-            incentivesContracts.set(amb, contract);
-        });
-
-        return incentivesContracts;
-    }
-
     /***************  Main Logic Loop.  ***************/
 
     async run(): Promise<void> {
-        this.logger.debug({ relayer: this.signer.address }, `Relaying messages.`);
+        this.logger.debug({ relayer: this.config.walletPublicKey }, `Relaying messages.`);
 
         // Initialize the queues
         await this.evalQueue.init();
