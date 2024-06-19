@@ -173,6 +173,13 @@ export default async (moduleInterface: CollectorModuleInterface) => {
     );
     workerDataArray.push(workerData);
   }
+  
+  if (workerDataArray.length === 0) {
+    loggerService.warn(
+      'Skipping Layer Zero worker initialization: no Layer Zero chain configs found',
+    );
+    return;
+  }
 
   const layerZeroChainIdMap = loadLayerZeroChainIdMap(workerDataArray);
   loggerService.info({ layerZeroChainIdMap }, 'Layer Zero Chain ID Map loaded.');
@@ -183,7 +190,6 @@ export default async (moduleInterface: CollectorModuleInterface) => {
     const worker = new Worker(
       join(__dirname, 'layerZero.worker.js'),
       {
-        execArgv: ['--inspect'],
         workerData: workerDataWithMapping,
         transferList: [workerData.monitorPort],
       },

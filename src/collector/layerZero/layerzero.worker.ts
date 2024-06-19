@@ -5,7 +5,7 @@ import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layerZero';
 import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface';
 import { RecieveULN302__factory } from 'src/contracts/factories/RecieveULN302__factory';
-import { wait, tryErrorToString, paddedToNormalAddress } from 'src/common/utils';
+import { wait, tryErrorToString, paddedToOxAddress } from 'src/common/utils';
 import { RecieveULN302, RecieveULN302Interface, UlnConfigStruct, UlnConfigStructOutput } from 'src/contracts/RecieveULN302';
 import { AmbPayload } from 'src/store/types/store.types';
 import { BigNumber } from 'ethers';
@@ -215,7 +215,6 @@ class LayerZeroWorker {
 
         switch (parsedLog.name) {
             case 'PacketSent':
-                debugger;
                 await this.handlePacketSentEvent(log);
                 break;
 
@@ -232,7 +231,6 @@ class LayerZeroWorker {
     }
 
     private async handlePacketSentEvent(log: Log): Promise<void> {
-        debugger;
         try {
             const decodedLog = new ethers.Interface([
                 'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',
@@ -262,7 +260,7 @@ class LayerZeroWorker {
                 'PacketSent event found.',
             );
     
-            if (paddedToNormalAddress(packet.sender) === this.config.incentivesAddress) {
+            if (paddedToOxAddress(packet.sender) === this.config.incentivesAddress) {
                 this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
     
                 try {
