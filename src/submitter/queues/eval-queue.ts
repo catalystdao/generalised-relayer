@@ -271,18 +271,24 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.chainId
         );
 
-        const correctedDeliveryReward = deliveryReward + maxAckLoss;
-        const deliveryFiatReward = await this.getGasCostFiatPrice(
-            correctedDeliveryReward,
+        const securedDeliveryReward = deliveryReward + maxAckLoss;
+        const securedDeliveryFiatReward = await this.getGasCostFiatPrice(
+            securedDeliveryReward,
             bounty.fromChainId
         );
 
-        const deliveryFiatProfit = (deliveryFiatReward - deliveryFiatCost) / this.evaluationConfig.profitabilityFactor;
-        const deliveryRelativeProfit = deliveryFiatProfit / deliveryFiatCost;
+        // Compute the 'deliveryFiatReward' for logging purposes (i.e. without the 'maxAckLoss' factor)
+        const securedRewardFactor = Number(
+            ((deliveryReward + maxAckLoss) * DECIMAL_BASE_BIG_INT) / (deliveryReward)
+        ) / DECIMAL_BASE;
+        const deliveryFiatReward = securedDeliveryFiatReward / securedRewardFactor;
+
+        const securedDeliveryFiatProfit = (securedDeliveryFiatReward - deliveryFiatCost) / this.evaluationConfig.profitabilityFactor;
+        const securedDeliveryRelativeProfit = securedDeliveryFiatProfit / deliveryFiatCost;
 
         const relayDelivery = (
-            deliveryFiatProfit > this.evaluationConfig.minDeliveryReward ||
-            deliveryRelativeProfit > this.evaluationConfig.relativeMinDeliveryReward
+            securedDeliveryFiatProfit > this.evaluationConfig.minDeliveryReward ||
+            securedDeliveryRelativeProfit > this.evaluationConfig.relativeMinDeliveryReward
         );
 
         this.logger.debug(
@@ -299,9 +305,10 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 maxAckLoss: maxAckLoss.toString(),
                 deliveryFiatCost: deliveryFiatCost.toString(),
                 deliveryFiatReward: deliveryFiatReward.toString(),
+                securedDeliveryFiatReward: securedDeliveryFiatReward.toString(),
                 profitabilityFactor: this.evaluationConfig.profitabilityFactor,
-                deliveryFiatProfit: deliveryFiatProfit,
-                deliveryRelativeProfit: deliveryRelativeProfit,
+                securedDeliveryFiatProfit: securedDeliveryFiatProfit,
+                securedDeliveryRelativeProfit: securedDeliveryRelativeProfit,
                 minDeliveryReward: this.evaluationConfig.minDeliveryReward,
                 relativeMinDeliveryReward: this.evaluationConfig.relativeMinDeliveryReward,
                 relayDelivery,
