@@ -1,3 +1,18 @@
+/**
+ * This file initializes and manages Layer Zero workers.
+ * 
+ * Inputs:
+ * - ConfigService: Service to fetch configuration settings.
+ * - MonitorService: Service to monitor and manage workers.
+ * - LoggerService: Service to log information and errors.
+ * - ChainConfig: Configuration settings for different chains.
+ * - CollectorModuleInterface: Interface for the collector module.
+ * 
+ * Outputs:
+ * - Initializes and manages Layer Zero worker threads.
+ * - Logs status and errors related to the worker threads.
+ */
+
 import { join } from 'path';
 import { Worker, MessagePort } from 'worker_threads';
 import { CollectorModuleInterface } from '../collector.controller';
@@ -42,7 +57,12 @@ export interface LayerZeroWorkerData {
   layerZeroChainIdMap: Record<number, string>;
 }
 
-// Function to load global configuration settings specific to Layer Zero.
+/**
+ * Loads global configuration settings specific to Layer Zero.
+ * 
+ * @param configService - Service to fetch configuration settings.
+ * @returns Global configuration settings for Layer Zero.
+ */
 function loadGlobalLayerZeroConfig(
   configService: ConfigService,
 ): GlobalLayerZeroConfig {
@@ -88,7 +108,16 @@ function loadGlobalLayerZeroConfig(
   };
 }
 
-
+/**
+ * Loads worker data for a specific chain configuration.
+ * 
+ * @param configService - Service to fetch configuration settings.
+ * @param monitorService - Service to monitor and manage workers.
+ * @param loggerService - Service to log information and errors.
+ * @param chainConfig - Configuration settings for a specific chain.
+ * @param globalConfig - Global configuration settings for Layer Zero.
+ * @returns Worker data for the specific chain or null if configuration is incomplete.
+ */
 async function loadWorkerData(
   configService: ConfigService,
   monitorService: MonitorService,
@@ -160,7 +189,11 @@ async function loadWorkerData(
   }
 }
 
-// Main function for initializing Layer Zero worker.
+/**
+ * Main function for initializing Layer Zero workers.
+ * 
+ * @param moduleInterface - Interface for the collector module.
+ */
 export default async (moduleInterface: CollectorModuleInterface) => {
   const { configService, monitorService, loggerService } = moduleInterface;
   const globalLayerZeroConfig = loadGlobalLayerZeroConfig(configService);
