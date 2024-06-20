@@ -2,7 +2,7 @@ import pino, { LoggerOptions } from 'pino';
 import { workerData, MessagePort } from 'worker_threads';
 import { JsonRpcProvider, Log, LogDescription, zeroPadValue, BytesLike, BigNumberish, keccak256, ethers } from 'ethers6';
 import { Store } from '../../store/store.lib';
-import { LayerZeroWorkerData } from './layerZero';
+import { LayerZeroWorkerData } from './layer-zero';
 import { MonitorInterface, MonitorStatus } from '../../monitor/monitor.interface';
 import { RecieveULN302__factory } from 'src/contracts/factories/RecieveULN302__factory';
 import { wait, tryErrorToString, paddedToOxAddress } from 'src/common/utils';
@@ -233,7 +233,6 @@ class LayerZeroWorker {
     }
 
     private async handlePacketSentEvent(log: Log): Promise<void> {
-        debugger;
         try {
             const decodedLog = new ethers.Interface([
                 'event PacketSent(bytes encodedPacket, bytes options, address sendLibrary)',
@@ -251,26 +250,33 @@ class LayerZeroWorker {
             const packet = this.decodePacket(encodedPacket);
             const srcEidMapped = this.layerZeroChainIdMap[Number(packet.srcEid)];
             const dstEidMapped = this.layerZeroChainIdMap[Number(packet.dstEid)];
+    
+            if (srcEidMapped === undefined || dstEidMapped === undefined) {
+                this.logger.warn(
+                    { transactionHash: log.transactionHash, packet, options, sendLibrary },
+                    'PacketSent event received, but srcEidMapped or dstEidMapped is undefined.',
+                );
+                return; 
+            }
+            debugger;
             const decodedMessage = ParsePayload(packet.message);
             if (decodedMessage === undefined) {
                 throw new Error('Failed to decode message payload.');
             }
-            if (srcEidMapped === undefined || dstEidMapped === undefined) {
-                throw new Error('Failed to map srcEidMapped or dstEidMapped.');
-            }
+    
             this.logger.info(
                 { transactionHash: log.transactionHash, packet, options, sendLibrary },
                 'PacketSent event found.',
             );
     
-            if (paddedToOxAddress(packet.sender) === this.incentivesAddresses[srcEidMapped]) { 
+            if (paddedToOxAddress(packet.sender) === this.incentivesAddresses[srcEidMapped]) {
                 this.logger.info({ sender: packet.sender, message: packet.message }, 'Processing packet from specific sender.');
     
                 try {
                     const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
                     await this.store.setAmb({
                         messageIdentifier: decodedMessage.messageIdentifier,
-                        amb: 'layerZero',
+                        amb: 'layer-zero',
                         sourceChain: srcEidMapped.toString(),
                         destinationChain: dstEidMapped.toString(),
                         sourceEscrow: packet.sender,
@@ -302,12 +308,17 @@ class LayerZeroWorker {
                     this.logger.error({ innerError, log }, 'Failed to process specific sender packet.');
                     throw innerError; 
                 }
+            } else {
+                this.logger.info(
+                    { sender: packet.sender },
+                    'PacketSent event from other sender.',
+                );
             }
         } catch (error) {
             this.logger.error({ error, log }, 'Failed to handle PacketSent event.');
         }
     }
-
+    
     private async handlePayloadVerifiedEvent(log: Log, parsedLog: LogDescription): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
@@ -331,7 +342,7 @@ class LayerZeroWorker {
                 if (isVerifiable) {
                     const ambPayload: AmbPayload = {
                         messageIdentifier: '0x' + payloadData.messageIdentifier,
-                        amb: 'layerZero',
+                        amb: 'layer-zero',
                         destinationChainId: dstEidMapped.toString(),
                         message: payloadData.payload,
                         messageCtx: '0x',
@@ -391,6 +402,7 @@ async function checkIfVerifiable(recieveULN302: RecieveULN302, config: UlnConfig
             requiredDVNs: [config.requiredDVNs.toString()],
             optionalDVNs: [],
         };
+        debugger;
         const isVerifiable = await recieveULN302.verifiable(formatConfig, headerHash, payloadHash);
         return isVerifiable;
     } catch (error) {
