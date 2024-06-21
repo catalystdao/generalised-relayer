@@ -1,6 +1,15 @@
 # Global Relayer configuration
 global:
-  privateKey: ''                        # The privateKey of the account that will be submitting the packet relays
+  # ! The 'privateKey' of the account that will be submitting the packet relays is by default
+  # ! loaded from the environment variable 'RELAYER_PRIVATE_KEY'. Alternatively, the privateKey
+  # ! may be specified here (not recommended).
+  # privateKey: ''
+  # ! Optionally, custom privateKey loaders may be implemented and specified (NOTE: the 'env' 
+  # ! loader is used if no privateKey configuration is specified):
+  # privateKey:
+  #   loader: 'env'                     # The privateKey loader name (must match the implementation on src/config/privateKeyLoaders/<loader>.ts).
+  #   customLoaderConfig: ''            # Custom loader configs may be specified.
+
   logLevel: 'info'
 
   monitor:
