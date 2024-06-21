@@ -22,6 +22,7 @@ import {
     BigNumberish,
     keccak256,
     ethers,
+    parseEther,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
@@ -41,7 +42,7 @@ import { AmbPayload } from 'src/store/types/store.types';
 import { LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
-import { LayerZeroEnpointV2Interface } from 'src/contracts/LayerZeroEnpointV2';
+import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
 
 interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
     layerZeroChainIdMap: Record<number, string>;
@@ -178,12 +179,9 @@ class LayerZeroWorker {
         while (fromBlock == null) {
             if (this.currentStatus != null) {
                 fromBlock = this.config.startingBlock ?? this.currentStatus.blockNumber;
-            } else {
-                this.logger.info('Current status is still null.');
-            }
+            } 
             await wait(this.config.processingInterval);
         }
-        this.logger.info('fromBlock initialized.');
         const stopBlock = this.config.stoppingBlock ?? Infinity;
         this.logger.info(`Stop block set to ${stopBlock}`);
         while (true) {
@@ -269,6 +267,7 @@ class LayerZeroWorker {
             fromBlock,
             toBlock,
         };
+        //TODO: USE ETHER6 TO MAKE THE CALL
         let [logsPacketSent, logsPayloadVerified]: [Log[], Log[]] =
             await Promise.all([
                 this.provider.getLogs(filterPacketSent),
@@ -341,23 +340,30 @@ class LayerZeroWorker {
         parsedLog: LogDescription,
     ): Promise<void> {
         try {
-            const encodedPacket = parsedLog.args[0] as any;
-            const options = parsedLog.args[1] as any;
-            const sendLibrary = parsedLog.args[2] as any;
+            const { 
+                encodedPayload, 
+                options, 
+                sendLibrary 
+            } = parsedLog.args as unknown as PacketSentEvent.OutputObject;
             // Decode the packet details
-            const packet = this.decodePacket(encodedPacket);
+            const packet = this.decodePacket(encodedPayload);
             const srcEidMapped = this.layerZeroChainIdMap[Number(packet.srcEid)];
             const dstEidMapped = this.layerZeroChainIdMap[Number(packet.dstEid)];
 
+            this.logger.debug(
+                { transactionHash: log.transactionHash, packet, options, sendLibrary },
+                'PacketSent event found.',
+            );
+
             if (srcEidMapped === undefined || dstEidMapped === undefined) {
-                this.logger.warn(
+                this.logger.debug(
                     {
                         transactionHash: log.transactionHash,
                         packet,
                         options,
                         sendLibrary,
                     },
-                    'PacketSent event received, but srcEidMapped or dstEidMapped is undefined.',
+                    'Skipping packet: unsupported srcEid/dstEid.',
                 );
                 return;
             }
@@ -366,15 +372,9 @@ class LayerZeroWorker {
             if (decodedMessage === undefined) {
                 throw new Error('Failed to decode message payload.');
             }
-
-            this.logger.info(
-                { transactionHash: log.transactionHash, packet, options, sendLibrary },
-                'PacketSent event found.',
-            );
-
             if (
-                paddedTo0xAddress(packet.sender) ===
-                this.incentivesAddresses[srcEidMapped]?.toLowerCase()
+                paddedTo0xAddress(packet.sender).toLowerCase() ===
+                this.incentivesAddresses[srcEidMapped]
             ) {
                 this.logger.info(
                     { sender: packet.sender, message: packet.message },
@@ -413,7 +413,7 @@ class LayerZeroWorker {
                     await this.store.setPayloadLayerZeroAmb(payloadHash, {
                         messageIdentifier: decodedMessage.messageIdentifier,
                         destinationChain: dstEidMapped,
-                        payload: encodedPacket,
+                        payload: encodedPayload,
                     });
 
                     this.logger.info(
@@ -428,9 +428,9 @@ class LayerZeroWorker {
                     throw innerError;
                 }
             } else {
-                this.logger.info(
+                this.logger.debug(
                     { sender: packet.sender },
-                    'PacketSent event from other sender.',
+                    'Skipping packet: sender is not a GARP contract.',
                 );
             }
         } catch (error) {
