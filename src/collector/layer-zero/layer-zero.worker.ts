@@ -178,8 +178,19 @@ class LayerZeroWorker {
         let fromBlock = null;
         while (fromBlock == null) {
             if (this.currentStatus != null) {
-                fromBlock = this.config.startingBlock ?? this.currentStatus.blockNumber;
-            } 
+                if (this.config.startingBlock != null) {
+                    if (this.config.startingBlock < 0) {
+                        fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                        if (fromBlock < 0) {
+                            throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                        }
+                    } else {
+                        fromBlock = this.config.startingBlock;
+                    }
+                } else {
+                    fromBlock = this.currentStatus.blockNumber;
+                }
+            }
             await wait(this.config.processingInterval);
         }
         const stopBlock = this.config.stoppingBlock ?? Infinity;
