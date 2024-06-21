@@ -13,7 +13,7 @@ import { AbstractProvider, BytesLike, MaxUint256, TransactionRequest, zeroPadVal
 import { ParsePayload, MessageContext } from 'src/payload/decode.payload';
 import { PricingInterface } from 'src/pricing/pricing.interface';
 import { WalletInterface } from 'src/wallet/wallet.interface';
-import { Resolver } from 'src/resolvers/resolver';
+import { Resolver, GasEstimateComponents } from 'src/resolvers/resolver';
 import { IncentivizedMockEscrowInterface } from 'src/contracts/IncentivizedMockEscrow';
 
 const DECIMAL_BASE = 10000;
@@ -92,19 +92,17 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             data: transactionData,
         }
 
-        const gasEstimation = await this.provider.estimateGas(transactionRequest);
-        const additionalFeeEstimation = await this.resolver.estimateAdditionalFee(transactionRequest);
+        const gasEstimateComponents = await this.resolver.estimateGas(transactionRequest);
 
         const submitRelay = await this.evaluateRelaySubmission(
-            gasEstimation,
-            additionalFeeEstimation,
+            gasEstimateComponents,
             bounty,
             order
         );
 
         if (submitRelay) {
             // Move the order to the submit queue
-            transactionRequest.gasLimit = gasEstimation;
+            transactionRequest.gasLimit = gasEstimateComponents.gasEstimate;
             return { result: { ...order, transactionRequest, isDelivery } };
         } else {
             // Request the order to be retried in the future.
@@ -187,8 +185,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     }
 
     private async evaluateRelaySubmission(
-        gasEstimation: bigint,
-        additionalFeeEstimation: bigint,
+        gasEstimateComponents: GasEstimateComponents,
         bounty: Bounty,
         order: EvalOrder,
     ): Promise<boolean> {
@@ -203,7 +200,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     {
                         messageIdentifier,
                         maxGasDelivery: bounty.maxGasDelivery,
-                        gasEstimation: gasEstimation.toString(),
+                        gasEstimate: gasEstimateComponents.gasEstimate.toString(),
+                        additionalFeeEstimate: gasEstimateComponents.additionalFeeEstimate.toString(),
                         priority: true,
                     },
                     `Bounty evaluation (source to destination): submit delivery (priority order).`,
@@ -212,7 +210,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 return true;
             }
 
-            return this.evaluateDeliverySubmission(gasEstimation, additionalFeeEstimation, bounty);
+            return this.evaluateDeliverySubmission(gasEstimateComponents, bounty);
         } else {
             // Destination to Source
             if (order.priority) {
@@ -220,7 +218,8 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                     {
                         messageIdentifier,
                         maxGasAck: bounty.maxGasAck,
-                        gasEstimation: gasEstimation.toString(),
+                        gasEstimate: gasEstimateComponents.gasEstimate.toString(),
+                        additionalFeeEstimate: gasEstimateComponents.additionalFeeEstimate.toString(),
                         priority: true,
                     },
                     `Bounty evaluation (destination to source): submit ack (priority order).`,
@@ -229,27 +228,32 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 return true;
             }
 
-            return this.evaluateAckSubmission(gasEstimation, additionalFeeEstimation, bounty, order.incentivesPayload);
+            return this.evaluateAckSubmission(gasEstimateComponents, bounty, order.incentivesPayload);
         }
     }
 
     private async evaluateDeliverySubmission(
-        deliveryGasEstimation: bigint,
-        additionalFeeEstimation: bigint,
+        gasEstimateComponents: GasEstimateComponents,
         bounty: Bounty
     ): Promise<boolean> {
+
+        const {
+            gasEstimate,
+            observedGasEstimate,
+            additionalFeeEstimate
+        } = gasEstimateComponents;
         
         const destinationGasPrice = await this.getGasPrice(this.chainId);
         const sourceGasPrice = await this.getGasPrice(bounty.fromChainId);
 
         const deliveryCost = this.calcGasCost(              // ! In destination chain gas value
-            deliveryGasEstimation,
+            gasEstimate,
             destinationGasPrice,
-            additionalFeeEstimation
+            additionalFeeEstimate
         );
 
         const deliveryReward = this.calcGasReward(          // ! In source chain gas value
-            deliveryGasEstimation,
+            observedGasEstimate,
             this.evaluationConfig.unrewardedDeliveryGas,
             BigInt(bounty.maxGasDelivery),
             bounty.priceOfDeliveryGas
@@ -296,8 +300,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 messageIdentifier: bounty.messageIdentifier,
                 maxGasDelivery: bounty.maxGasDelivery,
                 maxGasAck: bounty.maxGasAck,
-                deliveryGasEstimation: deliveryGasEstimation.toString(),
-                deliveryAdditionalFeeEstimation: additionalFeeEstimation.toString(),
+                gasEstimate: gasEstimate.toString(),
+                observedGasEstimate: observedGasEstimate.toString(),
+                additionalFeeEstimation: additionalFeeEstimate.toString(),
                 destinationGasPrice: destinationGasPrice.toString(),
                 sourceGasPrice: sourceGasPrice.toString(),
                 deliveryCost: deliveryCost.toString(),
@@ -320,23 +325,27 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
     }
 
     private async evaluateAckSubmission(
-        ackGasEstimation: bigint,
-        additionalFeeEstimation: bigint,
+        gasEstimateComponents: GasEstimateComponents,
         bounty: Bounty,
         incentivesPayload?: BytesLike,
     ): Promise<boolean> {
-        
-        // Evaluate the cost of the 'ack' relaying
+
+        const {
+            gasEstimate,
+            observedGasEstimate,
+            additionalFeeEstimate
+        } = gasEstimateComponents;
+
         const sourceGasPrice = await this.getGasPrice(this.chainId);
 
         const ackCost = this.calcGasCost(           // ! In source chain gas value
-            ackGasEstimation,
+            gasEstimate,
             sourceGasPrice,
-            additionalFeeEstimation
+            additionalFeeEstimate
         );
 
         const ackReward = this.calcGasReward(       // ! In source chain gas value
-            ackGasEstimation,
+            observedGasEstimate,
             this.evaluationConfig.unrewardedAckGas,
             BigInt(bounty.maxGasAck),
             bounty.priceOfAckGas
@@ -381,8 +390,9 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 messageIdentifier: bounty.messageIdentifier,
                 maxGasDelivery: bounty.maxGasDelivery,
                 maxGasAck: bounty.maxGasAck,
-                ackGasEstimation: ackGasEstimation.toString(),
-                ackAdditionalFeeEstimation: additionalFeeEstimation.toString(),
+                gasEstimate: gasEstimate.toString(),
+                observedGasEstimate: observedGasEstimate.toString(),
+                additionalFeeEstimation: additionalFeeEstimate.toString(),
                 sourceGasPrice: sourceGasPrice.toString(),
                 ackCost: ackCost.toString(),
                 ackReward: ackReward.toString(),
