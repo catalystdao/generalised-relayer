@@ -103,7 +103,7 @@ export const decodeMessageIdentifierFromPayload = (message: string): string => {
     return add0X(message.slice(2 + 1 * 2, 2 + 1 * 2 + 32 * 2)); // See MessagePayload.sol for reference (GeneralisedIncentives repo)
 };
 
-export function paddedToOxAddress(paddedAddress: string): string {
+export function paddedTo0xAddress(paddedAddress: string): string {
     // Remove leading zeros and add '0x' prefix
     const normalAddress = '0x' + paddedAddress.slice(-40);
     return ethers.getAddress(normalAddress); // Ensure checksum casing
