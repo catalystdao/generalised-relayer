@@ -17,13 +17,12 @@ import {
     JsonRpcProvider,
     Log,
     LogDescription,
-    zeroPadValue,
     BytesLike,
     BigNumberish,
     keccak256,
     ethers,
-    parseEther,
     Filter,
+    zeroPadValue,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
@@ -56,8 +55,6 @@ class LayerZeroWorker {
     private readonly provider: JsonRpcProvider;
     private readonly logger: pino.Logger;
     private readonly bridgeAddress: string;
-    private readonly filterTopicPacketSent: string[][];
-    private readonly filterTopicPayloadVerified: string[][];
     private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
     private readonly recieveULN302: RecieveULN302;
     private readonly recieveULN302Interface: RecieveULN302Interface;
@@ -85,18 +82,6 @@ class LayerZeroWorker {
         this.receiverAddress = this.config.receiverAddress;
         this.layerZeroEnpointV2Interface =
             LayerZeroEnpointV2__factory.createInterface();
-        this.filterTopicPacketSent = [
-            [
-                this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
-                zeroPadValue(this.bridgeAddress, 32),
-            ],
-        ];
-        this.filterTopicPayloadVerified = [
-            [
-                this.recieveULN302Interface.getEvent('PayloadVerified').topicHash,
-                zeroPadValue(this.receiverAddress, 32),
-            ],
-        ];
         this.resolver = this.loadResolver(
             this.config.resolver,
             this.provider,
@@ -267,21 +252,8 @@ class LayerZeroWorker {
      * @returns A list of logs.
      */
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
-        const filterPacketSent = {
-            address: this.bridgeAddress,
-            topics: this.filterTopicPacketSent,
-            fromBlock,
-            toBlock,
-        };
-        const filterPayloadVerified = {
-            address: this.receiverAddress,
-            topics: this.filterTopicPayloadVerified,
-            fromBlock,
-            toBlock,
-        };
-       // Combine filters logically (OR condition)
        const combinedFilter: Filter = {
-        address: [this.bridgeAddress, this.receiverAddress], // OR condition for addresses
+        address: [this.bridgeAddress, this.receiverAddress], 
         fromBlock,
         toBlock,
     };
@@ -297,7 +269,7 @@ class LayerZeroWorker {
             },
             `Failed to 'getLogs' for PacketSent and/or PayloadVerified: combinedFilter and error details.`,
         );
-        return []; // Return empty array on failure
+        return [];
     }
     }
 
@@ -455,11 +427,11 @@ class LayerZeroWorker {
     /**
      * Handles PayloadVerified events.
      * 
-     * @param log - The log data.
+     * @param _log - The log data.
      * @param parsedLog - The parsed log description.
      */
     private async handlePayloadVerifiedEvent(
-        log: Log,
+        _log: Log,
         parsedLog: LogDescription,
     ): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
@@ -538,7 +510,7 @@ class LayerZeroWorker {
         };
     }
 
-    /**
+/**
  * Decodes the header of a payload.
  * This function extracts specific fields from the encoded header string, converting
  * hexadecimal values to appropriate formats, and returns an object containing these values.
@@ -592,7 +564,6 @@ async function checkIfVerifiable(
     try {
         const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
         const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
-
         const formatConfig: UlnConfigStruct = {
             confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
             requiredDVNCount:
