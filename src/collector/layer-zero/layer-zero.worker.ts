@@ -285,12 +285,12 @@ class LayerZeroWorker {
                 this.provider.getLogs(filterPayloadVerified),
             ]).catch((error) => {
                 this.logger.warn(
-                    { filterPacketSent, error: tryErrorToString(error) },
-                    `Failed to 'getLogs' for PacketSent. Worker blocked until successful query.`,
-                );
-                this.logger.warn(
-                    { filterPayloadVerified, error: tryErrorToString(error) },
-                    `Failed to 'getLogs' for PayloadVerified. Worker blocked until successful query.`,
+                    {
+                        filterPacketSent,
+                        filterPayloadVerified,
+                        error: tryErrorToString(error),
+                    },
+                    `Failed to 'getLogs' for PacketSent and/or PayloadVerified. Worker blocked until successful query.`,
                 );
                 return Promise.all([[], []]); // Return empty arrays on failure
             });
@@ -535,32 +535,35 @@ class LayerZeroWorker {
         };
     }
 
-    // This function decodes the header of a payload.
-    private decodeHeader(encodedHeader: string): any {
-        const version = encodedHeader.slice(2, 2 + 2); // Extract version
-        const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16); // Extract nonce
-        const srcEid = Number(
-            '0x' + encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8),
-        ); // Extract source EID
-        const sender =
-            '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24); // Extract and format sender address
-        const dstEid = Number(
-            '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8),
-        ); // Extract destination EID
-        const receiver =
-            '0x' +
-            encodedHeader
-                .slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64)
-                .slice(24); // Extract and format receiver address
-        return {
-            version,
-            nonce: Number('0x' + nonce),
-            srcEid,
-            sender,
-            dstEid,
-            receiver,
-        };
-    }
+    /**
+ * Decodes the header of a payload.
+ * This function extracts specific fields from the encoded header string, converting
+ * hexadecimal values to appropriate formats, and returns an object containing these values.
+ * The function ensures proper handling and formatting of Ethereum addresses and numeric IDs.
+ * The first 2 bytes of the encoded header are skipped as they represent the version, later 
+ * instead of using a counter to skip bytes, the slice function is used to extract the required.
+ * 
+ * @param encodedHeader - The encoded header string to be decoded.
+ * @returns An object containing the decoded header fields.
+ */
+private decodeHeader(encodedHeader: string): any {
+    const version = encodedHeader.slice(2, 2 + 2);
+    const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
+    const srcEid = Number('0x' + encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8));
+    const sender = '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24);
+    const dstEid = Number('0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8));
+    const receiver = '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24);
+    
+    return {
+        version,
+        nonce: Number('0x' + nonce),
+        srcEid,
+        sender,
+        dstEid,
+        receiver,
+    };
+}
+
 
     private calculatePayloadHash(guid: string, message: string): string {
         const payload = `0x${guid}${message}`;
