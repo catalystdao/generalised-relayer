@@ -575,6 +575,9 @@ async function checkIfVerifiable(
     payloadHash: BytesLike,
 ): Promise<boolean> {
     try {
+        const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
+        const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
+
         const formatConfig: UlnConfigStruct = {
             confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
             requiredDVNCount:
@@ -583,9 +586,10 @@ async function checkIfVerifiable(
                 '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
             optionalDVNThreshold:
                 '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
-            requiredDVNs: [config.requiredDVNs.toString()],
-            optionalDVNs: [],
+            requiredDVNs: requiredDVNs,
+            optionalDVNs: optionalDVNs,
         };
+        debugger;
         const isVerifiable = await recieveULN302.verifiable(
             formatConfig,
             headerHash,
