@@ -23,6 +23,7 @@ import {
     keccak256,
     ethers,
     parseEther,
+    Filter,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
@@ -172,7 +173,7 @@ class LayerZeroWorker {
                 bridgeAddress: this.config.bridgeAddress,
                 receiverAddress: this.config.receiverAddress,
             },
-            `Layer Zero Worker monitoring contracts.`,
+            `Monitoring contracts: bridgeAddress and receiverAddress.`,
         );
 
         let fromBlock = null;
@@ -215,18 +216,18 @@ class LayerZeroWorker {
                 await this.queryAndProcessEvents(fromBlock, toBlock);
                 this.logger.info(
                     { fromBlock, toBlock },
-                    `Scanning LayerZero Endpoint messages.`,
+                    `Scanning LayerZero Endpoint messages: fromBlock to toBlock.`,
                 );
                 if (toBlock >= stopBlock) {
                     this.logger.info(
                         { stopBlock: toBlock },
-                        `Finished processing blocks. Exiting worker.`,
+                        `Finished processing blocks: stopBlock reached.`,
                     );
                     break;
                 }
                 fromBlock = toBlock + 1;
             } catch (error) {
-                this.logger.error(error, `Error on Layer Zero worker`);
+                this.logger.error(error, `Error on Layer Zero worker: processing blocks.`);
                 await wait(this.config.retryInterval);
             }
             await wait(this.config.processingInterval);
@@ -252,7 +253,7 @@ class LayerZeroWorker {
             } catch (error) {
                 this.logger.error(
                     { log, error },
-                    `Failed to process event on getter worker.`,
+                    `Failed to process event on getter worker: log and error details.`,
                 );
             }
         }
@@ -278,24 +279,26 @@ class LayerZeroWorker {
             fromBlock,
             toBlock,
         };
-        //TODO: USE ETHER6 TO MAKE THE CALL
-        let [logsPacketSent, logsPayloadVerified]: [Log[], Log[]] =
-            await Promise.all([
-                this.provider.getLogs(filterPacketSent),
-                this.provider.getLogs(filterPayloadVerified),
-            ]).catch((error) => {
-                this.logger.warn(
-                    {
-                        filterPacketSent,
-                        filterPayloadVerified,
-                        error: tryErrorToString(error),
-                    },
-                    `Failed to 'getLogs' for PacketSent and/or PayloadVerified. Worker blocked until successful query.`,
-                );
-                return Promise.all([[], []]); // Return empty arrays on failure
-            });
-
-        return [...logsPacketSent, ...logsPayloadVerified];
+       // Combine filters logically (OR condition)
+       const combinedFilter: Filter = {
+        address: [this.bridgeAddress, this.receiverAddress], // OR condition for addresses
+        fromBlock,
+        toBlock,
+    };
+    
+    try {
+        const logs = await this.provider.getLogs(combinedFilter);
+        return logs;
+    } catch (error) {
+        this.logger.warn(
+            {
+                combinedFilter,
+                error: tryErrorToString(error),
+            },
+            `Failed to 'getLogs' for PacketSent and/or PayloadVerified: combinedFilter and error details.`,
+        );
+        return []; // Return empty array on failure
+    }
     }
 
     // Event handlers
@@ -318,7 +321,7 @@ class LayerZeroWorker {
         if (parsedLog == null) {
             this.logger.error(
                 { topics: log.topics, data: log.data },
-                `Failed to parse event.`,
+                `Failed to parse event: log topics and data details.`,
             );
             return;
         }
@@ -335,7 +338,7 @@ class LayerZeroWorker {
             default:
                 this.logger.warn(
                     { name: parsedLog.name, topic: parsedLog.topic },
-                    `Event with unknown name/topic received.`,
+                    `Event with unknown name/topic received: parsedLog details.`,
                 );
         }
     }
@@ -363,7 +366,7 @@ class LayerZeroWorker {
 
             this.logger.debug(
                 { transactionHash: log.transactionHash, packet, options, sendLibrary },
-                'PacketSent event found.',
+                'PacketSent event found: log details.',
             );
 
             if (srcEidMapped === undefined || dstEidMapped === undefined) {
@@ -389,7 +392,7 @@ class LayerZeroWorker {
             ) {
                 this.logger.info(
                     { sender: packet.sender, message: packet.message },
-                    'Processing packet from specific sender.',
+                    'Processing packet from specific sender: sender and message details.',
                 );
 
                 try {
@@ -414,7 +417,7 @@ class LayerZeroWorker {
 
                     this.logger.info(
                         { transactionHash: log.transactionHash },
-                        'Primary AMB message created using setAmb.',
+                        'Primary AMB message created using setAmb: transactionHash details.',
                     );
 
                     const payloadHash = this.calculatePayloadHash(
@@ -429,12 +432,12 @@ class LayerZeroWorker {
 
                     this.logger.info(
                         { payloadHash, transactionHash: log.transactionHash },
-                        'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb.',
+                        'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb: payloadHash and transactionHash details.',
                     );
                 } catch (innerError) {
                     this.logger.error(
                         { innerError, log },
-                        'Failed to process specific sender packet.',
+                        'Failed to process specific sender packet: innerError and log details.',
                     );
                     throw innerError;
                 }
@@ -445,7 +448,7 @@ class LayerZeroWorker {
                 );
             }
         } catch (error) {
-            this.logger.error({ error, log }, 'Failed to handle PacketSent event.');
+            this.logger.error({ error, log }, 'Failed to handle PacketSent event: error and log details.');
         }
     }
 
@@ -472,19 +475,19 @@ class LayerZeroWorker {
         ) {
             this.logger.info(
                 { dvn, decodedHeader, confirmations, proofHash },
-                'PayloadVerified event decoded.',
+                'PayloadVerified event decoded: dvn, decodedHeader, confirmations, and proofHash details.',
             );
             const payloadData = await this.store.getAmbByPayloadHash(proofHash);
             if (!payloadData) {
                 this.logger.error(
                     { proofHash },
-                    'No data found in database for the given payloadHash.',
+                    'No data found in database for the given payloadHash: proofHash details.',
                 );
                 return;
             }
             this.logger.info(
                 { payloadData },
-                'Data fetched from database using payloadHash.',
+                'Data fetched from database using payloadHash: payloadData details.',
             );
             try {
                 const config = await getConfigData(
@@ -498,7 +501,7 @@ class LayerZeroWorker {
                     keccak256(header),
                     proofHash,
                 );
-                this.logger.info({ dvn, isVerifiable }, 'Verification result checked.');
+                this.logger.info({ dvn, isVerifiable }, 'Verification result checked: dvn and isVerifiable details.');
                 if (isVerifiable) {
                     const ambPayload: AmbPayload = {
                         messageIdentifier: '0x' + payloadData.messageIdentifier,
@@ -507,7 +510,7 @@ class LayerZeroWorker {
                         message: payloadData.payload,
                         messageCtx: '0x',
                     };
-                    this.logger.info({ proofHash }, `LayerZero proof found.`);
+                    this.logger.info({ proofHash }, `LayerZero proof found: proofHash details.`);
                     await this.store.submitProof(
                         this.layerZeroChainIdMap[decodedHeader.dstEid]!,
                         ambPayload,
@@ -516,7 +519,7 @@ class LayerZeroWorker {
             } catch (error) {
                 this.logger.error(
                     { error: tryErrorToString(error) },
-                    'Error during configuration verification.',
+                    'Error during configuration verification: error details.',
                 );
             }
         }
@@ -571,6 +574,15 @@ private decodeHeader(encodedHeader: string): any {
     }
 }
 
+/**
+ * Checks if the configuration is verifiable.
+ * 
+ * @param recieveULN302 - The ULN302 contract instance.
+ * @param config - The ULN configuration.
+ * @param headerHash - The header hash.
+ * @param payloadHash - The payload hash.
+ * @returns A boolean indicating if the configuration is verifiable.
+ */
 async function checkIfVerifiable(
     recieveULN302: RecieveULN302,
     config: UlnConfigStruct,
@@ -592,7 +604,6 @@ async function checkIfVerifiable(
             requiredDVNs: requiredDVNs,
             optionalDVNs: optionalDVNs,
         };
-        debugger;
         const isVerifiable = await recieveULN302.verifiable(
             formatConfig,
             headerHash,
@@ -600,11 +611,19 @@ async function checkIfVerifiable(
         );
         return isVerifiable;
     } catch (error) {
-        console.error('Failed to verify the configuration: ', error);
-        throw new Error('Error verifying the configuration.');
+        console.error('Error verifying the configuration: ', error);
+        throw new Error('Error verifying the configuration: error details.');
     }
 }
 
+/**
+ * Retrieves the ULN configuration data.
+ * 
+ * @param recieveULN302 - The ULN302 contract instance.
+ * @param dvn - The DVN.
+ * @param remoteEid - The remote EID.
+ * @returns The ULN configuration data.
+ */
 async function getConfigData(
     recieveULN302: RecieveULN302,
     dvn: string,
@@ -617,7 +636,7 @@ async function getConfigData(
         );
         return config;
     } catch (error) {
-        throw new Error('Error fetching configuration data.');
+        throw new Error('Error fetching configuration data: error details.');
     }
 }
 
