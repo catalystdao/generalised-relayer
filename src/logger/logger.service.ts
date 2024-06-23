@@ -27,6 +27,13 @@ export class LoggerService {
                 '*.*.*.privateKey',
                 '*.*.*.*.privateKey',
             ],
+            transport: {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true, 
+                  translateTime: 'SYS:standard',
+                }
+              }
         };
     }
 
