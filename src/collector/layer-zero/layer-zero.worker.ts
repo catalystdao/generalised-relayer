@@ -510,34 +510,34 @@ class LayerZeroWorker {
         };
     }
 
-/**
- * Decodes the header of a payload.
- * This function extracts specific fields from the encoded header string, converting
- * hexadecimal values to appropriate formats, and returns an object containing these values.
- * The function ensures proper handling and formatting of Ethereum addresses and numeric IDs.
- * The first 2 bytes of the encoded header are skipped as they represent the version, later 
- * instead of using a counter to skip bytes, the slice function is used to extract the required.
- * 
- * @param encodedHeader - The encoded header string to be decoded.
- * @returns An object containing the decoded header fields.
- */
-private decodeHeader(encodedHeader: string): any {
-    const version = encodedHeader.slice(2, 2 + 2);
-    const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
-    const srcEid = Number('0x' + encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8));
-    const sender = '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24);
-    const dstEid = Number('0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8));
-    const receiver = '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24);
-    
-    return {
-        version,
-        nonce: Number('0x' + nonce),
-        srcEid,
-        sender,
-        dstEid,
-        receiver,
-    };
-}
+    /**
+     * Decodes the header of a payload.
+     * This function extracts specific fields from the encoded header string, converting
+     * hexadecimal values to appropriate formats, and returns an object containing these values.
+     * The function ensures proper handling and formatting of Ethereum addresses and numeric IDs.
+     * The first 2 bytes of the encoded header are skipped as they represent the version, later 
+     * instead of using a counter to skip bytes, the slice function is used to extract the required.
+     * 
+     * @param encodedHeader - The encoded header string to be decoded.
+     * @returns An object containing the decoded header fields.
+     */
+    private decodeHeader(encodedHeader: string): any {
+        const version = encodedHeader.slice(2, 2 + 2);
+        const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
+        const srcEid = Number('0x' + encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8));
+        const sender = '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24);
+        const dstEid = Number('0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8));
+        const receiver = '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24);
+        
+        return {
+            version,
+            nonce: Number('0x' + nonce),
+            srcEid,
+            sender,
+            dstEid,
+            receiver,
+        };
+    }
 
 
     private calculatePayloadHash(guid: string, message: string): string {
@@ -546,69 +546,69 @@ private decodeHeader(encodedHeader: string): any {
     }
 }
 
-/**
- * Checks if the configuration is verifiable.
- * 
- * @param recieveULN302 - The ULN302 contract instance.
- * @param config - The ULN configuration.
- * @param headerHash - The header hash.
- * @param payloadHash - The payload hash.
- * @returns A boolean indicating if the configuration is verifiable.
- */
-async function checkIfVerifiable(
-    recieveULN302: RecieveULN302,
-    config: UlnConfigStruct,
-    headerHash: BytesLike,
-    payloadHash: BytesLike,
-): Promise<boolean> {
-    try {
-        const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
-        const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
-        const formatConfig: UlnConfigStruct = {
-            confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
-            requiredDVNCount:
-                '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
-            optionalDVNCount:
-                '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
-            optionalDVNThreshold:
-                '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
-            requiredDVNs: requiredDVNs,
-            optionalDVNs: optionalDVNs,
-        };
-        const isVerifiable = await recieveULN302.verifiable(
-            formatConfig,
-            headerHash,
-            payloadHash,
-        );
-        return isVerifiable;
-    } catch (error) {
-        console.error('Error verifying the configuration: ', error);
-        throw new Error('Error verifying the configuration: error details.');
+    /**
+     * Checks if the configuration is verifiable.
+     * 
+     * @param recieveULN302 - The ULN302 contract instance.
+     * @param config - The ULN configuration.
+     * @param headerHash - The header hash.
+     * @param payloadHash - The payload hash.
+     * @returns A boolean indicating if the configuration is verifiable.
+     */
+    async function checkIfVerifiable(
+        recieveULN302: RecieveULN302,
+        config: UlnConfigStruct,
+        headerHash: BytesLike,
+        payloadHash: BytesLike,
+    ): Promise<boolean> {
+        try {
+            const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
+            const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
+            const formatConfig: UlnConfigStruct = {
+                confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
+                requiredDVNCount:
+                    '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
+                optionalDVNCount:
+                    '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
+                optionalDVNThreshold:
+                    '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
+                requiredDVNs: requiredDVNs,
+                optionalDVNs: optionalDVNs,
+            };
+            const isVerifiable = await recieveULN302.verifiable(
+                formatConfig,
+                headerHash,
+                payloadHash,
+            );
+            return isVerifiable;
+        } catch (error) {
+            console.error('Error verifying the configuration: ', error);
+            throw new Error('Error verifying the configuration: error details.');
+        }
     }
-}
 
-/**
- * Retrieves the ULN configuration data.
- * 
- * @param recieveULN302 - The ULN302 contract instance.
- * @param dvn - The DVN.
- * @param remoteEid - The remote EID.
- * @returns The ULN configuration data.
- */
-async function getConfigData(
-    recieveULN302: RecieveULN302,
-    dvn: string,
-    remoteEid: BigNumberish,
-): Promise<UlnConfigStructOutput> {
-    try {
-        const config = await recieveULN302.getUlnConfig(
-            dvn,
-            '0x' + remoteEid.toString(16).padStart(8, '0'),
-        );
-        return config;
-    } catch (error) {
-        throw new Error('Error fetching configuration data: error details.');
+    /**
+     * Retrieves the ULN configuration data.
+     * 
+     * @param recieveULN302 - The ULN302 contract instance.
+     * @param dvn - The DVN.
+     * @param remoteEid - The remote EID.
+     * @returns The ULN configuration data.
+     */
+    async function getConfigData(
+        recieveULN302: RecieveULN302,
+        dvn: string,
+        remoteEid: BigNumberish,
+    ): Promise<UlnConfigStructOutput> {
+        try {
+            const config = await recieveULN302.getUlnConfig(
+                dvn,
+                '0x' + remoteEid.toString(16).padStart(8, '0'),
+            );
+            return config;
+        } catch (error) {
+            throw new Error('Error fetching configuration data: error details.');
+        }
     }
-}
 
 void new LayerZeroWorker().run();
