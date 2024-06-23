@@ -63,22 +63,17 @@ export interface LayerZeroWorkerData {
  * @param configService - Service to fetch configuration settings.
  * @returns Global configuration settings for Layer Zero.
  */
-function loadGlobalLayerZeroConfig(
-  configService: ConfigService,
-): GlobalLayerZeroConfig {
+function loadGlobalLayerZeroConfig(configService: ConfigService): GlobalLayerZeroConfig { 
   const layerZeroConfig = configService.ambsConfig.get('layer-zero');
 
   const getterConfig = configService.globalConfig.getter;
-  const retryInterval =
-    getterConfig.retryInterval ?? DEFAULT_GETTER_RETRY_INTERVAL;
-  const processingInterval =
-    getterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
+  const retryInterval = getterConfig.retryInterval ?? DEFAULT_GETTER_RETRY_INTERVAL;
+  const processingInterval = getterConfig.processingInterval ?? DEFAULT_GETTER_PROCESSING_INTERVAL;
   const maxBlocks = getterConfig.maxBlocks ?? DEFAULT_GETTER_MAX_BLOCKS;
 
   const layerZeroChainIdMap: Record<number, string> = {};
   const incentivesAddresses: Record<number, string> = {};
 
-  // Load chainIdMap and incentivesAddresses directly from config
   for (const [chainId, chainConfig] of configService.chainsConfig) {
     const layerZeroChainId: number | undefined = configService.getAMBConfig<number>(
       'layer-zero',
@@ -124,39 +119,19 @@ async function loadWorkerData(
   loggerService: LoggerService,
   chainConfig: ChainConfig,
   globalConfig: GlobalLayerZeroConfig,
-): Promise<LayerZeroWorkerData | null> {
+): Promise<LayerZeroWorkerData | null> { 
   const chainId = chainConfig.chainId;
   const rpc = chainConfig.rpc;
   try {
-    const layerZeroChainId: number | undefined = configService.getAMBConfig<number>(
-      'layer-zero',
-      'layerZeroChainId',
-      chainId.toString(),
-    );
-    const bridgeAddress: string | undefined = configService.getAMBConfig<string>(
-      'layer-zero',
-      'bridgeAddress',
-      chainId.toString(),
-    );
-    const incentivesAddress: string | undefined = configService.getAMBConfig<string>(
-      'layer-zero',
-      'incentivesAddress',
-      chainId.toString(),
-    );
-    const receiverAddress: string | undefined = configService.getAMBConfig(
-      'layer-zero',
-      'receiverAddress',
-      chainId.toString(),
-    );
+    const layerZeroChainId = configService.getAMBConfig<number>('layer-zero', 'layerZeroChainId', chainId.toString());
+    const bridgeAddress = configService.getAMBConfig<string>('layer-zero', 'bridgeAddress', chainId.toString());
+    const incentivesAddress = configService.getAMBConfig<string>('layer-zero', 'incentivesAddress', chainId.toString());
+    const receiverAddress = configService.getAMBConfig<string>('layer-zero', 'receiverAddress', chainId.toString());
 
-    if (
-      layerZeroChainId === undefined ||
-      bridgeAddress === undefined ||
-      incentivesAddress === undefined ||
-      receiverAddress === undefined
-    ) {
+    if (!layerZeroChainId || !bridgeAddress || !incentivesAddress || !receiverAddress) {
       return null;
     }
+
     const port = await monitorService.attachToMonitor(chainId);
 
     return {
@@ -165,11 +140,8 @@ async function loadWorkerData(
       resolver: chainConfig.resolver,
       startingBlock: chainConfig.startingBlock,
       stoppingBlock: chainConfig.stoppingBlock,
-      retryInterval:
-        chainConfig.getter.retryInterval ?? globalConfig.retryInterval,
-      processingInterval:
-        chainConfig.getter.processingInterval ??
-        globalConfig.processingInterval,
+      retryInterval: chainConfig.getter.retryInterval ?? globalConfig.retryInterval,
+      processingInterval: chainConfig.getter.processingInterval ?? globalConfig.processingInterval,
       maxBlocks: chainConfig.getter.maxBlocks ?? globalConfig.maxBlocks,
       layerZeroChainId,
       bridgeAddress,
@@ -177,14 +149,11 @@ async function loadWorkerData(
       receiverAddress,
       monitorPort: port,
       loggerOptions: loggerService.loggerOptions,
-      incentivesAddresses: globalConfig.incentivesAddresses, 
-      layerZeroChainIdMap: globalConfig.layerZeroChainIdMap, 
+      incentivesAddresses: globalConfig.incentivesAddresses,
+      layerZeroChainIdMap: globalConfig.layerZeroChainIdMap,
     };
   } catch (error) {
-    loggerService.error(
-      error,
-      'Failed to load Layer Zero module: missing configuration.',
-    );
+    loggerService.error(error, 'Failed to load Layer Zero module: missing configuration.');
     throw error;
   }
 }
@@ -199,29 +168,37 @@ export default async (moduleInterface: CollectorModuleInterface) => {
   const globalLayerZeroConfig = loadGlobalLayerZeroConfig(configService);
 
   const workers: Record<string, Worker | null> = {};
-
   const workersData: LayerZeroWorkerData[] = [];
 
   for (const [chainId, chainConfig] of configService.chainsConfig) {
-    const workerData = await loadWorkerData(
-      configService,
-      monitorService,
-      loggerService,
-      chainConfig,
-      globalLayerZeroConfig,
-    );
-    if (workerData !== null) {
+    const workerData = await loadWorkerData(configService, monitorService, loggerService, chainConfig, globalLayerZeroConfig);
+    if (workerData) {
       workersData.push(workerData);
     }
   }
 
   if (workersData.length === 0) {
-    loggerService.warn(
-      'Skipping Layer Zero worker initialization: no valid Layer Zero chain configs found',
-    );
+    loggerService.warn('Skipping Layer Zero worker initialization: no valid Layer Zero chain configs found');
     return;
   }
 
+  initializeWorkers(workersData, workers, loggerService); 
+
+  setInterval(() => logStatus(workers, loggerService), STATUS_LOG_INTERVAL); 
+};
+
+/**
+ * Initializes workers with the given data and logs errors and exit statuses.
+ * 
+ * @param workersData - Array of worker data to initialize.
+ * @param workers - Record to keep track of active workers.
+ * @param loggerService - Service to log information and errors.
+ */
+function initializeWorkers(
+  workersData: LayerZeroWorkerData[],
+  workers: Record<string, Worker | null>,
+  loggerService: LoggerService,
+) { 
   for (const workerData of workersData) {
     const worker = new Worker(join(__dirname, 'layer-zero.worker.js'), {
       workerData: workerData,
@@ -229,33 +206,35 @@ export default async (moduleInterface: CollectorModuleInterface) => {
     });
     workers[workerData.chainId] = worker;
 
-    worker.on('error', (error) =>
-      loggerService.fatal(error, 'Error on Layer Zero Worker.'),
-    );
+    worker.on('error', (error) => loggerService.fatal(error, 'Error on Layer Zero Worker.'));
     worker.on('exit', (exitCode) => {
       workers[workerData.chainId] = null;
-      loggerService.info(
-        { exitCode, chainId: workerData.chainId },
-        `Layer Zero Worker exited.`,
-      );
+      loggerService.info({ exitCode, chainId: workerData.chainId }, `Layer Zero Worker exited.`);
     });
   }
+}
 
-  const logStatus = () => {
-    const activeWorkers = [];
-    const inactiveWorkers = [];
+/**
+ * Logs the status of active and inactive workers.
+ * 
+ * @param workers - Record of active and inactive workers.
+ * @param loggerService - Service to log information.
+ */
+function logStatus(workers: Record<string, Worker | null>, loggerService: LoggerService) { 
+  const activeWorkers = [];
+  const inactiveWorkers = [];
 
-    for (const chainId of Object.keys(workers)) {
-      if (workers[chainId] != null) activeWorkers.push(chainId);
-      else inactiveWorkers.push(chainId);
+  for (const chainId of Object.keys(workers)) {
+    if (workers[chainId]) {
+      activeWorkers.push(chainId);
+    } else {
+      inactiveWorkers.push(chainId);
     }
+  }
 
-    const status = {
-      activeWorkers,
-      inactiveWorkers,
-    };
-    loggerService.info(status, 'Layer Zero collector workers status.');
+  const status = {
+    activeWorkers,
+    inactiveWorkers,
   };
-
-  setInterval(logStatus, STATUS_LOG_INTERVAL);
-};
+  loggerService.info(status, 'Layer Zero collector workers status.');
+}
