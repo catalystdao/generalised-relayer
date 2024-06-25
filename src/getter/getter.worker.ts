@@ -37,7 +37,7 @@ class GetterWorker {
 
         this.incentiveAddresses = this.config.incentivesAddresses;
         const contractTypes = this.initializeContractTypes();
-        this.incentivesEscrowInterface = contractTypes.chainInterfaceInterface;
+        this.incentivesEscrowInterface = contractTypes.incentivesEscrowInterface;
         this.topics = contractTypes.topics;
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
@@ -64,22 +64,22 @@ class GetterWorker {
     }
 
     private initializeContractTypes(): {
-        chainInterfaceInterface: IMessageEscrowEventsInterface,
+        incentivesEscrowInterface: IMessageEscrowEventsInterface,
         topics: string[][]
     } {
 
-        const chainInterfaceInterface = IMessageEscrowEvents__factory.createInterface();
+        const incentivesEscrowInterface = IMessageEscrowEvents__factory.createInterface();
         const topics = [
             [
-                chainInterfaceInterface.getEvent('BountyPlaced').topicHash,
-                chainInterfaceInterface.getEvent('BountyClaimed').topicHash,
-                chainInterfaceInterface.getEvent('MessageDelivered').topicHash,
-                chainInterfaceInterface.getEvent('BountyIncreased').topicHash,
+                incentivesEscrowInterface.getEvent('BountyPlaced').topicHash,
+                incentivesEscrowInterface.getEvent('BountyClaimed').topicHash,
+                incentivesEscrowInterface.getEvent('MessageDelivered').topicHash,
+                incentivesEscrowInterface.getEvent('BountyIncreased').topicHash,
             ]
         ];
 
         return {
-            chainInterfaceInterface,
+            incentivesEscrowInterface,
             topics
         }
     }
