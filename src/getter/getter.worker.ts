@@ -190,7 +190,7 @@ class GetterWorker {
                 await this.handleEvent(log);
             } catch (error) {
                 this.logger.error(
-                    { log, error },
+                    { log, error: tryErrorToString(error) },
                     `Failed to process event on getter worker.`
                 );
             }
