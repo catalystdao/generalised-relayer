@@ -13,6 +13,7 @@ export interface GlobalConfig {
 export interface MonitorGlobalConfig {
   interval?: number;
   blockDelay?: number;
+  noBlockUpdateWarningInterval?: number;
 }
 
 export interface MonitorConfig extends MonitorGlobalConfig {}
