@@ -179,7 +179,7 @@ export class SubmitterService {
             ),
 
             walletPublicKey: globalConfig.walletPublicKey,
-            walletPort: await this.walletService.attachToWallet(chainId),
+            walletPort: await this.walletService.attachToWallet(),
             loggerOptions: this.loggerService.loggerOptions,
         };
     }
