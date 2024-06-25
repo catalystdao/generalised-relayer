@@ -396,7 +396,7 @@ class LayerZeroWorker {
                         packet.guid,
                         packet.message,
                     );
-                    await this.store.setPayloadLayerZeroAmb(payloadHash, {
+                    await this.store.setPayload('layer-zero', 'ambMessage', payloadHash, {
                         messageIdentifier: decodedMessage.messageIdentifier,
                         destinationChain: dstEidMapped,
                         payload: encodedPayload,
@@ -449,7 +449,7 @@ class LayerZeroWorker {
                 { dvn, decodedHeader, confirmations, proofHash },
                 'PayloadVerified event decoded: dvn, decodedHeader, confirmations, and proofHash details.',
             );
-            const payloadData = await this.store.getAmbByPayloadHash(proofHash);
+            const payloadData = await this.store.getPayload('layer-zero', 'ambMessage', proofHash);
             if (!payloadData) {
                 this.logger.error(
                     { proofHash },
