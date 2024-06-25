@@ -218,7 +218,8 @@ const AMBS_SCHEMA = {
             enabled: {
                 type: "boolean"
             },
-            incentivesAddress: { $ref: "address-field-schema" }
+            incentivesAddress: { $ref: "address-field-schema" },
+            packetCost: { $ref: "gas-field-schema" }
         },
         required: ["name"],
         additionalProperties: true,

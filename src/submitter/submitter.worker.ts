@@ -65,6 +65,7 @@ class SubmitterWorker {
                 this.resolver,
                 this.store,
                 this.config.incentivesAddresses,
+                this.config.packetCosts,
                 this.config.chainId,
                 {
                     evaluationRetryInterval: this.config.evaluationRetryInterval,
@@ -107,6 +108,7 @@ class SubmitterWorker {
         resolver: Resolver,
         store: Store,
         incentivesContracts: Map<string, string>,
+        packetCosts: Map<string, bigint>,
         chainId: string,
         bountyEvaluationConfig: BountyEvaluationConfig,
         pricing: PricingInterface,
@@ -121,6 +123,7 @@ class SubmitterWorker {
             resolver,
             store,
             incentivesContracts,
+            packetCosts,
             chainId,
             bountyEvaluationConfig,
             pricing,
