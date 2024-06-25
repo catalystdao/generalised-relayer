@@ -331,7 +331,6 @@ class LayerZeroWorker {
                 options, 
                 sendLibrary 
             } = parsedLog.args as unknown as PacketSentEvent.OutputObject;
-            // Decode the packet details
             const packet = this.decodePacket(encodedPayload);
             const srcEidMapped = this.layerZeroChainIdMap[Number(packet.srcEid)];
             const dstEidMapped = this.layerZeroChainIdMap[Number(packet.dstEid)];
