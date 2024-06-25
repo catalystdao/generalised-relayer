@@ -1,20 +1,23 @@
-import { BytesLike, TransactionReceipt, TransactionResponse } from 'ethers6';
+import { BytesLike, TransactionReceipt, TransactionRequest, TransactionResponse } from 'ethers6';
 
 export interface Order {
     amb: string;
     messageIdentifier: string;
     message: BytesLike;
     messageCtx: BytesLike;
+    incentivesPayload?: BytesLike;
 }
 
 export interface EvalOrder extends Order {
     priority: boolean;
+    evaluationDeadline: number;
+    retryEvaluation?: boolean;
 }
 
 export interface SubmitOrder extends Order {
+    isDelivery: boolean;
     priority: boolean;
-    value?: bigint;
-    gasLimit: bigint | undefined;
+    transactionRequest: TransactionRequest;
     requeueCount?: number;
 }
 
@@ -23,7 +26,22 @@ export interface SubmitOrderResult extends SubmitOrder {
     txReceipt: TransactionReceipt;
 }
 
-export interface NewOrder<OrderType> {
+export interface PendingOrder<OrderType> {
     order: OrderType;
     processAt: number;
+}
+
+
+export interface BountyEvaluationConfig {
+    evaluationRetryInterval: number,
+    maxEvaluationDuration: number,
+    unrewardedDeliveryGas: bigint;
+    verificationDeliveryGas: bigint;
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number,
+    unrewardedAckGas: bigint;
+    verificationAckGas: bigint;
+    minAckReward: number;
+    relativeMinAckReward: number;
+    profitabilityFactor: number;
 }
