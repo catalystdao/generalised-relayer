@@ -48,6 +48,7 @@ export type Bounty = {
     submitTransactionHash?: string;
     execTransactionHash?: string;
     ackTransactionHash?: string;
+    deliveryGasCost?: bigint;
 };
 
 export type BountyJson = {
@@ -67,4 +68,5 @@ export type BountyJson = {
     submitTransactionHash?: string;
     execTransactionHash?: string;
     ackTransactionHash?: string;
+    deliveryGasCost?: string;
 };

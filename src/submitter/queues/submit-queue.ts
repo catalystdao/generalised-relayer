@@ -3,29 +3,27 @@ import {
     ProcessingQueue,
 } from '../../processing-queue/processing-queue';
 import { SubmitOrder, SubmitOrderResult } from '../submitter.types';
-import { TransactionRequest, zeroPadValue } from 'ethers6';
+import { AbstractProvider } from 'ethers6';
 import pino from 'pino';
 import { tryErrorToString } from 'src/common/utils';
-import { IncentivizedMessageEscrow } from 'src/contracts';
+import { Store } from 'src/store/store.lib';
 import { WalletInterface } from 'src/wallet/wallet.interface';
 
 export class SubmitQueue extends ProcessingQueue<
     SubmitOrder,
     SubmitOrderResult
 > {
-    readonly relayerAddress: string;
 
     constructor(
         retryInterval: number,
         maxTries: number,
-        private readonly incentivesContracts: Map<string, IncentivizedMessageEscrow>,
-        relayerAddress: string,
+        private readonly store: Store,
         private readonly chainId: string,
+        private readonly provider: AbstractProvider,
         private readonly wallet: WalletInterface,
         private readonly logger: pino.Logger,
     ) {
         super(retryInterval, maxTries);
-        this.relayerAddress = zeroPadValue(relayerAddress, 32);
     }
 
     protected async handleOrder(
@@ -36,38 +34,17 @@ export class SubmitQueue extends ProcessingQueue<
             { messageIdentifier: order.messageIdentifier },
             `Handling submit order`,
         );
-
+    
         // Simulate the packet submission as a static call. Skip if it's the first submission try,
         // as in that case the packet 'evaluation' will have been executed shortly before.
-        const contract = this.incentivesContracts.get(order.amb)!; //TODO handle undefined case
-
         if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {
-            await contract.processPacket.staticCall(
-                order.messageCtx,
-                order.message,
-                this.relayerAddress,
-                {
-                    gasLimit: order.gasLimit,
-                },
-            );
+            await this.provider.call(order.transactionRequest)
         }
 
         // Execute the relay transaction if the static call did not fail.
-        const txData = contract.interface.encodeFunctionData("processPacket", [
-            order.messageCtx,
-            order.message,
-            this.relayerAddress,
-        ]);
-
-        const txRequest: TransactionRequest = {
-            to: await contract.getAddress(),
-            data: txData,
-            gasLimit: order.gasLimit,
-        };
-
         const txPromise = this.wallet.submitTransaction(
             this.chainId,
-            txRequest,
+            order.transactionRequest,
             order,
         ).then((transactionResult): SubmitOrderResult => {
             if (transactionResult.submissionError) {
@@ -140,6 +117,8 @@ export class SubmitQueue extends ProcessingQueue<
                     orderDescription,
                     `Successful submit order: message submitted.`,
                 );
+
+                void this.registerSubmissionCost(order, result.txReceipt.gasUsed);
             } else {
                 this.logger.debug(
                     orderDescription,
@@ -158,6 +137,19 @@ export class SubmitQueue extends ProcessingQueue<
                     `Priority submit order failed.`
                 );
             }
+        }
+    }
+
+    private async registerSubmissionCost(
+        order: SubmitOrder,
+        gasUsed: bigint,
+    ): Promise<void> {
+        // Currently the 'ack' submission cost is not registered.
+        if (order.isDelivery) {
+            void this.store.registerDeliveryCost({
+                messageIdentifier: order.messageIdentifier,
+                deliveryGasCost: gasUsed
+            });
         }
     }
 }

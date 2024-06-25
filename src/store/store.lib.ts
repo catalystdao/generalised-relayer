@@ -218,6 +218,11 @@ export class Store {
             // TODO: handle this case better.
             return null;
         }
+
+        if (bounty.deliveryGasCost != undefined) {
+            bounty.deliveryGasCost = BigInt(bounty.deliveryGasCost);
+        }
+
         return bounty;
     }
 
@@ -302,6 +307,38 @@ export class Store {
         };
         // We can set this value now.
         return this.set(key, JSON.stringify(bounty));
+    }
+
+    /**
+     * Register how much gas was used to delivery the message associated with the Bounty.
+     */
+    async registerDeliveryCost(event: {
+        messageIdentifier: string;
+        deliveryGasCost: bigint;
+    }): Promise<void> {
+        const chainId = this.chainId;
+        if (chainId === null)
+            throw new Error('ChainId is not set: This connection is readonly');
+
+        const messageIdentifier = event.messageIdentifier;
+
+        // Get the bounty
+        const key = Store.combineString(
+            Store.relayerStorePrefix,
+            Store.bountyMidfix,
+            messageIdentifier,
+        );
+        const existingValue = await this.redis.get(key);
+        if (!existingValue) {
+            return; //TODO This case should never be reached. Add log.
+        }
+
+        // Update the bounty information
+        const bounty: BountyJson = JSON.parse(existingValue);
+        // It's fine to override the 'BountyJson' type to 'Bounty', as the newly added information
+        // will be converted on JSON.stringify() (i.e. bigint => string).
+        (bounty as unknown as Bounty).deliveryGasCost = event.deliveryGasCost;
+        await this.set(key, JSON.stringify(bounty));
     }
 
     /**
