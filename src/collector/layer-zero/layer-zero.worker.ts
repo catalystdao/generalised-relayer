@@ -22,7 +22,6 @@ import {
     keccak256,
     ethers,
     Filter,
-    zeroPadValue,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
@@ -30,14 +29,14 @@ import {
     MonitorInterface,
     MonitorStatus,
 } from '../../monitor/monitor.interface';
-import { RecieveULN302__factory } from 'src/contracts/factories/RecieveULN302__factory';
+import { ReceiveULN302__factory } from 'src/contracts/factories/ReceiveULN302__factory';
 import { wait, tryErrorToString, paddedTo0xAddress } from 'src/common/utils';
 import {
-    RecieveULN302,
-    RecieveULN302Interface,
+    ReceiveULN302,
+    ReceiveULN302Interface,
     UlnConfigStruct,
     UlnConfigStructOutput,
-} from 'src/contracts/RecieveULN302';
+} from 'src/contracts/ReceiveULN302';
 import { AmbPayload } from 'src/store/types/store.types';
 import { LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
@@ -56,8 +55,8 @@ class LayerZeroWorker {
     private readonly logger: pino.Logger;
     private readonly bridgeAddress: string;
     private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
-    private readonly recieveULN302: RecieveULN302;
-    private readonly recieveULN302Interface: RecieveULN302Interface;
+    private readonly receiveULN302: ReceiveULN302;
+    private readonly receiveULN302Interface: ReceiveULN302Interface;
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
     private readonly layerZeroChainIdMap: Record<number, string>;
@@ -73,11 +72,11 @@ class LayerZeroWorker {
         this.store = new Store(this.chainId);
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
-        this.recieveULN302 = RecieveULN302__factory.connect(
+        this.receiveULN302 = ReceiveULN302__factory.connect(
             this.config.receiverAddress,
             this.provider,
         );
-        this.recieveULN302Interface = RecieveULN302__factory.createInterface();
+        this.receiveULN302Interface = ReceiveULN302__factory.createInterface();
         this.bridgeAddress = this.config.bridgeAddress;
         this.receiverAddress = this.config.receiverAddress;
         this.layerZeroEnpointV2Interface =
@@ -252,25 +251,25 @@ class LayerZeroWorker {
      * @returns A list of logs.
      */
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
-       const combinedFilter: Filter = {
-        address: [this.bridgeAddress, this.receiverAddress], 
-        fromBlock,
-        toBlock,
-    };
+        const combinedFilter: Filter = {
+            address: [this.bridgeAddress, this.receiverAddress], 
+            fromBlock,
+            toBlock,
+        };
     
-    try {
-        const logs = await this.provider.getLogs(combinedFilter);
-        return logs;
-    } catch (error) {
-        this.logger.warn(
-            {
-                combinedFilter,
-                error: tryErrorToString(error),
-            },
-            `Failed to 'getLogs' for PacketSent and/or PayloadVerified: combinedFilter and error details.`,
-        );
-        return [];
-    }
+        try {
+            const logs = await this.provider.getLogs(combinedFilter);
+            return logs;
+        } catch (error) {
+            this.logger.warn(
+                {
+                    combinedFilter,
+                    error: tryErrorToString(error),
+                },
+                `Failed to 'getLogs' for PacketSent and/or PayloadVerified: combinedFilter and error details.`,
+            );
+            return [];
+        }
     }
 
     // Event handlers
@@ -287,7 +286,7 @@ class LayerZeroWorker {
         if (log.address === this.bridgeAddress) {
             parsedLog = this.layerZeroEnpointV2Interface.parseLog(log);
         } else if (log.address === this.receiverAddress) {
-            parsedLog = this.recieveULN302Interface.parseLog(log);
+            parsedLog = this.receiveULN302Interface.parseLog(log);
         }
 
         if (parsedLog == null) {
@@ -462,12 +461,12 @@ class LayerZeroWorker {
             );
             try {
                 const config = await getConfigData(
-                    this.recieveULN302,
+                    this.receiveULN302,
                     dvn,
                     decodedHeader.dstEid,
                 );
                 const isVerifiable = await checkIfVerifiable(
-                    this.recieveULN302,
+                    this.receiveULN302,
                     config,
                     keccak256(header),
                     proofHash,
@@ -545,69 +544,69 @@ class LayerZeroWorker {
     }
 }
 
-    /**
+/**
      * Checks if the configuration is verifiable.
      * 
-     * @param recieveULN302 - The ULN302 contract instance.
+     * @param receiveULN302 - The ULN302 contract instance.
      * @param config - The ULN configuration.
      * @param headerHash - The header hash.
      * @param payloadHash - The payload hash.
      * @returns A boolean indicating if the configuration is verifiable.
      */
-    async function checkIfVerifiable(
-        recieveULN302: RecieveULN302,
-        config: UlnConfigStruct,
-        headerHash: BytesLike,
-        payloadHash: BytesLike,
-    ): Promise<boolean> {
-        try {
-            const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
-            const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
-            const formatConfig: UlnConfigStruct = {
-                confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
-                requiredDVNCount:
+async function checkIfVerifiable(
+    receiveULN302: ReceiveULN302,
+    config: UlnConfigStruct,
+    headerHash: BytesLike,
+    payloadHash: BytesLike,
+): Promise<boolean> {
+    try {
+        const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
+        const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
+        const formatConfig: UlnConfigStruct = {
+            confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
+            requiredDVNCount:
                     '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
-                optionalDVNCount:
+            optionalDVNCount:
                     '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
-                optionalDVNThreshold:
+            optionalDVNThreshold:
                     '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
-                requiredDVNs: requiredDVNs,
-                optionalDVNs: optionalDVNs,
-            };
-            const isVerifiable = await recieveULN302.verifiable(
-                formatConfig,
-                headerHash,
-                payloadHash,
-            );
-            return isVerifiable;
-        } catch (error) {
-            console.error('Error verifying the configuration: ', error);
-            throw new Error('Error verifying the configuration: error details.');
-        }
+            requiredDVNs: requiredDVNs,
+            optionalDVNs: optionalDVNs,
+        };
+        const isVerifiable = await receiveULN302.verifiable(
+            formatConfig,
+            headerHash,
+            payloadHash,
+        );
+        return isVerifiable;
+    } catch (error) {
+        console.error('Error verifying the configuration: ', error);
+        throw new Error('Error verifying the configuration: error details.');
     }
+}
 
-    /**
+/**
      * Retrieves the ULN configuration data.
      * 
-     * @param recieveULN302 - The ULN302 contract instance.
+     * @param receiveULN302 - The ULN302 contract instance.
      * @param dvn - The DVN.
      * @param remoteEid - The remote EID.
      * @returns The ULN configuration data.
      */
-    async function getConfigData(
-        recieveULN302: RecieveULN302,
-        dvn: string,
-        remoteEid: BigNumberish,
-    ): Promise<UlnConfigStructOutput> {
-        try {
-            const config = await recieveULN302.getUlnConfig(
-                dvn,
-                '0x' + remoteEid.toString(16).padStart(8, '0'),
-            );
-            return config;
-        } catch (error) {
-            throw new Error('Error fetching configuration data: error details.');
-        }
+async function getConfigData(
+    receiveULN302: ReceiveULN302,
+    dvn: string,
+    remoteEid: BigNumberish,
+): Promise<UlnConfigStructOutput> {
+    try {
+        const config = await receiveULN302.getUlnConfig(
+            dvn,
+            '0x' + remoteEid.toString(16).padStart(8, '0'),
+        );
+        return config;
+    } catch (error) {
+        throw new Error('Error fetching configuration data: error details.');
     }
+}
 
 void new LayerZeroWorker().run();
