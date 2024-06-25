@@ -284,9 +284,9 @@ class LayerZeroWorker {
     private async handleEvent(log: Log): Promise<void> {
         let parsedLog: LogDescription | null = null;
 
-        if (log.address === this.bridgeAddress) {
+        if (log.address.toLowerCase() === this.bridgeAddress) {
             parsedLog = this.layerZeroEnpointV2Interface.parseLog(log);
-        } else if (log.address === this.receiverAddress) {
+        } else if (log.address.toLowerCase() === this.receiverAddress) {
             parsedLog = this.recieveULN302Interface.parseLog(log);
         }
 
@@ -442,7 +442,7 @@ class LayerZeroWorker {
         }
         if (
             decodedHeader.sender.toLowerCase() ===
-            this.incentivesAddresses[srcEidMapped]?.toLowerCase()
+            this.incentivesAddresses[srcEidMapped]
         ) {
             this.logger.info(
                 { dvn, decodedHeader, confirmations, proofHash },
