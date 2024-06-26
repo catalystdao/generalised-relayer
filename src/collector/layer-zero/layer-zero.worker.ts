@@ -59,7 +59,7 @@ class LayerZeroWorker {
     private readonly receiveULN302Interface: ReceiveULN302Interface;
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
-    //private readonly filterTopics: string[];
+    private readonly filterTopics: string[];
     private readonly layerZeroChainIdMap: Record<string, string>;
     private readonly incentivesAddresses: Record<string, string>;
     private currentStatus: MonitorStatus | null = null;
@@ -87,10 +87,10 @@ class LayerZeroWorker {
             this.provider,
             this.logger,
         );
-        // this.filterTopics = [
-        //     this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
-        //     this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,
-        // ];
+        this.filterTopics = [
+            ethers.hexlify(this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash),
+            ethers.hexlify(this.receiveULN302Interface.getEvent('PayloadVerified').topicHash),
+        ];
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
@@ -164,7 +164,6 @@ class LayerZeroWorker {
             },
             `Monitoring contracts: bridgeAddress and receiverAddress.`,
         );
-
         let fromBlock = null;
         while (fromBlock == null) {
             if (this.currentStatus != null) {
@@ -256,10 +255,14 @@ class LayerZeroWorker {
      * @returns A list of logs.
      */
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
+        if (this.filterTopics[0] == undefined || this.filterTopics[1] == undefined) {
+            throw Error
+        }
         const combinedFilter: Filter = {
             address: [this.bridgeAddress, this.receiverAddress],
             fromBlock,
             toBlock,
+            topics: [[this.filterTopics[0], this.filterTopics[1]]],
         };
         try {
             const logs = await this.provider.getLogs(combinedFilter);
@@ -291,7 +294,6 @@ class LayerZeroWorker {
         } else if (log.address.toLowerCase() === this.receiverAddress) {
             parsedLog = this.receiveULN302Interface.parseLog(log);
         }
-
         if (parsedLog == null) {
             this.logger.error(
                 { topics: log.topics, data: log.data },
