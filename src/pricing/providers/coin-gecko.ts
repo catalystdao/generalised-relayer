@@ -32,9 +32,9 @@ export class CoinGeckoPricingProvider extends PricingProvider<CoinGeckoPricingCo
         }
     }
 
-    async queryCoinPrice(): Promise<number> {
+    async queryCoinPrice(tokenId?: string): Promise<number> {
 
-        const coinId = this.config.gasCoinId;
+        const coinId = tokenId ?? this.config.gasCoinId;
         const denom = this.config.pricingDenomination.toLowerCase();
         const path = `/simple/price?ids=${coinId}&vs_currencies=${denom}`;
 
