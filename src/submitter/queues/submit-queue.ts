@@ -34,7 +34,7 @@ export class SubmitQueue extends ProcessingQueue<
             { messageIdentifier: order.messageIdentifier },
             `Handling submit order`,
         );
-    
+
         // Simulate the packet submission as a static call. Skip if it's the first submission try,
         // as in that case the packet 'evaluation' will have been executed shortly before.
         if (retryCount > 0 || (order.requeueCount ?? 0) > 0) {

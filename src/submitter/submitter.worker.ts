@@ -311,7 +311,7 @@ class SubmitterWorker {
     /***************  Pending Orders Queue  ***************/
 
     private addPendingOrder(processAt: number, order: EvalOrder): void {
-        
+
         // Insert the new order into the 'pendingQueue' keeping the queue order.
         const insertIndex = this.pendingQueue.findIndex(order => {
             return order.processAt > processAt;

@@ -4,6 +4,9 @@ import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
 import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig } from './config.types';
+import { HttpService } from '@nestjs/axios';
+import { AxiosResponse } from 'axios';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class ConfigService {
@@ -15,7 +18,7 @@ export class ConfigService {
     readonly chainsConfig: Map<string, ChainConfig>;
     readonly ambsConfig: Map<string, AMBConfig>;
 
-    constructor() {
+    constructor(private readonly httpService: HttpService) {
         this.nodeEnv = this.loadNodeEnv();
 
         this.loadEnvFile();
@@ -24,6 +27,8 @@ export class ConfigService {
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
         this.ambsConfig = this.loadAMBsConfig();
+
+        this.verifyChainIds();
     }
 
     private loadNodeEnv(): string {
@@ -154,6 +159,25 @@ export class ConfigService {
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
 
+    private async verifyChainIds(): Promise<void> {
+        for (const [chainId, chainConfig] of this.chainsConfig.entries()) {
+            const rpcChainId = await this.getChainIdFromRpc(chainConfig.rpc);
+            if (rpcChainId !== parseInt(chainId)) {
+                throw new Error(`Chain ID mismatch for ${chainConfig.name}. Expected: ${chainId}, Got: ${rpcChainId}`);
+            }
+        }
+    }
+
+    private async getChainIdFromRpc(rpcUrl: string): Promise<number> {
+        const response: AxiosResponse<any> = await lastValueFrom(this.httpService.post(rpcUrl, {
+            jsonrpc: '2.0',
+            method: 'eth_chainId',
+            params: [],
+            id: 1,
+        }));
+
+        return parseInt(response.data.result, 16);
+    }
 
     // Formatting helpers
     // ********************************************************************************************
@@ -224,7 +248,6 @@ export class ConfigService {
         return config as WalletGlobalConfig;
     }
 
-
     private formatMonitorConfig(rawConfig: any): MonitorConfig {
         return this.formatMonitorGlobalConfig(rawConfig);
     }
@@ -244,5 +267,4 @@ export class ConfigService {
     private formatWalletConfig(rawConfig: any): WalletConfig {
         return this.formatWalletGlobalConfig(rawConfig);
     }
-
 }

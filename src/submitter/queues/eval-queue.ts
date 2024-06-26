@@ -251,7 +251,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             observedGasEstimate,
             additionalFeeEstimate
         } = gasEstimateComponents;
-        
+
         const destinationGasPrice = await this.getGasPrice(this.chainId);
         const sourceGasPrice = await this.getGasPrice(bounty.fromChainId);
 
@@ -482,7 +482,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         const maximumGasUsageCost = (unrewardedGas + verificationGas + bountyMaxGas) * gasPrice;
         const maximumGasUsageProfit = maximumGasUsageReward - maximumGasUsageCost;
 
-        const worstCaseProfit =  minimumGasUsageProfit < maximumGasUsageProfit
+        const worstCaseProfit = minimumGasUsageProfit < maximumGasUsageProfit
             ? minimumGasUsageProfit
             : maximumGasUsageProfit;
 

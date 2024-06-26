@@ -66,7 +66,7 @@ class GetterWorker {
     private initializeContractTypes(): {
         incentivesEscrowInterface: IMessageEscrowEventsInterface,
         topics: string[][]
-    } {
+        } {
 
         const incentivesEscrowInterface = IMessageEscrowEvents__factory.createInterface();
         const topics = [
