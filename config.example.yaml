@@ -101,7 +101,7 @@ chains:
       interval: 5000
 
     pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
 
     # AMB configuration
     wormhole:
@@ -113,7 +113,7 @@ chains:
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
     pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
       wormholeChainId: 10005
       incentivesAddress: '0x198cDD55d90277726f3222D5A8111AdB8b0af9ee'
@@ -123,7 +123,7 @@ chains:
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
     pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
       wormholeChainId: 10004
       incentivesAddress: '0x63B4E24DC9814fAcDe241fB4dEFcA04d5fc6d763'
@@ -133,7 +133,7 @@ chains:
     name: 'Blast Testnet'
     rpc: 'https://sepolia.blast.io'
     pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
       wormholeChainId: 36
       incentivesAddress: '0x9524ACA1fF46fAd177160F0a803189Cb552A3780'

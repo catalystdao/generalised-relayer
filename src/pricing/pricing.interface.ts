@@ -13,6 +13,7 @@ export class PricingInterface {
     async getPrice(
         chainId: string,
         amount: bigint,
+        tokenId?: string,
     ): Promise<number | null> {
 
         const messageId = this.getNextPortMessageId();
@@ -29,7 +30,8 @@ export class PricingInterface {
             const request: GetPriceMessage = {
                 messageId,
                 chainId,
-                amount
+                amount,
+                tokenId
             };
             this.port.postMessage(request);
         });

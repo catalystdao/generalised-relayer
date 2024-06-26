@@ -40,12 +40,17 @@ export async function loadPricingProviderAsync<Config extends PricingProviderCon
     ) as unknown as PricingProvider<Config>;
 }
 
+interface CachedPriceData {
+    price: number;
+    timestamp: number;
+}
+
 
 export abstract class PricingProvider<Config extends PricingProviderConfig> {
     readonly abstract pricingProviderType: string;
 
-    protected lastPriceUpdateTimestamp: number = 0;
-    protected cachedCoinPrice: number = 0;
+    protected cachedGasPrice: CachedPriceData | undefined;
+    protected cachedTokenPrices: Record<string, CachedPriceData> = {};
 
     constructor(
         protected readonly config: Config,
@@ -72,26 +77,38 @@ export abstract class PricingProvider<Config extends PricingProviderConfig> {
     // Pricing functions
     // ********************************************************************************************
 
-    abstract queryCoinPrice(): Promise<number>;
+    abstract queryCoinPrice(tokenId?: string): Promise<number>;
 
-    async getPrice(amount: bigint): Promise<number> {
-        const cacheValidUntilTimestamp = this.lastPriceUpdateTimestamp + this.config.cacheDuration;
-        const isCacheValid = Date.now() < cacheValidUntilTimestamp;
-        if (!isCacheValid) {
-            await this.updateCoinPrice();
-        }
+    async getPrice(amount: bigint, tokenId?: string): Promise<number> {
+        const cachedPriceData = tokenId == undefined
+            ? this.cachedGasPrice
+            : this.cachedTokenPrices[tokenId];
 
-        return this.cachedCoinPrice * Number(amount) / 10**this.config.coinDecimals;
+        const cacheValidUntilTimestamp = cachedPriceData != undefined
+            ? cachedPriceData.timestamp + this.config.cacheDuration
+            : null;
+
+        const isCacheValid = cacheValidUntilTimestamp != null && Date.now() < cacheValidUntilTimestamp;
+
+        const latestPriceData = isCacheValid
+            ? cachedPriceData!
+            : await this.updateCoinPrice(tokenId);
+
+        return latestPriceData.price * Number(amount) / 10**this.config.coinDecimals;
     }
 
-    private async updateCoinPrice(): Promise<number> {
+    private async updateCoinPrice(tokenId?: string): Promise<CachedPriceData> {
+
+        const cachedPriceData = tokenId == undefined
+            ? this.cachedGasPrice
+            : this.cachedTokenPrices[tokenId];
 
         let latestPrice: number | undefined;
 
         let tryCount = 0;
         while (latestPrice == undefined) {
             try {
-                latestPrice = await this.queryCoinPrice();
+                latestPrice = await this.queryCoinPrice(tokenId);
             }
             catch (error) {
                 this.logger.warn(
@@ -104,33 +121,46 @@ export abstract class PricingProvider<Config extends PricingProviderConfig> {
                 
                 // Skip update and continue with 'stale' pricing info if 'maxTries' is reached, unless
                 // the price has never been successfully queried from the provider.
-                if (tryCount >= this.config.maxTries && this.lastPriceUpdateTimestamp != 0) {
+                if (tryCount >= this.config.maxTries && cachedPriceData != undefined) {
                     this.logger.warn(
                         {
                             try: tryCount,
                             maxTries: this.config.maxTries,
-                            price: this.cachedCoinPrice,
+                            price: cachedPriceData.price,
+                            pricingDenomination: this.config.pricingDenomination,
+                            lastUpdate: cachedPriceData.timestamp,
+                            tokenId,
                         },
-                        `Failed to query coin price. Max tries reached. Continuing with stale data.`
+                        `Failed to query token price. Max tries reached. Continuing with stale data.`
                     );
-                    return this.cachedCoinPrice;
+                    return cachedPriceData;
                 }
 
                 await wait(this.config.retryInterval);
             }
         }
 
-        this.lastPriceUpdateTimestamp = Date.now();
-        this.cachedCoinPrice = latestPrice;
+        const latestPriceData: CachedPriceData = {
+            price: latestPrice,
+            timestamp: Date.now(),
+        };
+
+        if (tokenId == undefined) {
+            this.cachedGasPrice = latestPriceData;
+        }
+        else {
+            this.cachedTokenPrices[tokenId] = latestPriceData;
+        }
 
         this.logger.info(
             {
                 price: latestPrice,
-                pricingDenomination: this.config.pricingDenomination
+                pricingDenomination: this.config.pricingDenomination,
+                tokenId,
             },
-            'Coin price updated.'
+            'Token price updated.'
         )
-        return latestPrice;
+        return latestPriceData;
     }
 
 }
