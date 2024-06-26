@@ -44,7 +44,7 @@ import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
 
 interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
-    layerZeroChainIdMap: Record<number, string>;
+    layerZeroChainIdMap: Record<string, string>;
 }
 
 class LayerZeroWorker {
@@ -59,7 +59,8 @@ class LayerZeroWorker {
     private readonly receiveULN302Interface: ReceiveULN302Interface;
     private readonly receiverAddress: string;
     private readonly resolver: Resolver;
-    private readonly layerZeroChainIdMap: Record<number, string>;
+    //private readonly filterTopics: string[];
+    private readonly layerZeroChainIdMap: Record<string, string>;
     private readonly incentivesAddresses: Record<string, string>;
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
@@ -86,6 +87,10 @@ class LayerZeroWorker {
             this.provider,
             this.logger,
         );
+        // this.filterTopics = [
+        //     this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
+        //     this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,
+        // ];
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
     }
 
@@ -237,7 +242,7 @@ class LayerZeroWorker {
             } catch (error) {
                 this.logger.error(
                     { log, error },
-                    `Failed to process event on getter worker: log and error details.`,
+                    `Failed to process event on layer-zero collector worker: log and error details.`,
                 );
             }
         }
@@ -252,11 +257,10 @@ class LayerZeroWorker {
      */
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
         const combinedFilter: Filter = {
-            address: [this.bridgeAddress, this.receiverAddress], 
+            address: [this.bridgeAddress, this.receiverAddress],
             fromBlock,
             toBlock,
         };
-    
         try {
             const logs = await this.provider.getLogs(combinedFilter);
             return logs;
@@ -282,10 +286,9 @@ class LayerZeroWorker {
      */
     private async handleEvent(log: Log): Promise<void> {
         let parsedLog: LogDescription | null = null;
-
-        if (log.address === this.bridgeAddress) {
+        if (log.address.toLowerCase() === this.bridgeAddress) {
             parsedLog = this.layerZeroEnpointV2Interface.parseLog(log);
-        } else if (log.address === this.receiverAddress) {
+        } else if (log.address.toLowerCase() === this.receiverAddress) {
             parsedLog = this.receiveULN302Interface.parseLog(log);
         }
 
@@ -325,14 +328,14 @@ class LayerZeroWorker {
         parsedLog: LogDescription,
     ): Promise<void> {
         try {
-            const { 
-                encodedPayload, 
-                options, 
-                sendLibrary 
+            const {
+                encodedPayload,
+                options,
+                sendLibrary
             } = parsedLog.args as unknown as PacketSentEvent.OutputObject;
             const packet = this.decodePacket(encodedPayload);
-            const srcEidMapped = this.layerZeroChainIdMap[Number(packet.srcEid)];
-            const dstEidMapped = this.layerZeroChainIdMap[Number(packet.dstEid)];
+            const srcEidMapped = this.layerZeroChainIdMap[packet.srcEid];
+            const dstEidMapped = this.layerZeroChainIdMap[packet.dstEid];
 
             this.logger.debug(
                 { transactionHash: log.transactionHash, packet, options, sendLibrary },
@@ -434,8 +437,8 @@ class LayerZeroWorker {
     ): Promise<void> {
         const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
         const decodedHeader = this.decodeHeader(header);
-        const srcEidMapped = this.layerZeroChainIdMap[Number(decodedHeader.srcEid)];
-        const dstEidMapped = this.layerZeroChainIdMap[Number(decodedHeader.dstEid)];
+        const srcEidMapped = this.layerZeroChainIdMap[decodedHeader.srcEid];
+        const dstEidMapped = this.layerZeroChainIdMap[decodedHeader.dstEid];
         if (srcEidMapped === undefined || dstEidMapped === undefined) {
             throw new Error('Failed to map srcEidMapped or dstEidMapped.');
         }
@@ -526,7 +529,7 @@ class LayerZeroWorker {
         const sender = '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24);
         const dstEid = Number('0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8));
         const receiver = '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24);
-        
+
         return {
             version,
             nonce: Number('0x' + nonce),
@@ -565,11 +568,11 @@ async function checkIfVerifiable(
         const formatConfig: UlnConfigStruct = {
             confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
             requiredDVNCount:
-                    '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
+                '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
             optionalDVNCount:
-                    '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
+                '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
             optionalDVNThreshold:
-                    '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
+                '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
             requiredDVNs: requiredDVNs,
             optionalDVNs: optionalDVNs,
         };
