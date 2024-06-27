@@ -26,5 +26,5 @@ export const tryErrorToString = (error: any): string | undefined => {
 }
 export function paddedTo0xAddress(paddedAddress: string): string {
     const normalAddress = '0x' + paddedAddress.slice(-40);
-    return ethers.getAddress(normalAddress); // Ensure checksum casing
+    return ethers.getAddress(normalAddress);
 };

@@ -527,10 +527,10 @@ class LayerZeroWorker {
     private decodeHeader(encodedHeader: string): any {
         const version = encodedHeader.slice(2, 2 + 2);
         const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
-        const srcEid = Number('0x' + encodedHeader.slice(2 + 2 + 16, 2 + 2 + 16 + 8));
-        const sender = '0x' + encodedHeader.slice(2 + 2 + 16 + 8, 2 + 2 + 16 + 8 + 64).slice(24);
-        const dstEid = Number('0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64, 2 + 2 + 16 + 8 + 64 + 8));
-        const receiver = '0x' + encodedHeader.slice(2 + 2 + 16 + 8 + 64 + 8, 2 + 2 + 16 + 8 + 64 + 8 + 64).slice(24);
+        const srcEid = Number('0x' + encodedHeader.slice(2 + 18, 2 + 18 + 8));
+        const sender = '0x' + encodedHeader.slice(2 + 26, 2 + 26 + 64).slice(24);
+        const dstEid = Number('0x' + encodedHeader.slice(2 + 90, 2 + 90 + 8));
+        const receiver = '0x' + encodedHeader.slice(2 + 98, 2 + 98 + 64).slice(24);
 
         return {
             version,
