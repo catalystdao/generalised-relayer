@@ -162,7 +162,7 @@ class LayerZeroWorker {
                 bridgeAddress: this.config.bridgeAddress,
                 receiverAddress: this.config.receiverAddress,
             },
-            `Monitoring contracts: bridgeAddress and receiverAddress.`,
+            `LayerZero collector worker started.`,
         );
         let fromBlock = null;
         while (fromBlock == null) {
@@ -183,7 +183,6 @@ class LayerZeroWorker {
             await wait(this.config.processingInterval);
         }
         const stopBlock = this.config.stoppingBlock ?? Infinity;
-        this.logger.info(`Stop block set to ${stopBlock}`);
         while (true) {
             try {
                 let toBlock = this.currentStatus?.blockNumber;
@@ -204,7 +203,7 @@ class LayerZeroWorker {
                 await this.queryAndProcessEvents(fromBlock, toBlock);
                 this.logger.info(
                     { fromBlock, toBlock },
-                    `Scanning LayerZero Endpoint messages: fromBlock to toBlock.`,
+                    `Scanning LayerZero events.`,
                 );
                 if (toBlock >= stopBlock) {
                     this.logger.info(
@@ -241,7 +240,7 @@ class LayerZeroWorker {
             } catch (error) {
                 this.logger.error(
                     { log, error },
-                    `Failed to process event on layer-zero collector worker: log and error details.`,
+                    `Failed to process event on layer-zero collector worker.`,
                 );
             }
         }
@@ -295,7 +294,7 @@ class LayerZeroWorker {
         if (parsedLog == null) {
             this.logger.error(
                 { topics: log.topics, data: log.data },
-                `Failed to parse event: log topics and data details.`,
+                `Failed to parse LayerZero event.`,
             );
             return;
         }
@@ -312,7 +311,7 @@ class LayerZeroWorker {
             default:
                 this.logger.warn(
                     { name: parsedLog.name, topic: parsedLog.topic },
-                    `Event with unknown name/topic received: parsedLog details.`,
+                    `Event with unknown name/topic received.`,
                 );
         }
     }
@@ -341,7 +340,7 @@ class LayerZeroWorker {
 
             this.logger.debug(
                 { transactionHash: log.transactionHash, packet, options, sendLibrary },
-                'PacketSent event found: log details.',
+                'PacketSent event found.',
             );
 
             if (srcEidMapped === undefined || dstEidMapped === undefined) {
@@ -369,53 +368,44 @@ class LayerZeroWorker {
                     { sender: packet.sender, message: packet.message },
                     'Processing packet from specific sender: sender and message details.',
                 );
-
-                try {
-                    const transactionBlockNumber =
-                        await this.resolver.getTransactionBlockNumber(log.blockNumber);
-                    await this.store.setAmb(
-                        {
-                            messageIdentifier: decodedMessage.messageIdentifier,
-                            amb: 'layer-zero',
-                            sourceChain: srcEidMapped.toString(),
-                            destinationChain: dstEidMapped.toString(),
-                            sourceEscrow: packet.sender,
-                            payload: decodedMessage.message,
-                            recoveryContext: '0x',
-                            blockNumber: log.blockNumber,
-                            transactionBlockNumber,
-                            blockHash: log.blockHash,
-                            transactionHash: log.transactionHash,
-                        },
-                        log.transactionHash,
-                    );
-
-                    this.logger.info(
-                        { transactionHash: log.transactionHash },
-                        'Primary AMB message created using setAmb: transactionHash details.',
-                    );
-
-                    const payloadHash = this.calculatePayloadHash(
-                        packet.guid,
-                        packet.message,
-                    );
-                    await this.store.setPayload('layer-zero', 'ambMessage', payloadHash, {
+                const transactionBlockNumber =
+                    await this.resolver.getTransactionBlockNumber(log.blockNumber);
+                await this.store.setAmb(
+                    {
                         messageIdentifier: decodedMessage.messageIdentifier,
-                        destinationChain: dstEidMapped,
-                        payload: encodedPayload,
-                    });
+                        amb: 'layer-zero',
+                        sourceChain: srcEidMapped.toString(),
+                        destinationChain: dstEidMapped.toString(),
+                        sourceEscrow: packet.sender,
+                        payload: decodedMessage.message,
+                        recoveryContext: '0x',
+                        blockNumber: log.blockNumber,
+                        transactionBlockNumber,
+                        blockHash: log.blockHash,
+                        transactionHash: log.transactionHash,
+                    },
+                    log.transactionHash,
+                );
 
-                    this.logger.info(
-                        { payloadHash, transactionHash: log.transactionHash },
-                        'Secondary AMB message created with payload hash as key using setPayloadLayerZeroAmb: payloadHash and transactionHash details.',
-                    );
-                } catch (innerError) {
-                    this.logger.error(
-                        { innerError, log },
-                        'Failed to process specific sender packet: innerError and log details.',
-                    );
-                    throw innerError;
-                }
+                const payloadHash = this.calculatePayloadHash(
+                    packet.guid,
+                    packet.message,
+                );
+
+                await this.store.setPayload('layer-zero', 'ambMessage', payloadHash, {
+                    messageIdentifier: decodedMessage.messageIdentifier,
+                    destinationChain: dstEidMapped,
+                    payload: encodedPayload,
+                });
+
+                this.logger.info(
+                    {
+                        messageIdentifier: decodedMessage.messageIdentifier,
+                        transactionHash: log.transactionHash,
+                        payloadHash
+                    },
+                    'Collected message.',
+                );
             } else {
                 this.logger.debug(
                     { sender: packet.sender },
@@ -423,7 +413,7 @@ class LayerZeroWorker {
                 );
             }
         } catch (error) {
-            this.logger.error({ error, log }, 'Failed to handle PacketSent event: error and log details.');
+            this.logger.error({ error, log }, 'Failed to handle PacketSent event.');
         }
     }
 
@@ -442,7 +432,14 @@ class LayerZeroWorker {
         const srcEidMapped = this.layerZeroChainIdMap[decodedHeader.srcEid];
         const dstEidMapped = this.layerZeroChainIdMap[decodedHeader.dstEid];
         if (srcEidMapped === undefined || dstEidMapped === undefined) {
-            throw new Error('Failed to map srcEidMapped or dstEidMapped.');
+            this.logger.error(
+                {
+                    srcEid: decodedHeader.srcEid,
+                    dstEid: decodedHeader.dstEid
+                },
+                'Failed to map srcEidMapped or dstEidMapped.',
+            );
+            return;
         }
         if (
             decodedHeader.sender.toLowerCase() ===
@@ -450,7 +447,7 @@ class LayerZeroWorker {
         ) {
             this.logger.info(
                 { dvn, decodedHeader, confirmations, proofHash },
-                'PayloadVerified event decoded: dvn, decodedHeader, confirmations, and proofHash details.',
+                'PayloadVerified event decoded.',
             );
             const payloadData = await this.store.getPayload('layer-zero', 'ambMessage', proofHash);
             if (!payloadData) {
@@ -460,10 +457,6 @@ class LayerZeroWorker {
                 );
                 return;
             }
-            this.logger.info(
-                { payloadData },
-                'Data fetched from database using payloadHash: payloadData details.',
-            );
             try {
                 const config = await getConfigData(
                     this.receiveULN302,
@@ -476,7 +469,6 @@ class LayerZeroWorker {
                     keccak256(header),
                     proofHash,
                 );
-                this.logger.info({ dvn, isVerifiable }, 'Verification result checked: dvn and isVerifiable details.');
                 if (isVerifiable) {
                     const ambPayload: AmbPayload = {
                         messageIdentifier: '0x' + payloadData.messageIdentifier,
@@ -485,16 +477,18 @@ class LayerZeroWorker {
                         message: payloadData.payload,
                         messageCtx: '0x',
                     };
-                    this.logger.info({ proofHash }, `LayerZero proof found: proofHash details.`);
+                    this.logger.info({ proofHash }, `LayerZero proof found.`);
                     await this.store.submitProof(
                         this.layerZeroChainIdMap[decodedHeader.dstEid]!,
                         ambPayload,
                     );
+                } else {
+                    this.logger.debug('Payload could not be verified');
                 }
             } catch (error) {
                 this.logger.error(
                     { error: tryErrorToString(error) },
-                    'Error during configuration verification: error details.',
+                    'Error during payload verification.',
                 );
             }
         }
@@ -585,8 +579,7 @@ async function checkIfVerifiable(
         );
         return isVerifiable;
     } catch (error) {
-        console.error('Error verifying the configuration: ', error);
-        throw new Error('Error verifying the configuration: error details.');
+        throw new Error('Error verifying the payload.');
     }
 }
 
