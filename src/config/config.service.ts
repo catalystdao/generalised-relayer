@@ -4,6 +4,7 @@ import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
 import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig } from './config.types';
+import { JsonRpcProvider } from 'ethers6';
 
 @Injectable()
 export class ConfigService {
@@ -99,19 +100,24 @@ export class ConfigService {
 
         for (const rawChainConfig of this.rawConfig['chains']) {
             const chainId = rawChainConfig.chainId.toString();
-            chainConfig.set(chainId, {
-                chainId,
-                name: rawChainConfig.name,
-                rpc: rawChainConfig.rpc,
-                resolver: rawChainConfig.resolver ?? null,
-                startingBlock: rawChainConfig.startingBlock,
-                stoppingBlock: rawChainConfig.stoppingBlock,
-                monitor: this.formatMonitorConfig(rawChainConfig.monitor),
-                getter: this.formatGetterConfig(rawChainConfig.getter),
-                pricing: this.formatPricingConfig(rawChainConfig.pricing),
-                submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
-                wallet: this.formatWalletConfig(rawChainConfig.wallet),
-            });
+            const chainIdValidate = this.validateChainIdFromRPC(rawChainConfig.rpc, chainId)
+            if (!chainIdValidate) {
+                chainConfig.set(chainId, {
+                    chainId,
+                    name: rawChainConfig.name,
+                    rpc: rawChainConfig.rpc,
+                    resolver: rawChainConfig.resolver ?? null,
+                    startingBlock: rawChainConfig.startingBlock,
+                    stoppingBlock: rawChainConfig.stoppingBlock,
+                    monitor: this.formatMonitorConfig(rawChainConfig.monitor),
+                    getter: this.formatGetterConfig(rawChainConfig.getter),
+                    pricing: this.formatPricingConfig(rawChainConfig.pricing),
+                    submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
+                    wallet: this.formatWalletConfig(rawChainConfig.wallet),
+                });
+            } else {
+                throw new Error("The Chain ID specified in the configuration file does not match the Chain ID provided by the RPC endpoint.");
+            }
         }
 
         return chainConfig;
@@ -152,6 +158,23 @@ export class ConfigService {
 
         // If there is no chain-specific override, return the default value for the property.
         return this.ambsConfig.get(amb)?.globalProperties[key];
+    }
+
+
+    //Validates the Chain ID obtained from the provided RPC endpoint against the expected Chain ID.
+    private async validateChainIdFromRPC(rpc: string, expectedChainId: string): Promise<boolean> {
+        const provider = new JsonRpcProvider(
+            rpc,
+            undefined,
+            { staticNetwork: true }
+        );
+        try {
+            const network = await provider.getNetwork();
+            const actualChainId = network.chainId.toString();
+            return actualChainId === expectedChainId;
+        } catch (error) {
+            return false;
+        }
     }
 
 
