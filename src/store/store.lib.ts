@@ -643,4 +643,15 @@ export class Store {
         await this.postMessage(emitToChannel, ambPayload);
     }
 
+    async setPayload(prefix: string, suffix: string, payloadHash: string, dataToStore: any): Promise<void> {
+        const key = `${prefix}:${suffix}:${payloadHash.toLowerCase()}`;
+        const data = JSON.stringify(dataToStore);
+        await this.redis.set(key, data);
+    }
+
+    async getPayload(prefix: string, suffix: string, payloadHash: string): Promise<any | null> {
+        const key = `${prefix}:${suffix}:${payloadHash.toLowerCase()}`;
+        const result = await this.redis.get(key);
+        return result ? JSON.parse(result) : null;
+    }
 }
