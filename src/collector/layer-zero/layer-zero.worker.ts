@@ -255,25 +255,29 @@ class LayerZeroWorker {
      */
     private async queryLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
 
-        const combinedFilter: Filter = {
+        const filter = {
             address: [this.bridgeAddress, this.receiverAddress],
             fromBlock,
             toBlock,
             topics: this.filterTopics,
         };
-        try {
-            const logs = await this.provider.getLogs(combinedFilter);
-            return logs;
-        } catch (error) {
-            this.logger.warn(
-                {
-                    combinedFilter,
-                    error: tryErrorToString(error),
-                },
-                `Failed to 'getLogs' for PacketSent and/or PayloadVerified: combinedFilter and error details.`,
-            );
-            return [];
+
+        let logs: Log[] | undefined;
+        let i = 0;
+        while (logs == undefined) {
+            try {
+                logs = await this.provider.getLogs(filter);
+            } catch (error) {
+                i++;
+                this.logger.warn(
+                    { ...filter, error: tryErrorToString(error), try: i },
+                    `Failed to 'getLogs' on layer-zero worker. Worker blocked until successful query.`
+                );
+                await wait(this.config.retryInterval);
+            }
         }
+
+        return logs;
     }
 
     // Event handlers
