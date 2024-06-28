@@ -330,8 +330,6 @@ class LayerZeroWorker {
         log: Log,
         parsedLog: LogDescription,
     ): Promise<void> {
-        debugger;
-
         try {
             const {
                 encodedPayload,
