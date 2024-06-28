@@ -21,7 +21,6 @@ import {
     BigNumberish,
     keccak256,
     ethers,
-    Filter,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
