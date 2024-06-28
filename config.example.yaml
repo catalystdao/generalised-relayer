@@ -115,6 +115,7 @@ chains:
   - chainId: 11155420
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
+    resolver: 'op-sepolia'
     pricing:
       coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
@@ -130,6 +131,7 @@ chains:
   - chainId: 84532
     name: 'Base Sepolia'
     rpc: 'https://sepolia.base.org'
+    resolver: 'base-sepolia'
     pricing:
       coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
@@ -150,9 +152,9 @@ chains:
   - chainId: 421614
     name: "Arbitrum Sepolia"
     rpc: "https://arbitrum-sepolia-rpc.publicnode.com"
+    resolver: 'arbitrum'
     pricing:
       coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
-    resolver: 'arbitrum'
     monitor:
       blockDelay: 5
       interval: 2000
