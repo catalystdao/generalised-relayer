@@ -86,6 +86,9 @@ ambs:
   - name: wormhole
     isTestnet: true
 
+  - name: layer-zero
+    packetCost: '6000000000000'
+
 # Chain configuration
 chains:
   - chainId: 11155111
@@ -118,6 +121,11 @@ chains:
       wormholeChainId: 10005
       incentivesAddress: '0x198cDD55d90277726f3222D5A8111AdB8b0af9ee'
       bridgeAddress: '0x31377888146f3253211EFEf5c676D41ECe7D58Fe'
+    layer-zero:
+      layerZeroChainId: 40232
+      incentivesAddress: '0xd41ace766aed57fefdca3a7d27d20b837284b872'
+      bridgeAddress: '0x6edce65403992e310a62460808c4b910d972f10f'
+      receiverAddress: '0x9284fd59B95b9143AF0b9795CAC16eb3C723C9Ca'
 
   - chainId: 84532
     name: 'Base Sepolia'
@@ -138,3 +146,39 @@ chains:
       wormholeChainId: 36
       incentivesAddress: '0x9524ACA1fF46fAd177160F0a803189Cb552A3780'
       bridgeAddress: '0x473e002D7add6fB67a4964F13bFd61280Ca46886'
+
+  - chainId: 421614
+    name: "Arbitrum Sepolia"
+    rpc: "https://arbitrum-sepolia-rpc.publicnode.com"
+    pricing:
+      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+    resolver: 'arbitrum'
+    monitor:
+      blockDelay: 5
+      interval: 2000
+    getter:
+      maxBlocks: 5000
+    wormhole:
+      wormholeChainId: 10003
+      incentivesAddress: "0x59aa9e2339dd0c019f188f1ed9b27b9a10ae664d"
+      bridgeAddress: "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35"
+    layer-zero:
+      layerZeroChainId: 40231
+      incentivesAddress: '0xd41ace766aed57fefdca3a7d27d20b837284b872'
+      bridgeAddress: '0x6EDCE65403992e310A62460808c4b910D972f10f'
+      receiverAddress: '0x75Db67CDab2824970131D5aa9CECfC9F69c69636'
+
+  - chainId: 713715
+    name: 'Sei Devnet'
+    rpc: 'https://evm-rpc-arctic-1.sei-apis.com'
+    pricing:
+      coinId: 'sei-network'  # coin-gecko pricing provider specific configuration
+    monitor:
+      interval: 2000
+      blockDelay: 10
+    layer-zero:
+      layerZeroChainId: 40258
+      incentivesAddress: '0xd41ace766aed57fefdca3a7d27d20b837284b872'
+      bridgeAddress: '0x6EDCE65403992e310A62460808c4b910D972f10f'
+      receiverAddress: '0xcF1B0F4106B0324F96fEfcC31bA9498caa80701C'
+      packetCost: '100000000000000000'
