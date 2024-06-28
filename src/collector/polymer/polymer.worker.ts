@@ -9,6 +9,7 @@ import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'et
 import { IbcEventEmitterInterface, SendPacketEvent } from 'src/contracts/IbcEventEmitter';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
+import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 
 const abi = AbiCoder.defaultAbiCoder();
 
@@ -30,6 +31,8 @@ class PolymerCollectorSnifferWorker {
 
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
+
+    private fromBlock: number = 0;
 
 
     constructor() {
@@ -55,6 +58,8 @@ class PolymerCollectorSnifferWorker {
         ];
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+
+        this.initiateIntervalStatusLog();
     }
 
 
@@ -105,33 +110,14 @@ class PolymerCollectorSnifferWorker {
             `Polymer collector sniffer worker started.`,
         );
 
-        let fromBlock = null;
-        while (fromBlock == null) {
-            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
-            // 'startingBlock' is specified.
-            if (this.currentStatus != null) {
-                if (this.config.startingBlock != null) {
-                    if (this.config.startingBlock < 0) {
-                        fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
-                        if (fromBlock < 0) {
-                            throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
-                        }
-                    } else {
-                        fromBlock = this.config.startingBlock;
-                    }
-                } else {
-                    fromBlock = this.currentStatus.blockNumber;
-                }
-            }
 
-            await wait(this.config.processingInterval);
-        }
+        this.fromBlock = await this.getStartingBlock();
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
             try {
                 let toBlock = this.currentStatus?.blockNumber;
-                if (!toBlock || fromBlock > toBlock) {
+                if (!toBlock || this.fromBlock > toBlock) {
                     await wait(this.config.processingInterval);
                     continue;
                 }
@@ -140,20 +126,20 @@ class PolymerCollectorSnifferWorker {
                     toBlock = stopBlock;
                 }
 
-                const blocksToProcess = toBlock - fromBlock;
+                const blocksToProcess = toBlock - this.fromBlock;
                 if (this.config.maxBlocks != null && blocksToProcess > this.config.maxBlocks) {
-                    toBlock = fromBlock + this.config.maxBlocks;
+                    toBlock = this.fromBlock + this.config.maxBlocks;
                 }
 
-                this.logger.info(
+                this.logger.debug(
                     {
-                        fromBlock,
+                        fromBlock: this.fromBlock,
                         toBlock,
                     },
                     `Scanning polymer messages.`,
                 );
 
-                await this.queryAndProcessEvents(fromBlock, toBlock);
+                await this.queryAndProcessEvents(this.fromBlock, toBlock);
 
                 if (toBlock >= stopBlock) {
                     this.logger.info(
@@ -163,7 +149,7 @@ class PolymerCollectorSnifferWorker {
                     break;
                 }
 
-                fromBlock = toBlock + 1;
+                this.fromBlock = toBlock + 1;
             }
             catch (error) {
                 this.logger.error(error, `Error on polymer.worker`);
@@ -176,6 +162,35 @@ class PolymerCollectorSnifferWorker {
         // Cleanup worker
         this.monitor.close();
         await this.store.quit();
+    }
+
+    private async getStartingBlock(): Promise<number> {
+        let fromBlock: number | null = null;
+        while (fromBlock == null) {
+
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus == null) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (this.config.startingBlock == null) {
+                fromBlock = this.currentStatus.blockNumber;
+                break;
+            }
+
+            if (this.config.startingBlock < 0) {
+                fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                if (fromBlock < 0) {
+                    throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                }
+            } else {
+                fromBlock = this.config.startingBlock;
+            }
+        }
+
+        return fromBlock;
     }
 
     private async queryAndProcessEvents(
@@ -303,6 +318,24 @@ class PolymerCollectorSnifferWorker {
             },
             `Polymer message found.`,
         );
+    }
+
+
+
+    // Misc Helpers
+    // ********************************************************************************************
+
+    private initiateIntervalStatusLog(): void {
+        const logStatus = () => {
+            this.logger.info(
+                {
+                    latestBlock: this.currentStatus?.blockNumber,
+                    currentBlock: this.fromBlock,
+                },
+                'Polymer collector status.'
+            );
+        };
+        setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
 }
