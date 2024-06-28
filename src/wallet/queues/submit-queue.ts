@@ -30,6 +30,10 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
         order: WalletTransactionRequest,
         _retryCount: number
     ): Promise<HandleOrderResult<PendingTransaction> | null> {
+        this.logger.debug(
+            { txRequest: order.txRequest },
+            `Handling wallet submit order.`,
+        );
 
         const txDeadline = order.options.deadline ?? Infinity;
         if (Date.now() > txDeadline) {
@@ -104,12 +108,12 @@ export class SubmitQueue extends ProcessingQueue<WalletTransactionRequest, Pendi
 
         if (success) {
             if (result != null) {
-                this.logger.debug(
+                this.logger.info(
                     orderDescription,
                     `Successful transaction processing: transaction submitted.`,
                 );
             } else {
-                this.logger.debug(
+                this.logger.info(
                     orderDescription,
                     `Successful transaction processing: transaction not submitted.`,
                 );

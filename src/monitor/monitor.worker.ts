@@ -136,7 +136,7 @@ class MonitorWorker {
 
     private broadcastStatus(): void {
         if (!this.latestBlock) {
-            this.logger.warn('Unable to broadcast status. \'latestBlock\' is null.');
+            this.logger.error('Unable to broadcast status. \'latestBlock\' is null.');
             return;
         }
 

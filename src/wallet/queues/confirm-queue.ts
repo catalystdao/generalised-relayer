@@ -38,6 +38,11 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
         order: PendingTransaction,
         retryCount: number,
     ): Promise<HandleOrderResult<ConfirmedTransaction> | null> {
+        this.logger.debug(
+            { txRequest: order.txRequest },
+            `Handling wallet confirm order.`,
+        );
+
         // If it's the first time the order is processed, just wait for it
         if (retryCount == 0) {
             const transactionReceipt = order.tx.wait(
@@ -206,7 +211,7 @@ export class ConfirmQueue extends ProcessingQueue<PendingTransaction, ConfirmedT
         };
 
         if (success) {
-            this.logger.debug(orderDescription, `Transaction confirmed.`);
+            this.logger.info(orderDescription, `Transaction confirmed.`);
         } else {
             this.logger.error(orderDescription, `Transaction not confirmed.`);
         }

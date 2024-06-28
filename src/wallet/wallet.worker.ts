@@ -321,7 +321,7 @@ class WalletWorker {
                 submissionError: tryErrorToString(transaction.submissionError)
             };
 
-            this.logger.debug(
+            this.logger.info(
                 logDescription,
                 `Unsuccessful transaction processing: transaction failed.`,
             );
@@ -348,7 +348,7 @@ class WalletWorker {
                 blockNumber: transaction.txReceipt.blockNumber
             };
 
-            this.logger.debug(
+            this.logger.info(
                 logDescription,
                 `Successful transaction processing: transaction confirmed.`,
             );
@@ -397,7 +397,7 @@ class WalletWorker {
 
                 await this.submitQueue.addOrders(requeueRequest);
             } else {
-                this.logger.debug(
+                this.logger.info(
                     logDescription,
                     `Unsuccessful transaction processing: transaction rejected.`,
                 );
@@ -433,7 +433,7 @@ class WalletWorker {
                     return null;
                 }
 
-                this.logger.debug(
+                this.logger.info(
                     { cancelTxNonce },
                     'Submitting transaction cancellation'
                 );
