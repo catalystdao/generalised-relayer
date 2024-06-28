@@ -1,3 +1,4 @@
+import { ethers } from "ethers6";
 
 export const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -23,3 +24,7 @@ export const tryErrorToString = (error: any): string | undefined => {
         return 'Unable to stringify error.';
     }
 }
+export function paddedTo0xAddress(paddedAddress: string): string {
+    const normalAddress = '0x' + paddedAddress.slice(-40);
+    return ethers.getAddress(normalAddress);
+};

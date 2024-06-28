@@ -31,7 +31,7 @@ services:
         max-size: 50m
 
   relayer:
-    image: ghcr.io/catalystdao/generalised-relayer:latest
+    image: ghcr.io/catalystdao/generalised-relayer:testnet
     build:
       context: .
       dockerfile: dockerfile.relayer
