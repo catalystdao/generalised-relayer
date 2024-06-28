@@ -239,7 +239,7 @@ class LayerZeroWorker {
                 await this.handleEvent(log);
             } catch (error) {
                 this.logger.error(
-                    { log, error },
+                    { log, error: tryErrorToString(error) },
                     `Failed to process event on layer-zero collector worker.`,
                 );
             }
@@ -415,7 +415,7 @@ class LayerZeroWorker {
                 );
             }
         } catch (error) {
-            this.logger.error({ error, log }, 'Failed to handle PacketSent event.');
+            this.logger.error({ error: tryErrorToString(error), log }, 'Failed to handle PacketSent event.');
         }
     }
 
