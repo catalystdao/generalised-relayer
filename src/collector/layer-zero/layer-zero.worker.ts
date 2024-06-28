@@ -41,6 +41,7 @@ import { LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
+import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 
 interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
     layerZeroChainIdMap: Record<string, string>;
@@ -63,6 +64,8 @@ class LayerZeroWorker {
     private readonly incentivesAddresses: Record<string, string>;
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
+
+    private fromBlock: number = 0;
 
     constructor() {
         this.config = workerData as LayerZeroWorkerDataWithMapping;
@@ -91,6 +94,8 @@ class LayerZeroWorker {
             this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,]
         ];
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+
+        this.initiateIntervalStatusLog();
     }
 
     // Initialization helpers
@@ -163,45 +168,30 @@ class LayerZeroWorker {
             },
             `LayerZero collector worker started.`,
         );
-        let fromBlock = null;
-        while (fromBlock == null) {
-            if (this.currentStatus != null) {
-                if (this.config.startingBlock != null) {
-                    if (this.config.startingBlock < 0) {
-                        fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
-                        if (fromBlock < 0) {
-                            throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
-                        }
-                    } else {
-                        fromBlock = this.config.startingBlock;
-                    }
-                } else {
-                    fromBlock = this.currentStatus.blockNumber;
-                }
-            }
-            await wait(this.config.processingInterval);
-        }
+
+        this.fromBlock = await this.getStartingBlock();
         const stopBlock = this.config.stoppingBlock ?? Infinity;
+
         while (true) {
             try {
                 let toBlock = this.currentStatus?.blockNumber;
-                if (!toBlock || fromBlock > toBlock) {
+                if (!toBlock || this.fromBlock > toBlock) {
                     await wait(this.config.processingInterval);
                     continue;
                 }
                 if (toBlock > stopBlock) {
                     toBlock = stopBlock;
                 }
-                const blocksToProcess = toBlock - fromBlock;
+                const blocksToProcess = toBlock - this.fromBlock;
                 if (
                     this.config.maxBlocks != null &&
                     blocksToProcess > this.config.maxBlocks
                 ) {
-                    toBlock = fromBlock + this.config.maxBlocks;
+                    toBlock = this.fromBlock + this.config.maxBlocks;
                 }
-                await this.queryAndProcessEvents(fromBlock, toBlock);
-                this.logger.info(
-                    { fromBlock, toBlock },
+                await this.queryAndProcessEvents(this.fromBlock, toBlock);
+                this.logger.debug(
+                    { fromBlock: this.fromBlock, toBlock },
                     `Scanning LayerZero events.`,
                 );
                 if (toBlock >= stopBlock) {
@@ -211,7 +201,7 @@ class LayerZeroWorker {
                     );
                     break;
                 }
-                fromBlock = toBlock + 1;
+                this.fromBlock = toBlock + 1;
             } catch (error) {
                 this.logger.error(error, `Error on Layer Zero worker: processing blocks.`);
                 await wait(this.config.retryInterval);
@@ -220,6 +210,35 @@ class LayerZeroWorker {
         }
         this.monitor.close();
         await this.store.quit();
+    }
+
+    private async getStartingBlock(): Promise<number> {
+        let fromBlock: number | null = null;
+        while (fromBlock == null) {
+
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus == null) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (this.config.startingBlock == null) {
+                fromBlock = this.currentStatus.blockNumber;
+                break;
+            }
+
+            if (this.config.startingBlock < 0) {
+                fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                if (fromBlock < 0) {
+                    throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                }
+            } else {
+                fromBlock = this.config.startingBlock;
+            }
+        }
+
+        return fromBlock;
     }
 
     /**
@@ -541,6 +560,24 @@ class LayerZeroWorker {
     private calculatePayloadHash(guid: string, message: string): string {
         const payload = `0x${guid}${message}`;
         return ethers.keccak256(payload);
+    }
+
+
+
+    // Misc Helpers
+    // ********************************************************************************************
+
+    private initiateIntervalStatusLog(): void {
+        const logStatus = () => {
+            this.logger.info(
+                {
+                    latestBlock: this.currentStatus?.blockNumber,
+                    currentBlock: this.fromBlock,
+                },
+                'LayerZero collector status.'
+            );
+        };
+        setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 }
 

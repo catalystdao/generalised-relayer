@@ -50,6 +50,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         order: EvalOrder,
         _retryCount: number,
     ): Promise<HandleOrderResult<SubmitOrder> | null> {
+        this.logger.debug(
+            { messageIdentifier: order.messageIdentifier },
+            `Handling submitter eval order.`,
+        );
+
         const bounty = await this.queryBountyInfo(order.messageIdentifier);
         if (bounty === null || bounty === undefined) {
             throw Error(
@@ -306,7 +311,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             securedDeliveryRelativeProfit > this.evaluationConfig.relativeMinDeliveryReward
         );
 
-        this.logger.debug(
+        this.logger.info(
             {
                 messageIdentifier: bounty.messageIdentifier,
                 maxGasDelivery: bounty.maxGasDelivery,
@@ -396,7 +401,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             ackRelativeProfit > this.evaluationConfig.relativeMinAckReward
         );
 
-        this.logger.debug(
+        this.logger.info(
             {
                 messageIdentifier: bounty.messageIdentifier,
                 maxGasDelivery: bounty.maxGasDelivery,
