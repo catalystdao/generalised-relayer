@@ -25,6 +25,11 @@ export class ConfigService {
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
         this.ambsConfig = this.loadAMBsConfig();
+        this.initialize();
+    }
+
+    private async initialize(): Promise<void> {
+        await this.validateChains();
     }
 
     private loadNodeEnv(): string {
@@ -104,29 +109,24 @@ export class ConfigService {
 
         for (const rawChainConfig of this.rawConfig['chains']) {
             const chainId = rawChainConfig.chainId.toString();
-
-            this.validateChainIdFromRPC(rawChainConfig.rpc, chainId).then(chainIdValidate => {
-                if (chainIdValidate) {
-                    chainConfig.set(chainId, {
-                        chainId,
-                        name: rawChainConfig.name,
-                        rpc: rawChainConfig.rpc,
-                        resolver: rawChainConfig.resolver ?? null,
-                        startingBlock: rawChainConfig.startingBlock,
-                        stoppingBlock: rawChainConfig.stoppingBlock,
-                        monitor: this.formatMonitorConfig(rawChainConfig.monitor),
-                        getter: this.formatGetterConfig(rawChainConfig.getter),
-                        pricing: this.formatPricingConfig(rawChainConfig.pricing),
-                        submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
-                        wallet: this.formatWalletConfig(rawChainConfig.wallet),
-                    });
-                } else {
-                    handleError();
-                }
-            }).catch(handleError);
+            chainConfig.set(chainId, {
+                chainId,
+                name: rawChainConfig.name,
+                rpc: rawChainConfig.rpc,
+                resolver: rawChainConfig.resolver ?? null,
+                startingBlock: rawChainConfig.startingBlock,
+                stoppingBlock: rawChainConfig.stoppingBlock,
+                monitor: this.formatMonitorConfig(rawChainConfig.monitor),
+                getter: this.formatGetterConfig(rawChainConfig.getter),
+                pricing: this.formatPricingConfig(rawChainConfig.pricing),
+                submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
+                wallet: this.formatWalletConfig(rawChainConfig.wallet),
+            });
         }
         return chainConfig;
+
     }
+
 
     private loadAMBsConfig(): Map<string, AMBConfig> {
         const ambConfig = new Map<string, AMBConfig>();
@@ -165,21 +165,37 @@ export class ConfigService {
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
 
-    //Validates the Chain ID obtained from the provided RPC endpoint against the expected Chain ID.
-    private async validateChainIdFromRPC(rpc: string, expectedChainId: string): Promise<boolean> {
-        const provider = new JsonRpcProvider(
-            rpc,
-            undefined,
-            { staticNetwork: true }
-        );
-        try {
-            const network = await provider.getNetwork();
-            const actualChainId = network.chainId.toString();
-            return actualChainId === expectedChainId;
-        } catch (error) {
-            return false;
-        }
+    private async validateChains(): Promise<void> {
+        const handleError = (chainId: string) => {
+            throw new Error(`Error validating the Chain ID for chain ${chainId}`);
+        };
+
+        const validateChainIdFromRPC = async (rpc: string, expectedChainId: string): Promise<boolean> => {
+            const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
+            try {
+                const network = await provider.getNetwork();
+                const actualChainId = network.chainId.toString();
+                return actualChainId === expectedChainId;
+            } catch (error) {
+                return false;
+            }
+        };
+
+        const validationPromises = this.rawConfig['chains'].map(async (rawChainConfig: any) => {
+            const chainId = rawChainConfig.chainId.toString();
+            try {
+                const chainIdValidate = await validateChainIdFromRPC(rawChainConfig.rpc, chainId);
+                if (!chainIdValidate) {
+                    handleError(chainId);
+                }
+            } catch (error) {
+                handleError(chainId);
+            }
+        });
+
+        await Promise.all(validationPromises);
     }
+
 
 
     // Formatting helpers
