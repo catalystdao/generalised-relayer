@@ -16,6 +16,8 @@ export class ConfigService {
     readonly chainsConfig: Map<string, ChainConfig>;
     readonly ambsConfig: Map<string, AMBConfig>;
 
+    readonly isReady: Promise<void>;
+
     constructor() {
         this.nodeEnv = this.loadNodeEnv();
 
@@ -25,13 +27,13 @@ export class ConfigService {
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
         this.ambsConfig = this.loadAMBsConfig();
-        this.initialize();
+        this.isReady = this.initialize();
     }
+
 
     private async initialize(): Promise<void> {
-        await this.validateChains();
+        await this.validateChains(this.chainsConfig);
     }
-
     private loadNodeEnv(): string {
         const nodeEnv = process.env['NODE_ENV'];
 
@@ -103,10 +105,6 @@ export class ConfigService {
     private loadChainsConfig(): Map<string, ChainConfig> {
         const chainConfig = new Map<string, ChainConfig>();
 
-        const handleError = () => {
-            throw new Error("Error validating the Chain ID");
-        };
-
         for (const rawChainConfig of this.rawConfig['chains']) {
             const chainId = rawChainConfig.chainId.toString();
             chainConfig.set(chainId, {
@@ -165,11 +163,7 @@ export class ConfigService {
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
 
-    private async validateChains(): Promise<void> {
-        const handleError = (chainId: string) => {
-            throw new Error(`Error validating the Chain ID for chain ${chainId}`);
-        };
-
+    private async validateChains(chainsConfig: Map<string, ChainConfig>): Promise<void> {
         const validateChainIdFromRPC = async (rpc: string, expectedChainId: string): Promise<boolean> => {
             const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
             try {
@@ -181,17 +175,17 @@ export class ConfigService {
             }
         };
 
-        const validationPromises = this.rawConfig['chains'].map(async (rawChainConfig: any) => {
-            const chainId = rawChainConfig.chainId.toString();
-            try {
-                const chainIdValidate = await validateChainIdFromRPC(rawChainConfig.rpc, chainId);
+        const validationPromises = [];
+
+        for (const [chainId, config] of chainsConfig) {
+            const validationPromise = async () => {
+                const chainIdValidate = await validateChainIdFromRPC(config.rpc, chainId);
                 if (!chainIdValidate) {
-                    handleError(chainId);
+                    throw new Error(`Error validating the Chain ID for chain ${chainId}`);
                 }
-            } catch (error) {
-                handleError(chainId);
-            }
-        });
+            };
+            validationPromises.push(validationPromise());
+        }
 
         await Promise.all(validationPromises);
     }
