@@ -54,7 +54,8 @@ class PolymerCollectorSnifferWorker {
         this.polymerAddress = this.config.polymerAddress;
         this.ibcEventEmitterInterface = IbcEventEmitter__factory.createInterface();
         this.filterTopics = [
-            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash, zeroPadValue(this.incentivesAddress, 32)]
+            [this.ibcEventEmitterInterface.getEvent('SendPacket').topicHash],
+            [zeroPadValue(this.incentivesAddress, 32)]
         ];
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
