@@ -125,10 +125,8 @@ export class ConfigService {
                 }
             }).catch(handleError);
         }
-
         return chainConfig;
     }
-
 
     private loadAMBsConfig(): Map<string, AMBConfig> {
         const ambConfig = new Map<string, AMBConfig>();
@@ -166,7 +164,6 @@ export class ConfigService {
         // If there is no chain-specific override, return the default value for the property.
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
-
 
     //Validates the Chain ID obtained from the provided RPC endpoint against the expected Chain ID.
     private async validateChainIdFromRPC(rpc: string, expectedChainId: string): Promise<boolean> {
