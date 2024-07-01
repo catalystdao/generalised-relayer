@@ -98,30 +98,37 @@ export class ConfigService {
     private loadChainsConfig(): Map<string, ChainConfig> {
         const chainConfig = new Map<string, ChainConfig>();
 
+        const handleError = () => {
+            throw new Error("Error validating the Chain ID");
+        };
+
         for (const rawChainConfig of this.rawConfig['chains']) {
             const chainId = rawChainConfig.chainId.toString();
-            const chainIdValidate = this.validateChainIdFromRPC(rawChainConfig.rpc, chainId)
-            if (!chainIdValidate) {
-                chainConfig.set(chainId, {
-                    chainId,
-                    name: rawChainConfig.name,
-                    rpc: rawChainConfig.rpc,
-                    resolver: rawChainConfig.resolver ?? null,
-                    startingBlock: rawChainConfig.startingBlock,
-                    stoppingBlock: rawChainConfig.stoppingBlock,
-                    monitor: this.formatMonitorConfig(rawChainConfig.monitor),
-                    getter: this.formatGetterConfig(rawChainConfig.getter),
-                    pricing: this.formatPricingConfig(rawChainConfig.pricing),
-                    submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
-                    wallet: this.formatWalletConfig(rawChainConfig.wallet),
-                });
-            } else {
-                throw new Error("The Chain ID specified in the configuration file does not match the Chain ID provided by the RPC endpoint.");
-            }
+
+            this.validateChainIdFromRPC(rawChainConfig.rpc, chainId).then(chainIdValidate => {
+                if (chainIdValidate) {
+                    chainConfig.set(chainId, {
+                        chainId,
+                        name: rawChainConfig.name,
+                        rpc: rawChainConfig.rpc,
+                        resolver: rawChainConfig.resolver ?? null,
+                        startingBlock: rawChainConfig.startingBlock,
+                        stoppingBlock: rawChainConfig.stoppingBlock,
+                        monitor: this.formatMonitorConfig(rawChainConfig.monitor),
+                        getter: this.formatGetterConfig(rawChainConfig.getter),
+                        pricing: this.formatPricingConfig(rawChainConfig.pricing),
+                        submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
+                        wallet: this.formatWalletConfig(rawChainConfig.wallet),
+                    });
+                } else {
+                    handleError();
+                }
+            }).catch(handleError);
         }
 
         return chainConfig;
     }
+
 
     private loadAMBsConfig(): Map<string, AMBConfig> {
         const ambConfig = new Map<string, AMBConfig>();
