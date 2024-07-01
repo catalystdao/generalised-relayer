@@ -198,7 +198,7 @@ class WalletWorker {
             requeueCount: 0
         };
 
-        this.logger.debug(request, `Transaction received.`);
+        this.logger.info(request, `Transaction received.`);
 
         this.newRequestsQueue.push(request);
     }
