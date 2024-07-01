@@ -4,7 +4,7 @@ import { Global, Injectable, OnModuleInit } from "@nestjs/common";
 import { join } from 'path';
 import { Worker, MessagePort } from 'worker_threads';
 import { tryErrorToString } from 'src/common/utils';
-import { PricingProviderConfig } from './pricing.provider';
+import { PricingProviderConfig, loadPricingProvider } from './pricing.provider';
 import { LoggerOptions } from 'pino';
 import { PricingGetPortMessage, PricingGetPortResponse } from './pricing.types';
 
@@ -24,6 +24,7 @@ export interface PricingWorkerData {
 export class PricingService implements OnModuleInit {
     private worker: Worker | null = null;
     private requestPortMessageId = 0;
+    private chainPricingProviderConfigs: Record<string, PricingProviderConfig> = {};
 
     constructor(
         private readonly configService: ConfigService,
@@ -115,6 +116,8 @@ export class PricingService implements OnModuleInit {
             chainPricingProviderConfigs[chainId] = pricingProviderConfig;
         }
 
+        this.chainPricingProviderConfigs = chainPricingProviderConfigs;
+
         return {
             chainPricingProviderConfigs: chainPricingProviderConfigs,
             loggerOptions: this.loggerService.loggerOptions
@@ -132,6 +135,15 @@ export class PricingService implements OnModuleInit {
         setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
+    async getAssetPrice(chainId: string, amount: bigint): Promise<number> {
+        const config = this.chainPricingProviderConfigs[chainId];
+        if (!config) {
+            throw new Error(`No pricing provider config found for chainId: ${chainId}`);
+        }
+
+        const provider = loadPricingProvider(config, this.loggerService.logger);
+        return provider.getPrice(amount);
+    }
 
     private getNextRequestPortMessageId(): number {
         return this.requestPortMessageId++;
