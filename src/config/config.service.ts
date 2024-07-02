@@ -27,6 +27,7 @@ export class ConfigService {
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
         this.ambsConfig = this.loadAMBsConfig();
+
         this.isReady = this.initialize();
     }
 
@@ -34,6 +35,7 @@ export class ConfigService {
     private async initialize(): Promise<void> {
         await this.validateChains(this.chainsConfig);
     }
+
     private loadNodeEnv(): string {
         const nodeEnv = process.env['NODE_ENV'];
 
@@ -121,10 +123,9 @@ export class ConfigService {
                 wallet: this.formatWalletConfig(rawChainConfig.wallet),
             });
         }
+
         return chainConfig;
-
     }
-
 
     private loadAMBsConfig(): Map<string, AMBConfig> {
         const ambConfig = new Map<string, AMBConfig>();
