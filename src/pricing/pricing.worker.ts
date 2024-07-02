@@ -66,7 +66,7 @@ class PricingWorker {
         const { port1, port2 } = new MessageChannel();
 
         port1.on('message', (request: GetPriceMessage) => {
-            const pricePromise = this.getPrice(request.chainId, request.amount);
+            const pricePromise = this.getPrice(request.chainId, request.amount, request.tokenId);
             void pricePromise.then((price) => {
                 const response: GetPriceResponse = {
                     messageId: request.messageId,
@@ -83,13 +83,13 @@ class PricingWorker {
         return port2;
     }
 
-    private async getPrice(chainId: string, amount: bigint): Promise<number | null> {
+    private async getPrice(chainId: string, amount: bigint, tokenId?: string): Promise<number | null> {
         const provider = this.providers.get(chainId);
         if (provider == undefined) {
             return null;
         }
 
-        return provider.getPrice(amount);
+        return provider.getPrice(amount, tokenId);
     }
     
 }

@@ -8,7 +8,7 @@ export const BASE_COIN_GECKO_URL = 'https://api.coingecko.com/api/v3';
 //TODO add support for an api key
 
 export interface CoinGeckoPricingConfig extends PricingProviderConfig {
-    coinId: string;
+    gasCoinId: string;
 }
 
 export class CoinGeckoPricingProvider extends PricingProvider<CoinGeckoPricingConfig> {
@@ -27,14 +27,14 @@ export class CoinGeckoPricingProvider extends PricingProvider<CoinGeckoPricingCo
     }
 
     private validateCoinGeckoConfig(config: CoinGeckoPricingConfig): void {
-        if (config.coinId == undefined) {
-            throw new Error('Invalid CoinGecko config: no coinId specified.')
+        if (config.gasCoinId == undefined) {
+            throw new Error('Invalid CoinGecko config: no gasCoinId specified.')
         }
     }
 
-    async queryCoinPrice(): Promise<number> {
+    async queryCoinPrice(tokenId?: string): Promise<number> {
 
-        const coinId = this.config.coinId;
+        const coinId = tokenId ?? this.config.gasCoinId;
         const denom = this.config.pricingDenomination.toLowerCase();
         const path = `/simple/price?ids=${coinId}&vs_currencies=${denom}`;
 

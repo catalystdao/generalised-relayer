@@ -25,10 +25,15 @@ export class PricingService implements OnModuleInit {
     private worker: Worker | null = null;
     private requestPortMessageId = 0;
 
+    private setReady!: () => void;
+    readonly isReady: Promise<void>;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
-    ) {}
+    ) {
+        this.isReady = this.initializeIsReady();
+    }
 
     onModuleInit() {
         this.loggerService.info(`Starting Pricing worker...`);
@@ -36,6 +41,14 @@ export class PricingService implements OnModuleInit {
         this.initializeWorker();
 
         this.initiateIntervalStatusLog();
+
+        this.setReady();
+    }
+
+    private initializeIsReady(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            this.setReady = resolve;
+        });
     }
 
     private initializeWorker(): void {
@@ -138,6 +151,8 @@ export class PricingService implements OnModuleInit {
     }
 
     async attachToPricing(): Promise<MessagePort> {
+
+        await this.isReady;
 
         const worker = this.worker;
         if (worker == undefined) {
