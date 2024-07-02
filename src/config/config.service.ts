@@ -32,6 +32,9 @@ export class ConfigService {
     }
 
 
+    // NOTE: The OnModuleInit hook is not being used as it does not guarantee the order in which it
+    // is executed across services (i.e. there is no guarantee that the config service will be the
+    // first to initialize). The `isReady` promise must be awaited on Relayer initialization.
     private async initialize(): Promise<void> {
         await this.validateChains(this.chainsConfig);
     }
