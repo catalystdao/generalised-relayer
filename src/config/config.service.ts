@@ -4,6 +4,7 @@ import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
 import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig } from './config.types';
+import { JsonRpcProvider } from 'ethers6';
 
 @Injectable()
 export class ConfigService {
@@ -15,6 +16,8 @@ export class ConfigService {
     readonly chainsConfig: Map<string, ChainConfig>;
     readonly ambsConfig: Map<string, AMBConfig>;
 
+    readonly isReady: Promise<void>;
+
     constructor() {
         this.nodeEnv = this.loadNodeEnv();
 
@@ -24,6 +27,16 @@ export class ConfigService {
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
         this.ambsConfig = this.loadAMBsConfig();
+
+        this.isReady = this.initialize();
+    }
+
+
+    // NOTE: The OnModuleInit hook is not being used as it does not guarantee the order in which it
+    // is executed across services (i.e. there is no guarantee that the config service will be the
+    // first to initialize). The `isReady` promise must be awaited on Relayer initialization.
+    private async initialize(): Promise<void> {
+        await this.validateChains(this.chainsConfig);
     }
 
     private loadNodeEnv(): string {
@@ -153,6 +166,34 @@ export class ConfigService {
         // If there is no chain-specific override, return the default value for the property.
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
+
+    private async validateChains(chainsConfig: Map<string, ChainConfig>): Promise<void> {
+        const validateChainIdFromRPC = async (rpc: string, expectedChainId: string): Promise<boolean> => {
+            const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
+            try {
+                const network = await provider.getNetwork();
+                const actualChainId = network.chainId.toString();
+                return actualChainId === expectedChainId;
+            } catch (error) {
+                return false;
+            }
+        };
+
+        const validationPromises = [];
+
+        for (const [chainId, config] of chainsConfig) {
+            const validationPromise = async () => {
+                const chainIdValidate = await validateChainIdFromRPC(config.rpc, chainId);
+                if (!chainIdValidate) {
+                    throw new Error(`Error validating the Chain ID for chain ${chainId}`);
+                }
+            };
+            validationPromises.push(validationPromise());
+        }
+
+        await Promise.all(validationPromises);
+    }
+
 
 
     // Formatting helpers
