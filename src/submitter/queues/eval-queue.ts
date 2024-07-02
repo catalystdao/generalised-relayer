@@ -289,8 +289,11 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             this.chainId
         );
 
-        const securedDeliveryReward = deliveryReward
-            + (maxAckLoss * this.profitabilityFactorBigInt) / DECIMAL_BASE_BIG_INT;
+        const adjustedDevlieryReward = deliveryReward * DECIMAL_BASE_BIG_INT
+            / this.profitabilityFactorBigInt;
+
+        const securedDeliveryReward = adjustedDevlieryReward + maxAckLoss;
+
         const securedDeliveryFiatReward = await this.getGasCostFiatPrice(
             securedDeliveryReward,
             bounty.fromChainId
@@ -302,8 +305,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         ) / DECIMAL_BASE;
         const deliveryFiatReward = securedDeliveryFiatReward / securedRewardFactor;
 
-        const securedDeliveryFiatProfit = securedDeliveryFiatReward
-            - deliveryFiatCost * this.evaluationConfig.profitabilityFactor;
+        const securedDeliveryFiatProfit = securedDeliveryFiatReward - deliveryFiatCost;
         const securedDeliveryRelativeProfit = securedDeliveryFiatProfit / deliveryFiatCost;
 
         const relayDelivery = (
@@ -368,8 +370,10 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             bounty.priceOfAckGas
         );
 
-        const ackProfit = ackReward
-            - (ackCost * this.profitabilityFactorBigInt) / DECIMAL_BASE_BIG_INT;             // ! In source chain gas value
+        const adjustedAckReward = ackReward * DECIMAL_BASE_BIG_INT
+            / this.profitabilityFactorBigInt;
+
+        const ackProfit = adjustedAckReward - ackCost;      // ! In source chain gas value
         const ackFiatProfit = await this.getGasCostFiatPrice(ackProfit, this.chainId);
         const ackRelativeProfit = Number(ackProfit) / Number(ackCost);
 
