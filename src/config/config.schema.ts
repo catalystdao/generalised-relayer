@@ -100,6 +100,7 @@ const MONITOR_SCHEMA = {
             maximum: 120_000,   // 2 minutes
         },
         blockDelay: { $ref: "positive-number-schema" },
+        noBlockUpdateWarningInterval: { $ref: "positive-number-schema"},
     },
     additionalProperties: false
 }

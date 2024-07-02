@@ -17,6 +17,8 @@ import {
 } from './wormhole.types';
 import { fetchVAAs } from './api-utils';
 import { Redis } from 'ioredis';
+import winston from 'winston';
+import { PinoLoggerTransport } from './winston-pino-logger-transport';
 
 // NOTE: the Wormhole relayer engine is only able of scanning new VAAs. For old VAA recovery
 // the 'wormhole-recovery' worker is used.
@@ -48,6 +50,20 @@ class WormholeEngineWorker {
     private initializeLogger(loggerOptions: LoggerOptions): pino.Logger {
         return pino(loggerOptions).child({
             worker: 'collector-wormhole-engine',
+        });
+    }
+
+    private getCustomWormholeEngineLogger(): winston.Logger {
+        return winston.createLogger({
+            transports: [
+                new PinoLoggerTransport(this.logger)
+            ],
+            format: winston.format.combine(
+                winston.format.splat(),
+                winston.format.errors({ stack: true }),
+                winston.format.label({ label: 'wormhole-engine-package' }),
+                winston.format.json(),
+            ),
         });
     }
 
@@ -91,6 +107,7 @@ class WormholeEngineWorker {
             },
             spyEndpoint: `${this.config.spyHost ?? DEFAULT_SPY_HOST}:${this.config.spyPort}`,
             concurrency,
+            logger: this.getCustomWormholeEngineLogger()
         });
 
         return app;

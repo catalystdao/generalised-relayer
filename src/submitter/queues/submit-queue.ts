@@ -32,7 +32,7 @@ export class SubmitQueue extends ProcessingQueue<
     ): Promise<HandleOrderResult<SubmitOrderResult> | null> {
         this.logger.debug(
             { messageIdentifier: order.messageIdentifier },
-            `Handling submit order`,
+            `Handling submitter submit order`,
         );
     
         // Simulate the packet submission as a static call. Skip if it's the first submission try,
@@ -113,20 +113,20 @@ export class SubmitQueue extends ProcessingQueue<
 
         if (success) {
             if (result != null) {
-                this.logger.debug(
+                this.logger.info(
                     orderDescription,
                     `Successful submit order: message submitted.`,
                 );
 
                 void this.registerSubmissionCost(order, result.txReceipt.gasUsed);
             } else {
-                this.logger.debug(
+                this.logger.info(
                     orderDescription,
                     `Successful submit order: message not submitted.`,
                 );
             }
         } else {
-            this.logger.error(orderDescription, `Unsuccessful submit order.`);
+            this.logger.warn(orderDescription, `Unsuccessful submit order.`);
 
             if (order.priority) {
                 this.logger.warn(

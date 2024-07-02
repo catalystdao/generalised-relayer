@@ -276,7 +276,7 @@ class SubmitterWorker {
         priority: boolean,
         incentivesPayload?: BytesLike,
     ) {
-        this.logger.debug(
+        this.logger.info(
             { messageIdentifier, priority },
             `Submit order received.`,
         );
