@@ -47,7 +47,11 @@ export class EvaluatorService implements OnModuleInit {
         const workerData = await this.loadWorkerConfig();
         
         this.worker = new Worker(join(__dirname, 'evaluator.worker.js'), {
-            workerData
+            workerData,
+            transferList: [
+                workerData.pricingPort,
+                workerData.walletPort
+            ]
         });
 
         this.worker.on('error', (error) => {
