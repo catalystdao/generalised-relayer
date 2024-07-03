@@ -67,7 +67,8 @@ class EvaluatorWorker {
         const { port1, port2 } = new MessageChannel();
 
         port1.on('message', (message: EvaluatorPortData) => {
-            void this.processRequest(message);
+            void this.processRequest(message)
+                .then((response) => port1.postMessage(response));
         })
 
         this.ports[portId] = port1;
@@ -75,7 +76,7 @@ class EvaluatorWorker {
         return port2;
     }
 
-    private async processRequest(data: EvaluatorPortData): Promise<void> {
+    private async processRequest(data: EvaluatorPortData): Promise<EvaluatorPortData> {
         const messageType = data.message.type;
         let returnData: EvaluatorMessage | null = null;
         try {
@@ -105,12 +106,9 @@ class EvaluatorWorker {
             //TODO log
         }
 
-        if (returnData != null) {
-            const response: EvaluatorPortData = {
-                messageId: data.messageId,
-                message: returnData,
-            }
-            parentPort!.postMessage(response);
+        return {
+            messageId: data.messageId,
+            message: returnData ?? { type: EvaluatorMessageType.EmptyResponse },
         }
     }
 

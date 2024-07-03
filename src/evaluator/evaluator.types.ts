@@ -40,12 +40,14 @@ export enum EvaluatorMessageType {
     EvaluateDeliveryResponse,
     EvaluateAck,
     EvaluateAckResponse,
+    EmptyResponse,
 }
 
 export type EvaluatorMessage = EvaluateDeliveryMessage
     | EvaluateDeliveryResponseMessage
     | EvaluateAckMessage
-    | EvaluateAckResponseMessage;
+    | EvaluateAckResponseMessage
+    | EmptyResponseMessage;
 
 
 export interface EvaluateDeliveryMessage {
@@ -115,6 +117,10 @@ export interface EvaluateAckResponseMessage {
         relayAckForDeliveryBounty: boolean;
         relayAck: boolean;
     } | null;
+}
+
+export interface EmptyResponseMessage {
+    type: EvaluatorMessageType.EmptyResponse;
 }
 
 
