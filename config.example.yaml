@@ -17,10 +17,10 @@ global:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
-
-    # Evaluation properties
     evaluationRetryInterval: 3600000    # Interval at which to reevaluate whether to relay a message.
     maxEvaluationDuration: 86400000     # Time after which to drop an undelivered message.
+
+  evaluator:
     verificationDeliveryGas: '55000'    # Gas amount used for packet verification upon delivery.
     unrewardedDeliveryGas: '25000'      # Gas amount that will be unrewarded on delivery submission.
     minDeliveryReward: 0.001            # In the 'pricingDenomination' specified below
