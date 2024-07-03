@@ -135,7 +135,10 @@ class EvaluatorWorker {
         }
 
         const bounty = await this.store.getBounty(messageIdentifier);
-        if (bounty == null || bounty.toChainId != chainId) {
+        // TODO ideally the check `bounty.toChainId != chainId` would be performed at this point 
+        // for extra precaution, but with the current implementation the `toChainId` field is not
+        // available until the message is delivered.
+        if (bounty == null) {
             //TODO log
             // Send a 'null' evaluation response
             return response;
