@@ -149,3 +149,73 @@ export interface EvaluatorWorkerData {
     walletPort: MessagePort;
     loggerOptions: LoggerOptions;
 }
+
+
+
+// Controller Types
+// ************************************************************************************************
+
+export interface EvaluateDeliveryQuery {
+    chainId: string;
+    messageIdentifier: string;
+    gasEstimate: string;
+    observedGasEstimate: string;
+    additionalFeeEstimate: string;
+    value: string;
+}
+
+export interface EvaluteDeliveryQueryResponse {
+    chainId: string;
+    messageIdentifier: string;
+    maxGasDelivery: number;
+    maxGasAck: number;
+    gasEstimate: string;
+    observedGasEstimate: string;
+    additionalFeeEstimate: string;
+    destinationGasPrice: string;
+    value: string;
+    sourceGasPrice: string;
+    deliveryCost: string;
+    deliveryReward: string;
+    maxAckLoss: string;
+    deliveryFiatCost: number;
+    deliveryFiatReward: number;
+    securedDeliveryFiatReward: number;
+    profitabilityFactor: number;
+    securedDeliveryFiatProfit: number;
+    securedDeliveryRelativeProfit: number;
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number;
+    relayDelivery: boolean;
+}
+
+export interface EvaluateAckQuery {
+    chainId: string;
+    messageIdentifier: string;
+    gasEstimate: string;
+    observedGasEstimate: string;
+    additionalFeeEstimate: string;
+    value: string;
+}
+
+export interface EvaluateAckQueryResponse {
+    chainId: string;
+    messageIdentifier: string;
+    maxGasDelivery: number;
+    maxGasAck: number;
+    gasEstimate: string;
+    observedGasEstimate: string;
+    additionalFeeEstimate: string;
+    sourceGasPrice: string;
+    ackCost: string;
+    ackReward: string;
+    profitabilityFactor: number;
+    ackFiatProfit: number;
+    ackRelativeProfit: number;
+    minAckReward: number;
+    relativeMinAckReward: number;
+    deliveryCost: string;
+    deliveryReward: string;
+    relayAckForDeliveryBounty: boolean;
+    relayAck: boolean;
+}
