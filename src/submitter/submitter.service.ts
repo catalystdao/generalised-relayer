@@ -8,7 +8,7 @@ import { LoggerOptions } from 'pino';
 import { WalletService } from 'src/wallet/wallet.service';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
-import { PricingService } from 'src/pricing/pricing.service';
+import { EvaluatorService } from 'src/evaluator/evaluator.service';
 
 const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
@@ -17,15 +17,6 @@ const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
 const EVALUATION_RETRY_INTERVAL_DEFAULT = 60 * 60 * 1000;
 const MAX_EVALUATION_DURATION_DEFAULT = 24 * 60 * 60 * 1000;
-const UNREWARDED_DELIVERY_GAS_DEFAULT = 0n;
-const VERIFICATION_DELIVERY_GAS_DEFAULT = 0n;
-const MIN_DELIVERY_REWARD_DEFAULT = 0;
-const RELATIVE_MIN_DELIVERY_REWARD_DEFAULT = 0;
-const UNREWARDED_ACK_GAS_DEFAULT = 0n;
-const VERIFICATION_ACK_GAS_DEFAULT = 0n;
-const MIN_ACK_REWARD_DEFAULT = 0;
-const RELATIVE_MIN_ACK_REWARD_DEFAULT = 0;
-const PROFITABILITY_FACTOR_DEFAULT = 1;
 
 interface GlobalSubmitterConfig {
     enabled: boolean;
@@ -36,15 +27,6 @@ interface GlobalSubmitterConfig {
     maxPendingTransactions: number;
     evaluationRetryInterval: number;
     maxEvaluationDuration: number;
-    unrewardedDeliveryGas: bigint;
-    verificationDeliveryGas: bigint;
-    minDeliveryReward: number;
-    relativeMinDeliveryReward: number;
-    unrewardedAckGas: bigint;
-    verificationAckGas: bigint;
-    minAckReward: number;
-    relativeMinAckReward: number;
-    profitabilityFactor: number;
     walletPublicKey: string;
 }
 
@@ -61,16 +43,7 @@ export interface SubmitterWorkerData {
     maxPendingTransactions: number;
     evaluationRetryInterval: number;
     maxEvaluationDuration: number;
-    unrewardedDeliveryGas: bigint;
-    verificationDeliveryGas: bigint;
-    minDeliveryReward: number;
-    relativeMinDeliveryReward: number;
-    unrewardedAckGas: bigint;
-    verificationAckGas: bigint;
-    minAckReward: number;
-    relativeMinAckReward: number;
-    profitabilityFactor: number;
-    pricingPort: MessagePort;
+    evaluatorPort: MessagePort;
     walletPublicKey: string;
     walletPort: MessagePort;
     loggerOptions: LoggerOptions;
@@ -82,7 +55,7 @@ export class SubmitterService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly pricingService: PricingService,
+        private readonly evaluatorService: EvaluatorService,
         private readonly walletService: WalletService,
         private readonly loggerService: LoggerService,
     ) {}
@@ -108,7 +81,10 @@ export class SubmitterService {
 
             const worker = new Worker(join(__dirname, 'submitter.worker.js'), {
                 workerData,
-                transferList: [workerData.pricingPort, workerData.walletPort]
+                transferList: [
+                    workerData.evaluatorPort,
+                    workerData.walletPort
+                ]
             });
 
             worker.on('error', (error) =>
@@ -152,24 +128,6 @@ export class SubmitterService {
             submitterConfig.evaluationRetryInterval ?? EVALUATION_RETRY_INTERVAL_DEFAULT;
         const maxEvaluationDuration =
             submitterConfig.maxEvaluationDuration ?? MAX_EVALUATION_DURATION_DEFAULT;
-        const unrewardedDeliveryGas = 
-            submitterConfig.unrewardedDeliveryGas ?? UNREWARDED_DELIVERY_GAS_DEFAULT;
-        const verificationDeliveryGas = 
-            submitterConfig.verificationDeliveryGas ?? VERIFICATION_DELIVERY_GAS_DEFAULT;
-        const minDeliveryReward =
-            submitterConfig.minDeliveryReward ?? MIN_DELIVERY_REWARD_DEFAULT;
-        const relativeMinDeliveryReward =
-            submitterConfig.relativeMinDeliveryReward ?? RELATIVE_MIN_DELIVERY_REWARD_DEFAULT;
-        const unrewardedAckGas = 
-            submitterConfig.unrewardedAckGas ?? UNREWARDED_ACK_GAS_DEFAULT;
-        const verificationAckGas = 
-            submitterConfig.verificationAckGas ?? VERIFICATION_ACK_GAS_DEFAULT;
-        const minAckReward =
-            submitterConfig.minAckReward ?? MIN_ACK_REWARD_DEFAULT;
-        const relativeMinAckReward =
-            submitterConfig.relativeMinAckReward ?? RELATIVE_MIN_ACK_REWARD_DEFAULT;
-        const profitabilityFactor =
-            submitterConfig.profitabilityFactor ?? PROFITABILITY_FACTOR_DEFAULT;
 
         const walletPublicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
 
@@ -183,15 +141,6 @@ export class SubmitterService {
             walletPublicKey,
             evaluationRetryInterval,
             maxEvaluationDuration,
-            unrewardedDeliveryGas,
-            verificationDeliveryGas,
-            minDeliveryReward,
-            relativeMinDeliveryReward,
-            unrewardedAckGas,
-            verificationAckGas,
-            minAckReward,
-            relativeMinAckReward,
-            profitabilityFactor,
         };
     }
 
@@ -254,49 +203,13 @@ export class SubmitterService {
             evaluationRetryInterval:
                 chainConfig.submitter.evaluationRetryInterval ??
                 globalConfig.evaluationRetryInterval,
-        
-            unrewardedDeliveryGas:
-                chainConfig.submitter.unrewardedDeliveryGas ??
-                globalConfig.unrewardedDeliveryGas,
-        
-            verificationDeliveryGas:
-                chainConfig.submitter.verificationDeliveryGas ??
-                globalConfig.verificationDeliveryGas,
 
             maxEvaluationDuration:
                 chainConfig.submitter.maxEvaluationDuration ??
                 globalConfig.maxEvaluationDuration,
-        
-            minDeliveryReward:
-                chainConfig.submitter.minDeliveryReward ??
-                globalConfig.minDeliveryReward,
-
-            relativeMinDeliveryReward:
-                chainConfig.submitter.relativeMinDeliveryReward ??
-                globalConfig.relativeMinDeliveryReward,
-            
-            unrewardedAckGas:
-                chainConfig.submitter.unrewardedAckGas ??
-                globalConfig.unrewardedAckGas,
-        
-            verificationAckGas:
-                chainConfig.submitter.verificationAckGas ??
-                globalConfig.verificationAckGas,
-
-            minAckReward:
-                chainConfig.submitter.minAckReward ??
-                globalConfig.minAckReward,
-
-            relativeMinAckReward:
-                chainConfig.submitter.relativeMinAckReward ??
-                globalConfig.relativeMinAckReward,
-
-            profitabilityFactor:
-                chainConfig.submitter.profitabilityFactor ??
-                globalConfig.profitabilityFactor,
 
 
-            pricingPort: await this.pricingService.attachToPricing(),
+            evaluatorPort: await this.evaluatorService.attachToEvaluator(),
 
             walletPublicKey: globalConfig.walletPublicKey,
             walletPort: await this.walletService.attachToWallet(),

@@ -4,14 +4,14 @@ import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
 import { AmbPayload } from 'src/store/types/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { BountyEvaluationConfig, EvalOrder, PendingOrder } from './submitter.types';
+import { EvalOrder, PendingOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { WalletInterface } from 'src/wallet/wallet.interface';
-import { PricingInterface } from 'src/pricing/pricing.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
+import { EvaluatorInterface } from 'src/evaluator/evaluator.interface';
 
 class SubmitterWorker {
     private readonly store: Store;
@@ -25,7 +25,7 @@ class SubmitterWorker {
 
     private readonly resolver: Resolver;
 
-    private readonly pricing: PricingInterface;
+    private readonly evaluator: EvaluatorInterface;
     private readonly wallet: WalletInterface;
 
     private readonly pendingQueue: PendingOrder<EvalOrder>[] = [];
@@ -54,7 +54,7 @@ class SubmitterWorker {
             this.logger
         );
 
-        this.pricing = new PricingInterface(this.config.pricingPort);
+        this.evaluator = new EvaluatorInterface(this.config.evaluatorPort);
         this.wallet = new WalletInterface(this.config.walletPort);
 
         [this.evalQueue, this.submitQueue] =
@@ -67,20 +67,7 @@ class SubmitterWorker {
                 this.config.incentivesAddresses,
                 this.config.packetCosts,
                 this.config.chainId,
-                {
-                    evaluationRetryInterval: this.config.evaluationRetryInterval,
-                    maxEvaluationDuration: this.config.maxEvaluationDuration,
-                    unrewardedDeliveryGas: this.config.unrewardedDeliveryGas,
-                    verificationDeliveryGas: this.config.verificationDeliveryGas,
-                    minDeliveryReward: this.config.minDeliveryReward,
-                    relativeMinDeliveryReward: this.config.relativeMinDeliveryReward,
-                    unrewardedAckGas: this.config.unrewardedAckGas,
-                    verificationAckGas: this.config.verificationAckGas,
-                    minAckReward: this.config.minAckReward,
-                    relativeMinAckReward: this.config.relativeMinAckReward,
-                    profitabilityFactor: this.config.profitabilityFactor,
-                },
-                this.pricing,
+                this.evaluator,
                 this.provider,
                 this.wallet,
                 this.logger,
@@ -110,8 +97,7 @@ class SubmitterWorker {
         incentivesContracts: Map<string, string>,
         packetCosts: Map<string, bigint>,
         chainId: string,
-        bountyEvaluationConfig: BountyEvaluationConfig,
-        pricing: PricingInterface,
+        evaluator: EvaluatorInterface,
         provider: JsonRpcProvider,
         wallet: WalletInterface,
         logger: pino.Logger,
@@ -125,10 +111,7 @@ class SubmitterWorker {
             incentivesContracts,
             packetCosts,
             chainId,
-            bountyEvaluationConfig,
-            pricing,
-            provider,
-            wallet,
+            evaluator,
             logger,
         );
 

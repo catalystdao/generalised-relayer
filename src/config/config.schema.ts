@@ -82,6 +82,7 @@ const GLOBAL_SCHEMA = {
         monitor: { $ref: "monitor-schema" },
         getter: { $ref: "getter-schema" },
         pricing: { $ref: "pricing-schema" },
+        evaluator: { $ref: "evaluator-schema" },
         submitter: { $ref: "submitter-schema" },
         persister: { $ref: "persister-schema" },
         wallet: { $ref: "wallet-schema" },
@@ -134,6 +135,23 @@ export const PRICING_SCHEMA = {
     additionalProperties: true  // Allow for provider-specific configurations
 }
 
+const EVALUATOR_SCHEMA = {
+    $id: "evaluator-schema",
+    type: "object",
+    properties: {
+        unrewardedDeliveryGas: { $ref: "gas-field-schema" },
+        verificationDeliveryGas: { $ref: "gas-field-schema" },
+        minDeliveryReward: { $ref: "positive-number-schema" },
+        relativeMinDeliveryReward: { $ref: "positive-number-schema" },
+        unrewardedAckGas: { $ref: "gas-field-schema" },
+        verificationAckGas: { $ref: "gas-field-schema" },
+        minAckReward: { $ref: "positive-number-schema" },
+        relativeMinAckReward: { $ref: "positive-number-schema" },
+        profitabilityFactor: { $ref: "positive-number-schema" },
+    },
+    additionalProperties: false
+}
+
 const SUBMITTER_SCHEMA = {
     $id: "submitter-schema",
     type: "object",
@@ -147,18 +165,8 @@ const SUBMITTER_SCHEMA = {
         maxTries: { $ref: "positive-number-schema" },
         maxPendingTransactions: { $ref: "positive-number-schema" },
 
-        //TODO define 'evaluation' configuration somewhere else?
         evaluationRetryInterval: { $ref: "positive-number-schema" },
         maxEvaluationDuration: { $ref: "positive-number-schema" },
-        unrewardedDeliveryGas: { $ref: "gas-field-schema" },
-        verificationDeliveryGas: { $ref: "gas-field-schema" },
-        minDeliveryReward: { $ref: "positive-number-schema" },
-        relativeMinDeliveryReward: { $ref: "positive-number-schema" },
-        unrewardedAckGas: { $ref: "gas-field-schema" },
-        verificationAckGas: { $ref: "gas-field-schema" },
-        minAckReward: { $ref: "positive-number-schema" },
-        relativeMinAckReward: { $ref: "positive-number-schema" },
-        profitabilityFactor: { $ref: "positive-number-schema" },
     },
     additionalProperties: false
 }
@@ -245,6 +253,7 @@ const CHAINS_SCHEMA = {
             monitor: { $ref: "monitor-schema" },
             getter: { $ref: "getter-schema" },
             pricing: { $ref: "pricing-schema" },
+            evaluator: { $ref: "evaluator-schema" },
             submitter: { $ref: "submitter-schema" },
             wallet: { $ref: "wallet-schema" },
         },
@@ -269,6 +278,7 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(PRICING_SCHEMA);
+    ajv.addSchema(EVALUATOR_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
     ajv.addSchema(PERSISTER_SCHEMA);
     ajv.addSchema(WALLET_SCHEMA);

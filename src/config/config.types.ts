@@ -5,6 +5,7 @@ export interface GlobalConfig {
   monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
   pricing: PricingGlobalConfig;
+  evaluator: EvaluatorGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
   wallet: WalletGlobalConfig;
@@ -38,6 +39,20 @@ export interface PricingGlobalConfig {
 
 export interface PricingConfig extends PricingGlobalConfig {}
 
+export interface EvaluatorGlobalConfig {
+  unrewardedDeliveryGas?: bigint;
+  verificationDeliveryGas?: bigint;
+  minDeliveryReward?: number;
+  relativeMinDeliveryReward?: number;
+  unrewardedAckGas?: bigint;
+  verificationAckGas?: bigint;
+  minAckReward?: number;
+  relativeMinAckReward?: number;
+  profitabilityFactor?: number;
+}
+
+export interface EvaluatorConfig extends EvaluatorGlobalConfig {}
+
 export interface SubmitterGlobalConfig {
   enabled?: boolean;
   newOrdersDelay?: number;
@@ -48,15 +63,6 @@ export interface SubmitterGlobalConfig {
 
   evaluationRetryInterval?: number;
   maxEvaluationDuration?: number;
-  unrewardedDeliveryGas?: bigint;
-  verificationDeliveryGas?: bigint;
-  minDeliveryReward?: number;
-  relativeMinDeliveryReward?: number;
-  unrewardedAckGas?: bigint;
-  verificationAckGas?: bigint;
-  minAckReward?: number;
-  relativeMinAckReward?: number;
-  profitabilityFactor?: number;
 }
 
 export interface SubmitterConfig extends SubmitterGlobalConfig {}
@@ -103,6 +109,7 @@ export interface ChainConfig {
   monitor: MonitorConfig;
   getter: GetterConfig;
   pricing: PricingConfig;
+  evaluator: EvaluatorConfig;
   submitter: SubmitterConfig;
   wallet: WalletConfig;
 }
