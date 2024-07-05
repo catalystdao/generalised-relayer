@@ -221,9 +221,13 @@ class EvaluatorWorker {
         );
 
         // Compute the 'deliveryFiatReward' for logging purposes (i.e. without the 'maxAckLoss' factor)
-        const securedRewardFactor = Number(
-            ((deliveryReward + maxAckLoss) * DECIMAL_BASE_BIG_INT) / (deliveryReward)
-        ) / DECIMAL_BASE;
+        // If `adjustedDeliveryReward` is 0, then `maxAckLoss` is the sole contributor to
+        // `securedDeliveryFiatReward`, and thus `deliveryFiatReward` is 0.
+        const securedRewardFactor = adjustedDeliveryReward == 0n
+            ? Infinity
+            : Number(
+                ((adjustedDeliveryReward + maxAckLoss) * DECIMAL_BASE_BIG_INT) / (adjustedDeliveryReward)
+            ) / DECIMAL_BASE;
         const deliveryFiatReward = securedDeliveryFiatReward / securedRewardFactor;
 
         const securedDeliveryFiatProfit = securedDeliveryFiatReward - deliveryFiatCost;
