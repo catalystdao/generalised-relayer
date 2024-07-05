@@ -1,4 +1,4 @@
-import { Controller, Get, OnModuleInit, Query } from "@nestjs/common";
+import { BadRequestException, Controller, Get, OnModuleInit, Query } from "@nestjs/common";
 import { EvaluatorInterface } from "./evaluator.interface";
 import { EvaluatorService } from "./evaluator.service";
 import { EvaluateAckQuery, EvaluateAckQueryResponse, EvaluateDeliveryQuery, EvaluteDeliveryQueryResponse } from "./evaluator.types";
@@ -36,7 +36,7 @@ export class EvaluatorController implements OnModuleInit {
         );
 
         if (result.evaluation == undefined) {
-            return undefined;   //TODO return error
+            throw new BadRequestException('Failed to generate an evaluation output for the given parameters.');
         }
 
         const response: EvaluteDeliveryQueryResponse = {
@@ -83,7 +83,7 @@ export class EvaluatorController implements OnModuleInit {
         );
 
         if (result.evaluation == undefined) {
-            return undefined;   //TODO return error
+            throw new BadRequestException('Failed to generate an evaluation output for the given parameters.');
         }
 
         const response: EvaluateAckQueryResponse = {
