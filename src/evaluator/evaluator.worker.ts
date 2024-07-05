@@ -208,10 +208,10 @@ class EvaluatorWorker {
             chainId
         );
 
-        const adjustedDevlieryReward = deliveryReward * DECIMAL_BASE_BIG_INT
+        const adjustedDeliveryReward = deliveryReward * DECIMAL_BASE_BIG_INT
             / BigInt(evaluationConfig.profitabilityFactor * DECIMAL_BASE);
 
-        const securedDeliveryReward = adjustedDevlieryReward + maxAckLoss;
+        const securedDeliveryReward = adjustedDeliveryReward + maxAckLoss;
 
         const securedDeliveryFiatReward = await this.getGasCostFiatPrice(
             securedDeliveryReward,
