@@ -208,8 +208,10 @@ class EvaluatorWorker {
             chainId
         );
 
-        const adjustedDeliveryReward = deliveryReward * DECIMAL_BASE_BIG_INT
-            / BigInt(evaluationConfig.profitabilityFactor * DECIMAL_BASE);
+        const adjustedDeliveryReward = evaluationConfig.profitabilityFactor == 0
+            ? MaxUint256
+            : deliveryReward * DECIMAL_BASE_BIG_INT
+                / BigInt(evaluationConfig.profitabilityFactor * DECIMAL_BASE);
 
         const securedDeliveryReward = adjustedDeliveryReward + maxAckLoss;
 
@@ -343,8 +345,10 @@ class EvaluatorWorker {
             bounty.priceOfAckGas
         );
 
-        const adjustedAckReward = ackReward * DECIMAL_BASE_BIG_INT
-            / BigInt(evaluationConfig.profitabilityFactor * DECIMAL_BASE);
+        const adjustedAckReward = evaluationConfig.profitabilityFactor == 0
+            ? MaxUint256
+            : ackReward * DECIMAL_BASE_BIG_INT
+                / BigInt(evaluationConfig.profitabilityFactor * DECIMAL_BASE);
 
         const ackProfit = adjustedAckReward - ackCost;      // ! In source chain gas value
         const ackFiatProfit = await this.getGasCostFiatPrice(ackProfit, chainId);
