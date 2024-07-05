@@ -7,6 +7,7 @@ import { BytesLike, MaxUint256 } from "ethers6";
 import { WalletInterface } from "src/wallet/wallet.interface";
 import { PricingInterface } from "src/pricing/pricing.interface";
 import { MessageContext, ParsePayload } from "src/payload/decode.payload";
+import { tryErrorToString } from "src/common/utils";
 
 
 const DECIMAL_BASE = 10_000;
@@ -98,12 +99,25 @@ class EvaluatorWorker {
                     );
                     break;
                 default:
-                    //TODO log
+                    this.logger.error(
+                        {
+                            messageType,
+                            request: data
+                        },
+                        `Unable to handle evaluator request: unknown message type`
+                    );
             }
 
         }
         catch (error) {
-            //TODO log
+            this.logger.error(
+                {
+                    messageType,
+                    request: data,
+                    error: tryErrorToString(error),
+                },
+                `Error on evaluator request processing.`
+            );
         }
 
         return {
@@ -129,7 +143,13 @@ class EvaluatorWorker {
 
         const evaluationConfig = this.config.evaluationConfigs[chainId];
         if (evaluationConfig == null) {
-            //TODO log
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Unable to perform delivery evaluation: no evaluation config found for the 'chainId' provided.`
+            );
             // Send a 'null' evaluation response
             return response;
         }
@@ -139,7 +159,13 @@ class EvaluatorWorker {
         // for extra precaution, but with the current implementation the `toChainId` field is not
         // available until the message is delivered.
         if (bounty == null) {
-            //TODO log
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Unable to perform delivery evaluation: no bounty information found for the 'messageIdentifier' provided.`
+            );
             // Send a 'null' evaluation response
             return response;
         }
@@ -248,21 +274,51 @@ class EvaluatorWorker {
 
         const evaluationConfig = this.config.evaluationConfigs[chainId];
         if (evaluationConfig == null) {
-            //TODO log
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Unable to perform ack evaluation: no evaluation config found for the 'chainId' provided.`
+            );
             // Send a 'null' evaluation response
             return response
         }
 
         const bounty = await this.store.getBounty(messageIdentifier);
-        if (bounty == null || bounty.fromChainId != chainId) {
-            //TODO log
+        if (bounty == null) {
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Unable to perform ack evaluation: no bounty information found for the 'messageIdentifier' provided.`
+            );
+            // Send a 'null' evaluation response
+            return response
+        }
+
+        if (bounty.fromChainId != chainId) {
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Unable to perform ack evaluation: the specified 'chainId' does not match the 'fromChainId' stored on the bounty registry.`
+            );
             // Send a 'null' evaluation response
             return response
         }
 
         const amb = await this.store.getAmb(messageIdentifier);
         if (!amb) {
-            //TODO log
+            this.logger.info(
+                {
+                    chainId,
+                    messageIdentifier,
+                },
+                `Message delivery data not found, ack evaluation will be less accurate.`
+            );
         }
         const incentivesPayload = amb?.payload;
 
