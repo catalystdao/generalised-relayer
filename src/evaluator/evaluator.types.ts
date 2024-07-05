@@ -19,6 +19,33 @@ export const EVALUATOR_DEFAULT_PROFITABILITY_FACTOR = 1;
 
 
 
+// Config and Worker Types
+// ************************************************************************************************
+
+export interface EvaluationConfig {
+
+    unrewardedDeliveryGas: bigint;
+    verificationDeliveryGas: bigint;
+    minDeliveryReward: number;
+    relativeMinDeliveryReward: number,
+
+    unrewardedAckGas: bigint;
+    verificationAckGas: bigint;
+    minAckReward: number;
+    relativeMinAckReward: number;
+
+    profitabilityFactor: number;    
+}
+
+export interface EvaluatorWorkerData {
+    evaluationConfigs: Record<string, EvaluationConfig>;
+    pricingPort: MessagePort;
+    walletPort: MessagePort;
+    loggerOptions: LoggerOptions;
+}
+
+
+
 // Port Channels Types
 // ************************************************************************************************
 export interface EvaluatorGetPortMessage {
@@ -29,6 +56,7 @@ export interface EvaluatorGetPortResponse {
     messageId: number;
     port: MessagePort;
 }
+
 
 export interface EvaluatorPortData {
     messageId: number;
@@ -121,33 +149,6 @@ export interface EvaluateAckResponseMessage {
 
 export interface EmptyResponseMessage {
     type: EvaluatorMessageType.EmptyResponse;
-}
-
-
-
-// Config and Worker Types
-// ************************************************************************************************
-
-export interface EvaluationConfig {
-
-    unrewardedDeliveryGas: bigint;
-    verificationDeliveryGas: bigint;
-    minDeliveryReward: number;
-    relativeMinDeliveryReward: number,
-
-    unrewardedAckGas: bigint;
-    verificationAckGas: bigint;
-    minAckReward: number;
-    relativeMinAckReward: number;
-
-    profitabilityFactor: number;    
-}
-
-export interface EvaluatorWorkerData {
-    evaluationConfigs: Record<string, EvaluationConfig>;
-    pricingPort: MessagePort;
-    walletPort: MessagePort;
-    loggerOptions: LoggerOptions;
 }
 
 
