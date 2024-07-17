@@ -308,7 +308,7 @@ class WormholeMessageSnifferWorker {
             incentivesPayload: decodedWormholeMessage.payload,
             recoveryContext: log.args.sequence.toString(),
 
-            observedBlockNumber: transactionBlockNumber,
+            transactionBlockNumber,
 
             blockNumber: log.blockNumber,
             blockHash: log.blockHash,

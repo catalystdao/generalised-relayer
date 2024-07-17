@@ -188,7 +188,7 @@ class WormholeRecoveryWorker {
             incentivesPayload: decodedWormholeMessage.payload,
             recoveryContext: vaa.sequence.toString(),
 
-            // observedBlockNumber: , //TODO add resolver and translate the block number
+            // transactionBlockNumber: , //TODO add resolver and translate the block number
 
             transactionHash,
             blockHash: transactionReceipt.blockHash,

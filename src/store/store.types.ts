@@ -30,7 +30,7 @@ export interface AMBMessage<T = any> extends TransactionDescription {
     recoveryContext?: string;
     additionalData?: T;
 
-    observedBlockNumber?: number;    // The block number as seen by the transaction.
+    transactionBlockNumber?: number;    // The block number as seen by the transaction.
 
     priority?: boolean;
 };

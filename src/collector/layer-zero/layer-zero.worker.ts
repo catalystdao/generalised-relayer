@@ -407,7 +407,7 @@ class LayerZeroWorker {
 
                     incentivesPayload: '0x' + decodedMessage.message,
 
-                    observedBlockNumber: transactionBlockNumber,
+                    transactionBlockNumber,
 
                     blockNumber: log.blockNumber,
                     blockHash: log.blockHash,

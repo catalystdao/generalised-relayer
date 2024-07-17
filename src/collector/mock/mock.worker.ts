@@ -331,7 +331,7 @@ class MockCollectorWorker {
 
             incentivesPayload: decodedMessage.payload,
 
-            observedBlockNumber: transactionBlockNumber,
+            transactionBlockNumber,
 
             blockNumber: log.blockNumber,
             blockHash: log.blockHash,

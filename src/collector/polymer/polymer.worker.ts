@@ -305,7 +305,7 @@ class PolymerCollectorSnifferWorker {
 
             incentivesPayload: packet,
 
-            observedBlockNumber: transactionBlockNumber,
+            transactionBlockNumber,
 
             blockNumber: log.blockNumber,
             blockHash: log.blockHash,
