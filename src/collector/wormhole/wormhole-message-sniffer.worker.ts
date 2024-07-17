@@ -16,6 +16,7 @@ import { AbiCoder, JsonRpcProvider } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { AMBMessage } from 'src/store/store.types';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
@@ -45,7 +46,7 @@ class WormholeMessageSnifferWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -281,23 +282,6 @@ class WormholeMessageSnifferWorker {
             log.blockNumber
         );
 
-        await this.store.setAmb(
-            {
-                messageIdentifier: decodedWormholeMessage.messageIdentifier,
-                amb: 'wormhole',
-                sourceChain: this.chainId,
-                destinationChain,
-                sourceEscrow: log.args.sender,
-                payload: decodedWormholeMessage.payload,
-                recoveryContext: log.args.sequence.toString(),
-                blockNumber: log.blockNumber,
-                transactionBlockNumber,
-                blockHash: log.blockHash,
-                transactionHash: log.transactionHash,
-            },
-            log.transactionHash,
-        );
-
         // Decode payload
         const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
         if (decodedPayload === undefined) {
@@ -305,16 +289,36 @@ class WormholeMessageSnifferWorker {
             return;
         }
 
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
+        //TODO the following contract call could fail. Set to 'undefined' and continue on that case?
+        //TODO cache the query
+        const toIncentivesAddress = await this.messageEscrowContract.implementationAddress(
+            decodedPayload?.sourceApplicationAddress,
+            defaultAbiCoder.encode(['uint256'], [destinationChain]),
+        );
+
+        const ambMessage: AMBMessage = {
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
-            //TODO the following contract call could fail
-            destinationAddress:
-                await this.messageEscrowContract.implementationAddress(
-                    decodedPayload?.sourceApplicationAddress,
-                    defaultAbiCoder.encode(['uint256'], [destinationChain]),
-                ),
-        });
+
+            amb: 'wormhole',
+            fromChainId: this.chainId,
+            toChainId: destinationChain,
+            fromIncentivesAddress: log.args.sender,
+            toIncentivesAddress,
+
+            incentivesPayload: decodedWormholeMessage.payload,
+            recoveryContext: log.args.sequence.toString(),
+
+            observedBlockNumber: transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            transactionHash: log.transactionHash,
+        };
+
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage,
+        );
     }
 
 

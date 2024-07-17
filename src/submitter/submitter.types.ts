@@ -32,6 +32,22 @@ export interface PendingOrder<OrderType> {
 }
 
 
+export interface Bounty {
+    messageIdentifier: string;
+
+    fromChainId: string;
+
+    maxGasDelivery: bigint;
+    maxGasAck: bigint;
+    refundGasTo: string;
+    priceOfDeliveryGas: bigint;
+    priceOfAckGas: bigint;
+    targetDelta: bigint;
+
+    deliveryGasCost?: bigint;
+}
+
+
 export interface BountyEvaluationConfig {
     evaluationRetryInterval: number,
     maxEvaluationDuration: number,

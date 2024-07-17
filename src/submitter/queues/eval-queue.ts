@@ -2,11 +2,10 @@ import {
     HandleOrderResult,
     ProcessingQueue,
 } from '../../processing-queue/processing-queue';
-import { BountyEvaluationConfig, EvalOrder, SubmitOrder } from '../submitter.types';
+import { Bounty, BountyEvaluationConfig, EvalOrder, SubmitOrder } from '../submitter.types';
 import pino from 'pino';
 import { Store } from 'src/store/store.lib';
-import { Bounty } from 'src/store/types/store.types';
-import { BountyStatus } from 'src/store/types/bounty.enum';
+import { RelayState, RelayStatus } from 'src/store/store.types';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { tryErrorToString } from 'src/common/utils';
 import { AbstractProvider, BytesLike, MaxUint256, TransactionRequest, zeroPadValue } from 'ethers6';
@@ -55,8 +54,15 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             `Handling submitter eval order.`,
         );
 
-        const bounty = await this.queryBountyInfo(order.messageIdentifier);
-        if (bounty === null || bounty === undefined) {
+        const relayState = await this.store.getRelayState(order.messageIdentifier);
+        if (relayState == null) {
+            throw Error(
+                `Relay state of message not found on evaluation (message ${order.messageIdentifier})`,
+            );
+        }
+
+        const bounty = this.getBountyFromRelayState(relayState);
+        if (bounty == null) {
             throw Error(
                 `Bounty of message not found on evaluation (message ${order.messageIdentifier})`,
             );
@@ -66,7 +72,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         const isDelivery = bounty.fromChainId != this.chainId;
         if (isDelivery) {
             // Source to Destination
-            if (bounty.status >= BountyStatus.MessageDelivered) {
+            if (relayState.status >= RelayStatus.MessageDelivered) {
                 this.logger.info(
                     { messageIdentifier: bounty.messageIdentifier },
                     `Bounty evaluation (source to destination). Message already delivered.`,
@@ -75,7 +81,7 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             }
         } else {
             // Destination to Source
-            if (bounty.status >= BountyStatus.BountyClaimed) {
+            if (relayState.status >= RelayStatus.BountyClaimed) {
                 this.logger.info(
                     { messageIdentifier: bounty.messageIdentifier },
                     `Bounty evaluation (destination to source). Ack already delivered.`,
@@ -185,15 +191,6 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
                 );
             }
         }
-    }
-
-    /**
-     * TODO: What is the point of this helper?
-     */
-    private async queryBountyInfo(
-        messageIdentifier: string,
-    ): Promise<Bounty | null> {
-        return this.store.getBounty(messageIdentifier);
     }
 
     private async evaluateRelaySubmission(
@@ -551,5 +548,32 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
         }
 
         return null;
+    }
+
+    private getBountyFromRelayState(relayState: RelayState): Bounty | null {
+        const bountyPlacedEvent = relayState.bountyPlacedEvent;
+        if (bountyPlacedEvent == undefined) {
+            return null;
+        }
+
+        const priceOfDeliveryGas = relayState.bountyIncreasedEvent?.newDeliveryGasPrice
+            ?? bountyPlacedEvent.priceOfDeliveryGas;
+        const priceOfAckGas = relayState.bountyIncreasedEvent?.newAckGasPrice
+            ?? bountyPlacedEvent.priceOfAckGas;
+
+        return {
+            messageIdentifier: relayState.messageIdentifier,
+        
+            fromChainId: bountyPlacedEvent.fromChainId,
+        
+            maxGasDelivery: bountyPlacedEvent.maxGasDelivery,
+            maxGasAck: bountyPlacedEvent.maxGasAck,
+            refundGasTo: bountyPlacedEvent.refundGasTo,
+            priceOfDeliveryGas,
+            priceOfAckGas,
+            targetDelta: bountyPlacedEvent.targetDelta,
+        
+            deliveryGasCost: relayState.deliveryGasCost,
+        }
     }
 }

@@ -2,7 +2,7 @@ import { BytesLike, JsonRpcProvider } from 'ethers6';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
 import { workerData } from 'worker_threads';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AMBProof } from 'src/store/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { BountyEvaluationConfig, EvalOrder, PendingOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
@@ -39,7 +39,7 @@ class SubmitterWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -234,37 +234,38 @@ class SubmitterWorker {
      * Subscribe to the Store to listen for relevant payloads to submit.
      */
     private async listenForOrders(): Promise<void> {
-        const listenToChannel = Store.getChannel('submit', this.chainId);
+        const onAMBProofChannel = Store.getOnAMBProofChannel(this.chainId);
         this.logger.info(
-            { globalChannel: listenToChannel },
+            { channel: onAMBProofChannel },
             `Listing for messages to submit.`,
         );
 
-        await this.store.on(listenToChannel, (event: any) => {
+        await this.store.on(onAMBProofChannel, (event: any) => {
 
-            //TODO verify event format
-            const message = event as AmbPayload;
+            const ambProof = event as AMBProof;
 
-            void this.store.getAmb(message.messageIdentifier)
-                .then(ambMessage => {
-                    if (ambMessage == null) {
-                        this.logger.warn(
-                            {
-                                messageIdentifier: message.messageIdentifier,
-                            },
-                            `AMB message not found on submit order. Submission evaluation will be less accurate.`
-                        );
-                    }
-
-                    return this.addSubmitOrder(
-                        message.amb,
-                        message.messageIdentifier,
-                        message.message,
-                        message.messageCtx ?? '',
-                        ambMessage?.priority ?? false, // eval priority => undefined = false.
-                        ambMessage?.payload,
+            void this.store.getAMBMessage(
+                ambProof.fromChainId,
+                ambProof.messageIdentifier
+            ).then(ambMessage => {
+                if (ambMessage == null) {
+                    this.logger.warn(
+                        {
+                            messageIdentifier: ambProof.messageIdentifier,
+                        },
+                        `AMB message not found on submit order. Submission evaluation will be less accurate.`
                     );
-                })
+                }
+
+                return this.addSubmitOrder(
+                    ambProof.amb,
+                    ambProof.messageIdentifier,
+                    ambProof.message,
+                    ambProof.messageCtx ?? '0x',
+                    ambMessage?.priority ?? false,
+                    ambMessage?.incentivesPayload,
+                );
+            });
         });
     }
 

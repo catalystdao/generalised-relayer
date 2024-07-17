@@ -36,7 +36,7 @@ import {
     UlnConfigStruct,
     UlnConfigStructOutput,
 } from 'src/contracts/ReceiveULN302';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
@@ -45,6 +45,11 @@ import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 
 interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
     layerZeroChainIdMap: Record<string, string>;
+}
+
+interface LayerZeroPayloadData {
+    messageIdentifier: string,
+    payload: string,
 }
 
 class LayerZeroWorker {
@@ -72,7 +77,7 @@ class LayerZeroWorker {
         this.chainId = this.config.chainId;
         this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
         this.incentivesAddresses = this.config.incentivesAddresses;
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
         this.receiveULN302 = ReceiveULN302__factory.connect(
@@ -390,21 +395,28 @@ class LayerZeroWorker {
                 );
                 const transactionBlockNumber =
                     await this.resolver.getTransactionBlockNumber(log.blockNumber);
-                await this.store.setAmb(
-                    {
-                        messageIdentifier: decodedMessage.messageIdentifier,
-                        amb: 'layer-zero',
-                        sourceChain: srcEidMapped.toString(),
-                        destinationChain: dstEidMapped.toString(),
-                        sourceEscrow: packet.sender,
-                        payload: decodedMessage.message,
-                        recoveryContext: '0x',
-                        blockNumber: log.blockNumber,
-                        transactionBlockNumber,
-                        blockHash: log.blockHash,
-                        transactionHash: log.transactionHash,
-                    },
-                    log.transactionHash,
+                
+                const ambMessage: AMBMessage = {
+                    messageIdentifier: '0x' + decodedMessage.messageIdentifier,
+
+                    amb: 'layer-zero',
+                    fromChainId: srcEidMapped.toString(),
+                    toChainId: dstEidMapped.toString(),
+                    fromIncentivesAddress: packet.sender,
+                    // toIncentivesAddress: ,   //TODO
+
+                    incentivesPayload: '0x' + decodedMessage.message,
+
+                    observedBlockNumber: transactionBlockNumber,
+
+                    blockNumber: log.blockNumber,
+                    blockHash: log.blockHash,
+                    transactionHash: log.transactionHash,
+                }
+
+                await this.store.setAMBMessage(
+                    this.chainId,
+                    ambMessage,
                 );
 
                 const payloadHash = this.calculatePayloadHash(
@@ -412,11 +424,14 @@ class LayerZeroWorker {
                     packet.message,
                 );
 
-                await this.store.setPayload('layer-zero', 'ambMessage', payloadHash, {
-                    messageIdentifier: decodedMessage.messageIdentifier,
-                    destinationChain: dstEidMapped,
-                    payload: encodedPayload,
-                });
+                await this.store.setAdditionalAMBData<LayerZeroPayloadData>(
+                    'layer-zero',
+                    payloadHash.toLowerCase(),
+                    {
+                        messageIdentifier: decodedMessage.messageIdentifier,
+                        payload: encodedPayload
+                    },
+                );
 
                 this.logger.info(
                     {
@@ -469,7 +484,10 @@ class LayerZeroWorker {
                 { dvn, decodedHeader, confirmations, proofHash },
                 'PayloadVerified event decoded.',
             );
-            const payloadData = await this.store.getPayload('layer-zero', 'ambMessage', proofHash);
+            const payloadData = await this.store.getAdditionalAMBData<LayerZeroPayloadData>(
+                'layer-zero',
+                proofHash.toLowerCase()
+            );
             if (!payloadData) {
                 this.logger.error(
                     { proofHash },
@@ -490,17 +508,20 @@ class LayerZeroWorker {
                     proofHash,
                 );
                 if (isVerifiable) {
-                    const ambPayload: AmbPayload = {
-                        messageIdentifier: '0x' + payloadData.messageIdentifier,
+                    const ambProof: AMBProof = {
+                        messageIdentifier: payloadData.messageIdentifier,
+
                         amb: 'layer-zero',
-                        destinationChainId: dstEidMapped.toString(),
+                        fromChainId: srcEidMapped.toString(),
+                        toChainId: dstEidMapped.toString(),
+
                         message: payloadData.payload,
                         messageCtx: '0x',
                     };
                     this.logger.info({ proofHash }, `LayerZero proof found.`);
-                    await this.store.submitProof(
+                    await this.store.setAMBProof(
                         this.layerZeroChainIdMap[decodedHeader.dstEid]!,
-                        ambPayload,
+                        ambProof,
                     );
                 } else {
                     this.logger.debug('Payload could not be verified');
