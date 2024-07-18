@@ -396,8 +396,9 @@ class LayerZeroWorker {
                 const transactionBlockNumber =
                     await this.resolver.getTransactionBlockNumber(log.blockNumber);
                 
+                const messageIdentifier = '0x' + decodedMessage.messageIdentifier;
                 const ambMessage: AMBMessage = {
-                    messageIdentifier: '0x' + decodedMessage.messageIdentifier,
+                    messageIdentifier,
 
                     amb: 'layer-zero',
                     fromChainId: srcEidMapped.toString(),
@@ -428,14 +429,14 @@ class LayerZeroWorker {
                     'layer-zero',
                     payloadHash.toLowerCase(),
                     {
-                        messageIdentifier: decodedMessage.messageIdentifier,
+                        messageIdentifier,
                         payload: encodedPayload
                     },
                 );
 
                 this.logger.info(
                     {
-                        messageIdentifier: decodedMessage.messageIdentifier,
+                        messageIdentifier,
                         transactionHash: log.transactionHash,
                         payloadHash
                     },
