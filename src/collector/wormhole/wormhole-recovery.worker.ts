@@ -19,6 +19,10 @@ import { fetchVAAs } from './api-utils';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
+interface RecoveredVAAData {
+    vaa: ParsedVaaWithBytes,
+    transactionHash: string,
+}
 
 class WormholeRecoveryWorker {
     private readonly store: Store;
@@ -92,7 +96,7 @@ class WormholeRecoveryWorker {
             this.config.stoppingBlock,
         );
 
-        const vaas = await this.recoverVAAs(
+        const recoveredVAAs = await this.recoverVAAs(
             timestamps.startingTimestamp,
             timestamps.stoppingTimestamp,
             this.config.wormholeChainId,
@@ -101,27 +105,29 @@ class WormholeRecoveryWorker {
         );
 
         // Store VAAs oldest to newest
-        for (const [, parsedVAA] of Array.from(vaas).reverse()) {
+        for (const [, data] of Array.from(recoveredVAAs).reverse()) {
             try {
-                await this.processVAA(parsedVAA);
+                await this.processVAA(data);
             } catch (error) {
                 this.logger.warn(
-                    { emitterAddress: parsedVAA.emitterAddress, error },
+                    { emitterAddress: data.vaa.emitterAddress, error },
                     'Failed to process recovered VAA',
                 );
             }
         }
     }
 
-    private async processVAA(vaa: ParsedVaaWithBytes): Promise<void> {
-        await this.processVAAMessage(vaa);
-        await this.processVAAProof(vaa);
+    private async processVAA(recoveredVAAData: RecoveredVAAData): Promise<void> {
+        await this.processVAAMessage(recoveredVAAData);
+        await this.processVAAProof(recoveredVAAData);
     }
 
-    private async processVAAMessage(vaa: ParsedVaaWithBytes): Promise<void> {
+    private async processVAAMessage(recoveredVAAData: RecoveredVAAData): Promise<void> {
         // The following effectively runs the same logic as the 'wormhole.service.ts' worker. When
         // recovering VAAs, both this and the 'wormhole.service.ts' are executed to prevent VAAs from
         // being missed in some edge cases (when recovering right before the latest blocks).
+        const vaa = recoveredVAAData.vaa;
+
         const decodedWormholeMessage = decodeWormholeMessage(
             vaa.payload.toString('hex'),
         );
@@ -167,7 +173,7 @@ class WormholeRecoveryWorker {
         );
 
         // TODO the following query could fail. Add a retry mechanism.
-        const transactionHash = vaa.hash.toString('hex');
+        const transactionHash = recoveredVAAData.transactionHash;
         const transactionReceipt = await this.provider.getTransactionReceipt(transactionHash);
 
         if (transactionReceipt == null) {
@@ -201,7 +207,9 @@ class WormholeRecoveryWorker {
         );
     }
 
-    private async processVAAProof(vaa: ParsedVaaWithBytes): Promise<void> {
+    private async processVAAProof(recoveredVAAData: RecoveredVAAData): Promise<void> {
+        const vaa = recoveredVAAData.vaa;
+
         const wormholeInfo = decodeWormholeMessage(
             add0X(vaa.payload.toString('hex')),
         );
@@ -288,8 +296,8 @@ class WormholeRecoveryWorker {
         emitterAddress: string,
         pageSize = 1000,
         searchDelay = 1000,
-    ): Promise<Map<number, ParsedVaaWithBytes>> {
-        const foundVAAs = new Map<number, ParsedVaaWithBytes>();
+    ): Promise<Map<number, RecoveredVAAData>> {
+        const foundVAAs = new Map<number, RecoveredVAAData>();
 
         let pageIndex = 0;
         while (true) {
@@ -317,7 +325,14 @@ class WormholeRecoveryWorker {
 
                 const parsedVaa = parseVaaWithBytes(Buffer.from(vaa.vaa, 'base64'));
 
-                foundVAAs.set(vaa.sequence, parsedVaa); // Use 'Map' to avoid duplicates
+                // Use 'Map' to avoid duplicates
+                foundVAAs.set(
+                    vaa.sequence,
+                    {
+                        vaa: parsedVaa,
+                        transactionHash: '0x' + vaa.txHash,
+                    }
+                );
             }
 
             if (searchComplete) break;
