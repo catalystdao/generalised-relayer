@@ -6,7 +6,7 @@ import {
     parseVaaWithBytes,
 } from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from './wormhole.utils';
-import { add0X, defaultAbiCoder, getDestinationImplementation } from 'src/common/utils';
+import { add0X, defaultAbiCoder, getDestinationImplementation, tryErrorToString, wait } from 'src/common/utils';
 import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
 import {
@@ -176,11 +176,10 @@ class WormholeRecoveryWorker {
             this.config.retryInterval
         );
 
-        // TODO the following query could fail. Add a retry mechanism.
         const transactionHash = recoveredVAAData.transactionHash;
-        const transactionReceipt = await this.provider.getTransactionReceipt(transactionHash);
+        const transactionBlockMetadata = await this.queryTransactionBlockMetadata(transactionHash);
 
-        if (transactionReceipt == null) {
+        if (transactionBlockMetadata == null) {
             throw new Error(
                 `Failed to recover wormhole VAA: transaction receipt not found for the given hash (${transactionHash}).`
             );
@@ -201,8 +200,8 @@ class WormholeRecoveryWorker {
             // transactionBlockNumber: , //TODO add resolver and translate the block number
 
             transactionHash,
-            blockHash: transactionReceipt.blockHash,
-            blockNumber: transactionReceipt.blockNumber,
+            blockHash: transactionBlockMetadata.blockHash,
+            blockNumber: transactionBlockMetadata.blockNumber,
         };
 
         await this.store.setAMBMessage(
@@ -347,6 +346,50 @@ class WormholeRecoveryWorker {
         }
 
         return foundVAAs;
+    }
+
+    private async queryTransactionBlockMetadata(
+        transactionHash: string,
+        maxTries: number = 3,
+    ): Promise<{
+        blockHash: string,
+        blockNumber: number,
+    } | undefined> {
+
+        for (let tryCount = 0; tryCount < maxTries; tryCount++) {
+            try {
+                const transactionReceipt = await this.provider.getTransactionReceipt(transactionHash);
+                if (transactionReceipt != undefined) {
+                    return {
+                        blockHash: transactionReceipt.blockHash,
+                        blockNumber: transactionReceipt.blockNumber,
+                    };
+                }
+
+                throw new Error('Transaction receipt is null.');
+            }
+            catch (error) {
+                this.logger.warn(
+                    {
+                        transactionHash,
+                        try: tryCount + 1,
+                        error: tryErrorToString(error),
+                    },
+                    `Failed to query transaction receipt. Will retry if possible.`
+                );
+            }
+
+            await wait(this.config.retryInterval);
+        }
+
+        this.logger.warn(
+            {
+                transactionHash
+            },
+            `Failed to query transaction receipt.`
+        );
+
+        return undefined;
     }
 
 }
