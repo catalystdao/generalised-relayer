@@ -16,6 +16,7 @@ import {
 import { WormholeRecoveryWorkerData } from './wormhole.types';
 import { JsonRpcProvider } from 'ethers6';
 import { fetchVAAs } from './api-utils';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
 
 interface RecoveredVAAData {
     vaa: ParsedVaaWithBytes,
@@ -34,6 +35,8 @@ class WormholeRecoveryWorker {
 
     private readonly messageEscrowContract: IncentivizedMessageEscrow;
 
+    private readonly resolver: Resolver;
+
     private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
 
     constructor() {
@@ -47,6 +50,11 @@ class WormholeRecoveryWorker {
             this.config.loggerOptions,
         );
         this.provider = this.initializeProvider(this.config.rpc);
+        this.resolver = this.loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
         this.messageEscrowContract = this.initializeMessageEscrow(
             this.config.incentivesAddress,
             this.provider,
@@ -68,6 +76,14 @@ class WormholeRecoveryWorker {
 
     private initializeProvider(rpc: string): JsonRpcProvider {
         return new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
+    }
+
+    private loadResolver(
+        resolver: string | null,
+        provider: JsonRpcProvider,
+        logger: pino.Logger
+    ): Resolver {
+        return loadResolver(resolver, provider, logger);
     }
 
     private initializeMessageEscrow(
@@ -185,6 +201,10 @@ class WormholeRecoveryWorker {
             );
         }
 
+        const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(
+            transactionBlockMetadata.blockNumber
+        );
+
         const ambMessage: AMBMessage = {
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
 
@@ -197,7 +217,7 @@ class WormholeRecoveryWorker {
             incentivesPayload: decodedWormholeMessage.payload,
             recoveryContext: vaa.sequence.toString(),
 
-            // transactionBlockNumber: , //TODO add resolver and translate the block number
+            transactionBlockNumber,
 
             transactionHash,
             blockHash: transactionBlockMetadata.blockHash,
