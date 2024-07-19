@@ -259,6 +259,7 @@ class SubmitterWorker {
 
                 return this.addSubmitOrder(
                     ambProof.amb,
+                    ambProof.fromChainId,
                     ambProof.messageIdentifier,
                     ambProof.message,
                     ambProof.messageCtx ?? '0x',
@@ -271,6 +272,7 @@ class SubmitterWorker {
 
     private async addSubmitOrder(
         amb: string,
+        fromChainId: string,
         messageIdentifier: string,
         message: BytesLike,
         messageCtx: BytesLike,
@@ -285,6 +287,7 @@ class SubmitterWorker {
             // Push directly into the eval queue
             await this.evalQueue.addOrders({
                 amb,
+                fromChainId,
                 messageIdentifier,
                 message,
                 messageCtx,
@@ -298,6 +301,7 @@ class SubmitterWorker {
                 Date.now() + this.config.newOrdersDelay,
                 {
                     amb,
+                    fromChainId,
                     messageIdentifier,
                     message,
                     messageCtx,

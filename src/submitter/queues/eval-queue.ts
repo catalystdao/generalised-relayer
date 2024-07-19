@@ -54,6 +54,26 @@ export class EvalQueue extends ProcessingQueue<EvalOrder, SubmitOrder> {
             `Handling submitter eval order.`,
         );
 
+        // Double check the 'priority' status in case prioritisation was recently requested.
+        if (!order.priority) {
+            const ambMessage = await this.store.getAMBMessage(
+                order.fromChainId,
+                order.messageIdentifier
+            );
+
+            if (ambMessage?.priority) {
+                this.logger.info(
+                    {
+                        fromChainId: order.fromChainId,
+                        messageIdentifier: order.messageIdentifier,
+                    },
+                    `Order elevated to priority status.`
+                );
+
+                order.priority = true;
+            }
+        }
+
         const relayState = await this.store.getRelayState(order.messageIdentifier);
         if (relayState == null) {
             throw Error(

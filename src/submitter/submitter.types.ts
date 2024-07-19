@@ -2,6 +2,7 @@ import { BytesLike, TransactionReceipt, TransactionRequest, TransactionResponse 
 
 export interface Order {
     amb: string;
+    fromChainId: string;
     messageIdentifier: string;
     message: BytesLike;
     messageCtx: BytesLike;
