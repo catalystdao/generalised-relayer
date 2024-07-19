@@ -403,10 +403,10 @@ class LayerZeroWorker {
                     amb: 'layer-zero',
                     fromChainId: srcEidMapped.toString(),
                     toChainId: dstEidMapped.toString(),
-                    fromIncentivesAddress: packet.sender,
+                    fromIncentivesAddress: '0x' + packet.sender.slice(24),  // Keep only the relevant bytes (i.e. discard the first 12 bytes)
                     // toIncentivesAddress: ,   //TODO
 
-                    incentivesPayload: '0x' + decodedMessage.message,
+                    incentivesPayload: '0x' + packet.message,
 
                     transactionBlockNumber,
 
