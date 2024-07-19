@@ -72,47 +72,33 @@ class PersisterWorker {
         }
     }
 
-    async queueGet(): Promise<KeyActionMessage[] | undefined> {
-        const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
-        if (queue) return JSON.parse(queue);
-        return undefined;
+    async queueGet(): Promise<KeyActionMessage[]> {
+        const queue = await this.store.redis.lrange(REDIS_QUEUE_KEY, 0, -1);
+        return queue.map((element) => JSON.parse(element));
     }
 
     async queueShift(): Promise<KeyActionMessage | undefined> {
-        const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
-        if (queue) {
-            const parsedQueue: KeyActionMessage[] = JSON.parse(queue);
-            const returnElement = parsedQueue.shift();
-
-            await this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
-
-            return returnElement;
-        }
-        return undefined;
+        const firstElement = await this.store.redis.lpop(REDIS_QUEUE_KEY);
+        return firstElement != undefined
+            ? JSON.parse(firstElement)
+            : undefined;
     }
 
     async queuePush(message: KeyActionMessage) {
-        const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
-        if (queue) {
-            const parsedQueue: KeyActionMessage[] = JSON.parse(queue);
-            parsedQueue.push(message);
-
-            return this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
-        } else {
-            return this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify([message]));
-        }
+        await this.store.redis.rpush(REDIS_QUEUE_KEY, JSON.stringify(message));
     }
 
     async consumeQueue() {
         // Copy queue to memory.
 
-        while (((await this.queueGet())?.length ?? 0) > 0) {
-            const message = await this.queueShift();
-            if (!message) break;
+        let nextElement: KeyActionMessage | undefined = await this.queueShift();
+        while (nextElement != undefined) {
             this.logger.info(
-                `Got a key: ${message.key} with action: ${message.action}`,
+                `Got a key: ${nextElement.key} with action: ${nextElement.action}`,
             );
-            await this.examineKey(message.key);
+            await this.examineKey(nextElement.key);
+
+            nextElement = await this.queueShift();
         }
     }
 
