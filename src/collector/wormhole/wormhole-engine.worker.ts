@@ -8,10 +8,9 @@ import { decodeWormholeMessage } from 'src/collector/wormhole/wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { workerData } from 'worker_threads';
 import { Store } from 'src/store/store.lib';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AMBProof } from 'src/store/store.types';
 import pino, { LoggerOptions } from 'pino';
 import {
-    WormholeChainConfig,
     WormholeChainId,
     WormholeRelayerEngineWorkerData,
 } from './wormhole.types';
@@ -35,13 +34,13 @@ class WormholeEngineWorker {
     private readonly config: WormholeRelayerEngineWorkerData;
 
     private readonly logger: pino.Logger;
-    private readonly stores: Map<WormholeChainId, Store>;
+    private readonly store: Store;
 
     constructor() {
         this.config = workerData as WormholeRelayerEngineWorkerData;
 
         this.logger = this.initializeLogger(this.config.loggerOptions);
-        this.stores = this.loadStores(this.config.wormholeChainConfigs);
+        this.store = new Store();
     }
 
     // Initialization helpers
@@ -65,17 +64,6 @@ class WormholeEngineWorker {
                 winston.format.json(),
             ),
         });
-    }
-
-    private loadStores(
-        wormholeChainConfig: Map<string, WormholeChainConfig>,
-    ): Map<WormholeChainId, Store> {
-        const stores: Map<WormholeChainId, Store> = new Map();
-        for (const [chainId, wormholeConfig] of wormholeChainConfig) {
-            stores.set(wormholeConfig.wormholeChainId, new Store(chainId));
-        }
-
-        return stores;
     }
 
     private async loadWormholeRelayerEngine(): Promise<StandardRelayerApp<StandardRelayerContext>> {
@@ -206,6 +194,20 @@ class WormholeEngineWorker {
             add0X(vaa.payload.toString('hex')),
         );
 
+        const sourceChainId = this.config.wormholeChainIdMap.get(
+            vaa.emitterChain,
+        );
+        if (sourceChainId == undefined) {
+            this.logger.warn(
+                {
+                    vaa,
+                    sourceWormholeChainId: vaa.emitterChain,
+                },
+                `Failed to process VAA: source chain id given Wormhole chain id not found.`,
+            );
+            return;
+        }
+
         const destinationChainId = this.config.wormholeChainIdMap.get(
             wormholeInfo.destinationWormholeChainId,
         );
@@ -221,10 +223,13 @@ class WormholeEngineWorker {
             return;
         }
 
-        const ambPayload: AmbPayload = {
+        const ambProof: AMBProof = {
             messageIdentifier: wormholeInfo.messageIdentifier,
+
             amb: 'wormhole',
-            destinationChainId,
+            fromChainId: sourceChainId,
+            toChainId: destinationChainId,
+
             message: add0X(vaa.bytes.toString('hex')),
             messageCtx: '0x',
         };
@@ -234,17 +239,7 @@ class WormholeEngineWorker {
             `Wormhole VAA found.`,
         );
 
-        const store = this.stores.get(vaa.emitterChain);
-        if (store != undefined) {
-            await store.submitProof(destinationChainId, ambPayload);
-        } else {
-            this.logger.warn(
-                {
-                    wormholeVAAEmitterChain: vaa.emitterChain,
-                },
-                `No 'Store' found for the Wormhole VAA emitter chain id.`,
-            );
-        }
+        await this.store.setAMBProof(destinationChainId, ambProof);
     }
 }
 

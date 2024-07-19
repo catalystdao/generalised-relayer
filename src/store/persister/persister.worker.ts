@@ -4,7 +4,7 @@ import { workerData } from 'worker_threads';
 import { NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Client } from 'pg';
-import { AmbMessage, BountyJson } from '../types/store.types';
+import { AMBMessage, KeyActionMessage, RelayStateJSON } from '../store.types';
 import {
     bounties,
     transactions,
@@ -13,10 +13,6 @@ import {
 import { bountyFromJson } from '../postgres/postgres.transformer';
 import { and, eq } from 'drizzle-orm';
 
-type StoreUpdate = {
-    key: string;
-    action: 'set' | 'del';
-};
 
 const REDIS_QUEUE_KEY = 'relayer:presister:queue';
 
@@ -76,16 +72,16 @@ class PersisterWorker {
         }
     }
 
-    async queueGet(): Promise<StoreUpdate[] | undefined> {
+    async queueGet(): Promise<KeyActionMessage[] | undefined> {
         const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
         if (queue) return JSON.parse(queue);
         return undefined;
     }
 
-    async queueShift(): Promise<StoreUpdate | undefined> {
+    async queueShift(): Promise<KeyActionMessage | undefined> {
         const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
         if (queue) {
-            const parsedQueue: StoreUpdate[] = JSON.parse(queue);
+            const parsedQueue: KeyActionMessage[] = JSON.parse(queue);
             const returnElement = parsedQueue.shift();
 
             await this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
@@ -95,10 +91,10 @@ class PersisterWorker {
         return undefined;
     }
 
-    async queuePush(message: StoreUpdate) {
+    async queuePush(message: KeyActionMessage) {
         const queue = await this.store.redis.get(REDIS_QUEUE_KEY);
         if (queue) {
-            const parsedQueue: StoreUpdate[] = JSON.parse(queue);
+            const parsedQueue: KeyActionMessage[] = JSON.parse(queue);
             parsedQueue.push(message);
 
             return this.store.redis.set(REDIS_QUEUE_KEY, JSON.stringify(parsedQueue));
@@ -133,7 +129,7 @@ class PersisterWorker {
         await this.store.on('key', (event: any) => {
 
             //TODO verify event format
-            const message = event as StoreUpdate;
+            const message = event as KeyActionMessage;
             void this.queuePush(message);
         });
         // Listen for proofs. Notice that proofs aren't submitted so we need to listen seperately.
@@ -149,20 +145,19 @@ class PersisterWorker {
     // I don't know why, but without the function factory, 'this' is empty and we cannot use this.store or this.logger.
     async examineKey(key: string) {
         const keyKeys = key.split(':');
-        if (keyKeys.includes(Store.bountyMidfix)) {
+        if (keyKeys.includes(Store.RELAY_STATE_KEY_PREFIX)) {
             this.logger.debug(`${key}, bounty`);
             const value: string | null = await this.store.get(key);
             if (value === null) return;
-            const parsedValue: BountyJson = JSON.parse(value);
+            const parsedValue: RelayStateJSON = JSON.parse(value);
 
             // Get or set all transactions.
-            const {
-                fromChainId,
-                toChainId,
-                submitTransactionHash,
-                execTransactionHash,
-                ackTransactionHash,
-            } = parsedValue;
+            const fromChainId = parsedValue.bountyPlacedEvent?.fromChainId;
+            const toChainId = parsedValue.messageDeliveredEvent?.toChainId;
+            const submitTransactionHash = parsedValue?.bountyPlacedEvent?.transactionHash;
+            const execTransactionHash = parsedValue?.messageDeliveredEvent?.transactionHash;
+            const ackTransactionHash = parsedValue?.bountyClaimedEvent?.transactionHash;
+
             let submitTransactionId: number | undefined,
                 execTransactionId: number | undefined,
                 ackTransactionId: number | undefined;
@@ -270,11 +265,11 @@ class PersisterWorker {
                         eq(bounties.bountyIdentifier, sqlReadyBounty.bountyIdentifier),
                     );
             }
-        } else if (keyKeys.includes(Store.ambMidfix)) {
+        } else if (keyKeys.includes(Store.AMB_MESSAGE_KEY_PREFIX)) {
             this.logger.debug(`${key}, amb`);
             const value: string | null = await this.store.get(key);
             if (value === null) return;
-            const parsedValue: AmbMessage = JSON.parse(value);
+            const parsedValue: AMBMessage = JSON.parse(value);
 
             let bountyId: number;
             // Get or set an associated bounty.
@@ -291,20 +286,30 @@ class PersisterWorker {
                 bountyId = (
                     await this.db
                         .insert(bounties)
-                        .values({ bountyIdentifier: parsedValue.messageIdentifier })
+                        .values({
+                            bountyIdentifier: parsedValue.messageIdentifier,
+                            destinationAddress: parsedValue.toIncentivesAddress,
+                        })
                         .returning({ id: bounties.id })
                 )[0]!.id;
             } else {
                 // Set the bountyId based on the selected.
                 bountyId = bountiesSelected[0]!.id;
+                // Set the `destinationAddress` within the existing record
+                await this.db
+                    .update(bounties)
+                    .set({ destinationAddress: parsedValue.toIncentivesAddress })
+                    .where(
+                        eq(bounties.bountyIdentifier, parsedValue.messageIdentifier),
+                    );
             }
 
             const sqlReadyBounty: typeof ambPayloads.$inferInsert = {
                 bountyId,
                 amb: parsedValue.amb,
-                sourceChain: parsedValue.sourceChain,
-                destinationChain: parsedValue.destinationChain,
-                payload: parsedValue.payload,
+                sourceChain: parsedValue.fromChainId,
+                destinationChain: parsedValue.toChainId,
+                payload: parsedValue.incentivesPayload,
                 recoveryContext: parsedValue.recoveryContext,
             };
 
@@ -327,7 +332,7 @@ class PersisterWorker {
                 this.logger.debug(`Inserting ${key} as amb`);
                 return this.db.insert(ambPayloads).values(sqlReadyBounty);
             }
-        } else if (keyKeys.includes(Store.proofMidfix)) {
+        } else if (keyKeys.includes(Store.AMB_PROOF_KEY_PREFIX)) {
             this.logger.debug(`${key}, proof`);
         }
         return undefined;

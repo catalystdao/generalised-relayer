@@ -7,7 +7,7 @@ import {
 } from '@wormhole-foundation/relayer-engine';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { add0X } from 'src/common/utils';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
 import {
     IncentivizedMessageEscrow,
@@ -19,6 +19,10 @@ import { fetchVAAs } from './api-utils';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
+interface RecoveredVAAData {
+    vaa: ParsedVaaWithBytes,
+    transactionHash: string,
+}
 
 class WormholeRecoveryWorker {
     private readonly store: Store;
@@ -37,7 +41,7 @@ class WormholeRecoveryWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -92,7 +96,7 @@ class WormholeRecoveryWorker {
             this.config.stoppingBlock,
         );
 
-        const vaas = await this.recoverVAAs(
+        const recoveredVAAs = await this.recoverVAAs(
             timestamps.startingTimestamp,
             timestamps.stoppingTimestamp,
             this.config.wormholeChainId,
@@ -101,27 +105,29 @@ class WormholeRecoveryWorker {
         );
 
         // Store VAAs oldest to newest
-        for (const [, parsedVAA] of Array.from(vaas).reverse()) {
+        for (const [, data] of Array.from(recoveredVAAs).reverse()) {
             try {
-                await this.processVAA(parsedVAA);
+                await this.processVAA(data);
             } catch (error) {
                 this.logger.warn(
-                    { emitterAddress: parsedVAA.emitterAddress, error },
+                    { emitterAddress: data.vaa.emitterAddress, error },
                     'Failed to process recovered VAA',
                 );
             }
         }
     }
 
-    private async processVAA(vaa: ParsedVaaWithBytes): Promise<void> {
-        await this.processVAAMessage(vaa);
-        await this.processVAAProof(vaa);
+    private async processVAA(recoveredVAAData: RecoveredVAAData): Promise<void> {
+        await this.processVAAMessage(recoveredVAAData);
+        await this.processVAAProof(recoveredVAAData);
     }
 
-    private async processVAAMessage(vaa: ParsedVaaWithBytes): Promise<void> {
+    private async processVAAMessage(recoveredVAAData: RecoveredVAAData): Promise<void> {
         // The following effectively runs the same logic as the 'wormhole.service.ts' worker. When
         // recovering VAAs, both this and the 'wormhole.service.ts' are executed to prevent VAAs from
         // being missed in some edge cases (when recovering right before the latest blocks).
+        const vaa = recoveredVAAData.vaa;
+
         const decodedWormholeMessage = decodeWormholeMessage(
             vaa.payload.toString('hex'),
         );
@@ -150,58 +156,89 @@ class WormholeRecoveryWorker {
         // Emitter address is a 32 bytes buffer: convert to hex string and keep the last 20 bytes
         const sender = '0x' + vaa.emitterAddress.toString('hex').slice(24);
 
-        await this.store.setAmb(
-            {
-                messageIdentifier: decodedWormholeMessage.messageIdentifier,
-                amb: 'wormhole',
-                sourceChain,
-                destinationChain, //TODO this should be the chainId and not the wormholeChainId
-                sourceEscrow: sender,
-                payload: decodedWormholeMessage.payload,
-                recoveryContext: vaa.sequence.toString(),
-            },
-            vaa.hash.toString('hex'),
-        );
-
         // Decode payload
         const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
         if (decodedPayload === undefined) {
             throw new Error('Could not decode VAA payload.');
         }
 
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
+        //TODO the following contract call could fail. Set to 'undefined' and continue on that case?
+        //TODO cache the query
+        const toIncentivesAddress = await this.messageEscrowContract.implementationAddress(
+            decodedPayload?.sourceApplicationAddress,
+            defaultAbiCoder.encode(
+                ['uint256'],
+                [decodedWormholeMessage.destinationWormholeChainId],
+            ),
+        );
+
+        // TODO the following query could fail. Add a retry mechanism.
+        const transactionHash = recoveredVAAData.transactionHash;
+        const transactionReceipt = await this.provider.getTransactionReceipt(transactionHash);
+
+        if (transactionReceipt == null) {
+            throw new Error(
+                `Failed to recover wormhole VAA: transaction receipt not found for the given hash (${transactionHash}).`
+            );
+        }
+
+        const ambMessage: AMBMessage = {
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
-            destinationAddress:
-                //TODO the following contract call could fail
-                await this.messageEscrowContract.implementationAddress(
-                    decodedPayload?.sourceApplicationAddress,
-                    defaultAbiCoder.encode(
-                        ['uint256'],
-                        [decodedWormholeMessage.destinationWormholeChainId],
-                    ),
-                ),
-        });
+
+            amb: 'wormhole',
+            fromChainId: sourceChain,
+            toChainId: destinationChain,
+            fromIncentivesAddress: sender,
+            toIncentivesAddress,
+
+            incentivesPayload: decodedWormholeMessage.payload,
+            recoveryContext: vaa.sequence.toString(),
+
+            // transactionBlockNumber: , //TODO add resolver and translate the block number
+
+            transactionHash,
+            blockHash: transactionReceipt.blockHash,
+            blockNumber: transactionReceipt.blockNumber,
+        };
+
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage,
+        );
     }
 
-    private async processVAAProof(vaa: ParsedVaaWithBytes): Promise<void> {
+    private async processVAAProof(recoveredVAAData: RecoveredVAAData): Promise<void> {
+        const vaa = recoveredVAAData.vaa;
+
         const wormholeInfo = decodeWormholeMessage(
             add0X(vaa.payload.toString('hex')),
         );
+
+        const sourceChain = this.config.wormholeChainIdMap.get(
+            vaa.emitterChain,
+        );
+        if (sourceChain == undefined) {
+            throw new Error(
+                `Source chain id not found for the given wormhole chain id (${vaa.emitterChain})`
+            )
+        }
 
         const destinationChain = this.config.wormholeChainIdMap.get(
             wormholeInfo.destinationWormholeChainId,
         );
         if (destinationChain == undefined) {
             throw new Error(
-                `Destination chain id not found for the given wormhole chain id (${vaa.emitterChain}`,
+                `Destination chain id not found for the given wormhole chain id (${wormholeInfo.destinationWormholeChainId}`,
             );
         }
 
-        const ambPayload: AmbPayload = {
+        const ambPayload: AMBProof = {
             messageIdentifier: wormholeInfo.messageIdentifier,
+
             amb: 'wormhole',
-            destinationChainId: destinationChain,
+            fromChainId: sourceChain,
+            toChainId: destinationChain,
+
             message: add0X(vaa.bytes.toString('hex')),
             messageCtx: '0x',
         };
@@ -210,7 +247,7 @@ class WormholeRecoveryWorker {
             `Wormhole VAA found.`,
         );
 
-        await this.store.submitProof(destinationChain, ambPayload);
+        await this.store.setAMBProof(destinationChain, ambPayload);
     }
 
     private async getTimestampsFromBlockNumbers(
@@ -259,8 +296,8 @@ class WormholeRecoveryWorker {
         emitterAddress: string,
         pageSize = 1000,
         searchDelay = 1000,
-    ): Promise<Map<number, ParsedVaaWithBytes>> {
-        const foundVAAs = new Map<number, ParsedVaaWithBytes>();
+    ): Promise<Map<number, RecoveredVAAData>> {
+        const foundVAAs = new Map<number, RecoveredVAAData>();
 
         let pageIndex = 0;
         while (true) {
@@ -288,7 +325,14 @@ class WormholeRecoveryWorker {
 
                 const parsedVaa = parseVaaWithBytes(Buffer.from(vaa.vaa, 'base64'));
 
-                foundVAAs.set(vaa.sequence, parsedVaa); // Use 'Map' to avoid duplicates
+                // Use 'Map' to avoid duplicates
+                foundVAAs.set(
+                    vaa.sequence,
+                    {
+                        vaa: parsedVaa,
+                        transactionHash: '0x' + vaa.txHash,
+                    }
+                );
             }
 
             if (searchComplete) break;
