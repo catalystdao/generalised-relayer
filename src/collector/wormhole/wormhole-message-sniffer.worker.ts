@@ -9,16 +9,14 @@ import {
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
 import { tryErrorToString, wait } from '../../common/utils';
-import { decodeWormholeMessage } from './wormhole.utils';
+import { decodeWormholeMessage, defaultAbiCoder, getDestinationImplementation } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
-import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { JsonRpcProvider } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { AMBMessage } from 'src/store/store.types';
-
-const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 class WormholeMessageSnifferWorker {
     private readonly store: Store;
@@ -34,6 +32,8 @@ class WormholeMessageSnifferWorker {
     private readonly messageEscrowContract: IncentivizedMessageEscrow;
 
     private readonly resolver: Resolver;
+
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
 
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
@@ -289,11 +289,18 @@ class WormholeMessageSnifferWorker {
             return;
         }
 
-        //TODO the following contract call could fail. Set to 'undefined' and continue on that case?
-        //TODO cache the query
-        const toIncentivesAddress = await this.messageEscrowContract.implementationAddress(
-            decodedPayload?.sourceApplicationAddress,
-            defaultAbiCoder.encode(['uint256'], [destinationChain]),
+        const channelId = defaultAbiCoder.encode(
+            ['uint256'],
+            [destinationWormholeChainId],
+        );
+
+        const toIncentivesAddress = await getDestinationImplementation(
+            decodedPayload.sourceApplicationAddress,
+            channelId,
+            this.messageEscrowContract,
+            this.destinationImplementationCache,
+            this.logger,
+            this.config.retryInterval
         );
 
         const ambMessage: AMBMessage = {

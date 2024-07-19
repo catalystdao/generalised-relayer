@@ -5,7 +5,7 @@ import {
     ParsedVaaWithBytes,
     parseVaaWithBytes,
 } from '@wormhole-foundation/relayer-engine';
-import { decodeWormholeMessage } from './wormhole.utils';
+import { decodeWormholeMessage, getDestinationImplementation } from './wormhole.utils';
 import { add0X } from 'src/common/utils';
 import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
@@ -35,6 +35,8 @@ class WormholeRecoveryWorker {
     private readonly chainId: string;
 
     private readonly messageEscrowContract: IncentivizedMessageEscrow;
+
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
 
     constructor() {
         this.config = workerData as WormholeRecoveryWorkerData;
@@ -162,14 +164,18 @@ class WormholeRecoveryWorker {
             throw new Error('Could not decode VAA payload.');
         }
 
-        //TODO the following contract call could fail. Set to 'undefined' and continue on that case?
-        //TODO cache the query
-        const toIncentivesAddress = await this.messageEscrowContract.implementationAddress(
-            decodedPayload?.sourceApplicationAddress,
-            defaultAbiCoder.encode(
-                ['uint256'],
-                [decodedWormholeMessage.destinationWormholeChainId],
-            ),
+        const channelId = defaultAbiCoder.encode(
+            ['uint256'],
+            [decodedWormholeMessage.destinationWormholeChainId],
+        );
+
+        const toIncentivesAddress = await getDestinationImplementation(
+            decodedPayload.sourceApplicationAddress,
+            channelId,
+            this.messageEscrowContract,
+            this.destinationImplementationCache,
+            this.logger,
+            this.config.retryInterval
         );
 
         // TODO the following query could fail. Add a retry mechanism.
