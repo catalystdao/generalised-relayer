@@ -5,8 +5,8 @@ import {
     ParsedVaaWithBytes,
     parseVaaWithBytes,
 } from '@wormhole-foundation/relayer-engine';
-import { decodeWormholeMessage, getDestinationImplementation } from './wormhole.utils';
-import { add0X } from 'src/common/utils';
+import { decodeWormholeMessage } from './wormhole.utils';
+import { add0X, defaultAbiCoder, getDestinationImplementation } from 'src/common/utils';
 import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { ParsePayload } from 'src/payload/decode.payload';
 import {
@@ -14,10 +14,8 @@ import {
     IncentivizedMessageEscrow__factory,
 } from 'src/contracts';
 import { WormholeRecoveryWorkerData } from './wormhole.types';
-import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { JsonRpcProvider } from 'ethers6';
 import { fetchVAAs } from './api-utils';
-
-const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
 interface RecoveredVAAData {
     vaa: ParsedVaaWithBytes,

@@ -8,8 +8,8 @@ import {
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { tryErrorToString, wait } from '../../common/utils';
-import { decodeWormholeMessage, defaultAbiCoder, getDestinationImplementation } from './wormhole.utils';
+import { defaultAbiCoder, getDestinationImplementation, tryErrorToString, wait } from '../../common/utils';
+import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
 import { JsonRpcProvider } from 'ethers6';

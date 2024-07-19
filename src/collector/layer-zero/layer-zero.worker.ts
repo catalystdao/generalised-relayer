@@ -29,7 +29,7 @@ import {
     MonitorStatus,
 } from '../../monitor/monitor.interface';
 import { ReceiveULN302__factory } from 'src/contracts/factories/ReceiveULN302__factory';
-import { wait, tryErrorToString, paddedTo0xAddress } from 'src/common/utils';
+import { wait, tryErrorToString, paddedTo0xAddress, defaultAbiCoder, getDestinationImplementation } from 'src/common/utils';
 import {
     ReceiveULN302,
     ReceiveULN302Interface,
@@ -37,7 +37,7 @@ import {
     UlnConfigStructOutput,
 } from 'src/contracts/ReceiveULN302';
 import { AMBMessage, AMBProof } from 'src/store/store.types';
-import { LayerZeroEnpointV2__factory } from 'src/contracts';
+import { IncentivizedMessageEscrow, IncentivizedMessageEscrow__factory, LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
@@ -63,10 +63,12 @@ class LayerZeroWorker {
     private readonly receiveULN302: ReceiveULN302;
     private readonly receiveULN302Interface: ReceiveULN302Interface;
     private readonly receiverAddress: string;
+    private readonly messageEscrowContract: IncentivizedMessageEscrow;
     private readonly resolver: Resolver;
     private readonly filterTopics: string[][];
     private readonly layerZeroChainIdMap: Record<string, string>;
     private readonly incentivesAddresses: Record<string, string>;
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
@@ -98,6 +100,12 @@ class LayerZeroWorker {
             [this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
             this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,]
         ];
+
+        this.messageEscrowContract = this.initializeMessageEscrowContract(
+            this.config.incentivesAddress,
+            this.provider,
+        );
+
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
 
         this.initiateIntervalStatusLog();
@@ -143,6 +151,16 @@ class LayerZeroWorker {
         logger: pino.Logger,
     ): Resolver {
         return loadResolver(resolver, provider, logger);
+    }
+
+    private initializeMessageEscrowContract(
+        incentivesAddress: string,
+        provider: JsonRpcProvider,
+    ): IncentivizedMessageEscrow {
+        return IncentivizedMessageEscrow__factory.connect(
+            incentivesAddress,
+            provider,
+        );
     }
 
     /**
@@ -396,6 +414,21 @@ class LayerZeroWorker {
                 const transactionBlockNumber =
                     await this.resolver.getTransactionBlockNumber(log.blockNumber);
                 
+
+                const channelId = defaultAbiCoder.encode(
+                    ['uint256'],
+                    [packet.dstEid],
+                );
+
+                const toIncentivesAddress = await getDestinationImplementation(
+                    decodedMessage.sourceApplicationAddress,
+                    channelId,
+                    this.messageEscrowContract,
+                    this.destinationImplementationCache,
+                    this.logger,
+                    this.config.retryInterval
+                );
+
                 const messageIdentifier = '0x' + decodedMessage.messageIdentifier;
                 const ambMessage: AMBMessage = {
                     messageIdentifier,
@@ -404,7 +437,7 @@ class LayerZeroWorker {
                     fromChainId: srcEidMapped.toString(),
                     toChainId: dstEidMapped.toString(),
                     fromIncentivesAddress: '0x' + packet.sender.slice(24),  // Keep only the relevant bytes (i.e. discard the first 12 bytes)
-                    // toIncentivesAddress: ,   //TODO
+                    toIncentivesAddress,
 
                     incentivesPayload: '0x' + packet.message,
 
