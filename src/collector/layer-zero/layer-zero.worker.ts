@@ -43,9 +43,6 @@ import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 
-interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
-    layerZeroChainIdMap: Record<string, string>;
-}
 
 interface LayerZeroPayloadData {
     messageIdentifier: string,
@@ -53,7 +50,7 @@ interface LayerZeroPayloadData {
 }
 
 class LayerZeroWorker {
-    private readonly config: LayerZeroWorkerDataWithMapping;
+    private readonly config: LayerZeroWorkerData;
     private readonly chainId: string;
     private readonly store: Store;
     private readonly provider: JsonRpcProvider;
@@ -75,7 +72,7 @@ class LayerZeroWorker {
     private fromBlock: number = 0;
 
     constructor() {
-        this.config = workerData as LayerZeroWorkerDataWithMapping;
+        this.config = workerData as LayerZeroWorkerData;
         this.chainId = this.config.chainId;
         this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
         this.incentivesAddresses = this.config.incentivesAddresses;
