@@ -172,9 +172,9 @@ export class Store {
         );
     }
 
-    async on(
+    async on<T>(
         channel: string,
-        callback: (payload: Record<string, any>) => void,
+        callback: (payload: T) => void,
     ) {
         await this.redisSubscriptions.subscribe(channel);
 
@@ -185,9 +185,9 @@ export class Store {
         });
     }
 
-    async onPattern(
+    async onPattern<T>(
         pattern: string,
-        callback: (payload: Record<string, any>) => void,
+        callback: (payload: T) => void,
     ) {
         await this.redisSubscriptions.psubscribe(pattern);
 
@@ -582,6 +582,14 @@ export class Store {
             chainId,
             ambProof.messageIdentifier
         );
+
+        const currentProof = await this.get(key);
+        if (currentProof != undefined) {
+            //TODO log
+            // Do not allow proofs to be set multiple times (prevent submitting the same relay more than once).
+            return;
+        }
+
         await this.set(key, JSON.stringify(ambProof));
 
         const channel = Store.getOnAMBProofChannel(

@@ -52,5 +52,5 @@ export function decodeHeader(encodedHeader: string): LayerZeroHeader {
 
 export function calculatePayloadHash(guid: string, message: string): string {
     const payload = `${guid}${message.slice(2)}`;   // 'slice(2)' used to remove the '0x' from the 'message'
-    return keccak256(payload);
+    return keccak256(payload).toLowerCase();
 }

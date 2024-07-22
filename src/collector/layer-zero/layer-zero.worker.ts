@@ -42,10 +42,19 @@ import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/Laye
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 import { calculatePayloadHash, decodeHeader, decodePacket } from './layer-zero.utils';
 
+const ON_PACKET_SENT_PROCESSED_CHANNEL = 'packet_sent_processed';
+const ON_PACKET_SENT_PROCESSED_DELAY = 30 * 1000;
+const MAX_PENDING_PAYLOAD_VERIFIED_EVENT_DURATION = 6 * 60 * 60 * 1000;
 
 interface LayerZeroPayloadData {
     messageIdentifier: string,
     payload: string,
+}
+
+interface PayloadVerifiedEvent {
+    timestamp: number,
+    payloadHash: string,
+    log: Log,
 }
 
 class LayerZeroWorker {
@@ -70,6 +79,11 @@ class LayerZeroWorker {
     private readonly filterTopics: string[][];
     private readonly layerZeroChainIdMap: Record<string, string>;
     private readonly incentivesAddresses: Record<string, string>;
+
+    // Keep track of unprocessed PayloadVerified events caused by not having processed yet the
+    // corresponding PacketSent event on the source chain. This is most relevant for when
+    // recovering past relays.
+    private readonly pendingPayloadVerifiedEvents: PayloadVerifiedEvent[] = [];
 
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
@@ -201,6 +215,8 @@ class LayerZeroWorker {
             `LayerZero collector worker started.`,
         );
 
+        await this.listenForProcessedPackets();
+
         this.fromBlock = await this.getStartingBlock();
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
@@ -328,6 +344,65 @@ class LayerZeroWorker {
         }
 
         return logs;
+    }
+
+    private async listenForProcessedPackets(): Promise<void> {
+        // Listen for whenever a packet is registered.
+        await this.store.on(
+            this.getOnPacketSentChannel(),
+            (payloadHash: string) => {
+                // Add a delay to prevent this handler from being executed at the exact same time
+                // as the `handlePayloadVerifiedEvent()` handler, which can cause this handler to
+                // search for a pending PayloadVerified event before it's registered.
+                setTimeout(
+                    () => void this.onProcessedPacketHandler(payloadHash),
+                    ON_PACKET_SENT_PROCESSED_DELAY
+                );
+            }
+        )
+    }
+
+    private async onProcessedPacketHandler(
+        payloadHash: string
+    ): Promise<void> {
+
+        this.logger.debug(
+            { payloadHash },
+            `On PacketSent event recovery handler triggered.`
+        );
+
+        const pendingPayloadVerifiedEventIndex = this.pendingPayloadVerifiedEvents.findIndex(
+            (event) => event.payloadHash === payloadHash,
+        );
+
+        if (pendingPayloadVerifiedEventIndex == -1) {
+            return;
+        }
+
+        this.logger.info(
+            { payloadHash },
+            `Recovering PayloadVerified event.`
+        );
+
+        const [pendingEvent] = this.pendingPayloadVerifiedEvents.splice(pendingPayloadVerifiedEventIndex, 1);
+
+        const parsedLog = this.receiveULN302Interface.parseLog(pendingEvent!.log);
+
+        try {
+            await this.handlePayloadVerifiedEvent(
+                pendingEvent!.log,
+                parsedLog!          // The log has been previously parsed, `parsedLog` should never be null.
+            );
+        }
+        catch (error) {
+            this.logger.error(
+                {
+                    payloadHash,
+                    error: tryErrorToString(error),
+                },
+                `Error on PayloadVerified event recovery.`
+            );
+        }
     }
 
 
@@ -463,8 +538,8 @@ class LayerZeroWorker {
             messageIdentifier,
 
             amb: 'layer-zero',
-            fromChainId: fromChainId.toString(),
-            toChainId: toChainId.toString(),
+            fromChainId,
+            toChainId,
             fromIncentivesAddress: packet.sender,
             toIncentivesAddress,
 
@@ -484,16 +559,30 @@ class LayerZeroWorker {
 
         await this.store.setAdditionalAMBData<LayerZeroPayloadData>(
             'layer-zero',
-            payloadHash.toLowerCase(),
+            payloadHash,
             {
                 messageIdentifier,
                 payload: encodedPayload
             },
         );
+
+        // Broadcast that the PacketSent event has been processed to recover any pending logic
+        // resulting from PayloadVerified events.
+        await this.store.postMessage(
+            this.getOnPacketSentChannel(),
+            payloadHash
+        );
     }
 
     /**
      * Handles PayloadVerified events.
+     * 
+     * ! A PayloadVerified event is emitted every time a specific packet is verified, but a single
+     * ! event may not be enough to indicate that the packet is valid. Thus, there may be multiple
+     * ! events for a single packet, which, depending at the time at which they are processed, can
+     * ! result in this function submitting the proof for the same packet multiple times. This
+     * ! undesired side effect is mitigated by the Store's `setAMBProof()` function, which will not
+     * ! register proofs for the same packet more than once.
      * 
      * @param log - The log data.
      * @param parsedLog - The parsed log description.
@@ -544,24 +633,22 @@ class LayerZeroWorker {
             return;
         }
 
-        this.logger.info(
-            {
-                transactionHash: log.transactionHash,
-                payloadHash,
-            },
-            'PayloadVerified event decoded.',
-        );
-
         // Recover the encoded payload data from storage (saved on an earlier PacketSent event).
         const payloadData = await this.store.getAdditionalAMBData<LayerZeroPayloadData>(
             'layer-zero',
             payloadHash.toLowerCase()
         );
         if (!payloadData) {
-            this.logger.warn(
+            this.logger.info(
                 { payloadHash },
-                'No payload data found for the given payloadHash.',
+                'No payload data found for the given payloadHash. Queueing for recovery for when the payload is available.',
             );
+
+            this.queuePendingPayloadVerifiedEvent(
+                payloadHash,
+                log,
+            );
+
             return;
         }
 
@@ -581,8 +668,8 @@ class LayerZeroWorker {
                 messageIdentifier: payloadData.messageIdentifier,
 
                 amb: 'layer-zero',
-                fromChainId: fromChainId.toString(),
-                toChainId: toChainId.toString(),
+                fromChainId,
+                toChainId,
 
                 message: payloadData.payload,
                 messageCtx: '0x',
@@ -608,6 +695,47 @@ class LayerZeroWorker {
                 },
                 'Payload has not been verified yet.'
             );
+        }
+    }
+
+    private queuePendingPayloadVerifiedEvent(
+        payloadHash: string,
+        log: Log,
+    ): void {
+        // Prune any old pending events (note that events are stored in chronological order).
+        const pruneTimestamp = Date.now() - MAX_PENDING_PAYLOAD_VERIFIED_EVENT_DURATION;
+
+        let firstNonStaleIndex;
+        for (
+            firstNonStaleIndex = 0;
+            firstNonStaleIndex < this.pendingPayloadVerifiedEvents.length;
+            firstNonStaleIndex++
+        ) {
+            if (this.pendingPayloadVerifiedEvents[firstNonStaleIndex]!.timestamp > pruneTimestamp) {
+                break;
+            }
+        }
+
+        if (firstNonStaleIndex != 0) {
+            this.pendingPayloadVerifiedEvents.splice(0, firstNonStaleIndex);
+        }
+
+
+        // Register the pending event if not already pending, otherwise update the pending's event
+        // 'timestamp'.
+        const alreadyPendingEvent = this.pendingPayloadVerifiedEvents.find((event) => {
+            event.payloadHash === payloadHash
+        });
+
+        if (alreadyPendingEvent != undefined) {
+            alreadyPendingEvent.timestamp = Date.now();
+        }
+        else {
+            this.pendingPayloadVerifiedEvents.push({
+                timestamp: Date.now(),
+                payloadHash,
+                log,
+            });
         }
     }
     
@@ -684,6 +812,9 @@ class LayerZeroWorker {
         throw new Error(`Failed to query the ULN configuration. (dvn: ${dvn}, destination eid: ${dstEid}).`);
     }
 
+    private getOnPacketSentChannel(): string {
+        return Store.getChannel('layer-zero', ON_PACKET_SENT_PROCESSED_CHANNEL);
+    }
 
 
     // Misc Helpers
