@@ -42,8 +42,8 @@ export class EvaluatorController implements OnModuleInit {
         const response: EvaluteDeliveryQueryResponse = {
             chainId: result.chainId,
             messageIdentifier: result.messageIdentifier,
-            maxGasDelivery: result.evaluation.maxGasDelivery,
-            maxGasAck: result.evaluation.maxGasAck,
+            maxGasDelivery: result.evaluation.maxGasDelivery.toString(),
+            maxGasAck: result.evaluation.maxGasAck.toString(),
             gasEstimate: result.evaluation.gasEstimate.toString(),
             observedGasEstimate: result.evaluation.observedGasEstimate.toString(),
             additionalFeeEstimate: result.evaluation.additionalFeeEstimate.toString(),
@@ -89,8 +89,8 @@ export class EvaluatorController implements OnModuleInit {
         const response: EvaluateAckQueryResponse = {
             chainId: result.chainId,
             messageIdentifier: result.messageIdentifier,
-            maxGasDelivery: result.evaluation.maxGasDelivery,
-            maxGasAck: result.evaluation.maxGasAck,
+            maxGasDelivery: result.evaluation.maxGasDelivery.toString(),
+            maxGasAck: result.evaluation.maxGasAck.toString(),
             gasEstimate: result.evaluation.gasEstimate.toString(),
             observedGasEstimate: result.evaluation.observedGasEstimate.toString(),
             additionalFeeEstimate: result.evaluation.additionalFeeEstimate.toString(),

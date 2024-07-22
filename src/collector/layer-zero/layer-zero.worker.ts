@@ -18,9 +18,7 @@ import {
     Log,
     LogDescription,
     BytesLike,
-    BigNumberish,
     keccak256,
-    ethers,
 } from 'ethers6';
 import { Store } from '../../store/store.lib';
 import { LayerZeroWorkerData } from './layer-zero';
@@ -29,74 +27,110 @@ import {
     MonitorStatus,
 } from '../../monitor/monitor.interface';
 import { ReceiveULN302__factory } from 'src/contracts/factories/ReceiveULN302__factory';
-import { wait, tryErrorToString, paddedTo0xAddress } from 'src/common/utils';
+import { wait, tryErrorToString, defaultAbiCoder, getDestinationImplementation } from 'src/common/utils';
 import {
+    PayloadVerifiedEvent,
     ReceiveULN302,
     ReceiveULN302Interface,
     UlnConfigStruct,
-    UlnConfigStructOutput,
 } from 'src/contracts/ReceiveULN302';
-import { AmbPayload } from 'src/store/types/store.types';
-import { LayerZeroEnpointV2__factory } from 'src/contracts';
+import { AMBMessage, AMBProof } from 'src/store/store.types';
+import { IncentivizedMessageEscrow, IncentivizedMessageEscrow__factory, LayerZeroEnpointV2__factory } from 'src/contracts';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { LayerZeroEnpointV2Interface, PacketSentEvent } from 'src/contracts/LayerZeroEnpointV2';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { calculatePayloadHash, decodeHeader, decodePacket } from './layer-zero.utils';
 
-interface LayerZeroWorkerDataWithMapping extends LayerZeroWorkerData {
-    layerZeroChainIdMap: Record<string, string>;
+const ON_PACKET_SENT_PROCESSED_CHANNEL = 'packet_sent_processed';
+const ON_PACKET_SENT_PROCESSED_DELAY = 30 * 1000;
+const MAX_PENDING_PAYLOAD_VERIFIED_EVENT_DURATION = 6 * 60 * 60 * 1000;
+
+interface LayerZeroPayloadData {
+    messageIdentifier: string,
+    payload: string,
+}
+
+interface PayloadVerifiedEvent {
+    timestamp: number,
+    payloadHash: string,
+    log: Log,
 }
 
 class LayerZeroWorker {
-    private readonly config: LayerZeroWorkerDataWithMapping;
+    private readonly config: LayerZeroWorkerData;
+
     private readonly chainId: string;
+
     private readonly store: Store;
+    private readonly resolver: Resolver;
     private readonly provider: JsonRpcProvider;
     private readonly logger: pino.Logger;
+
+    private readonly messageEscrowContract: IncentivizedMessageEscrow;
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
+
     private readonly bridgeAddress: string;
-    private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
-    private readonly receiveULN302: ReceiveULN302;
-    private readonly receiveULN302Interface: ReceiveULN302Interface;
     private readonly receiverAddress: string;
-    private readonly resolver: Resolver;
+    private readonly layerZeroEnpointV2Interface: LayerZeroEnpointV2Interface;
+    private readonly receiveULN302Interface: ReceiveULN302Interface;
+    private readonly receiveULN302: ReceiveULN302;
+
     private readonly filterTopics: string[][];
     private readonly layerZeroChainIdMap: Record<string, string>;
     private readonly incentivesAddresses: Record<string, string>;
+
+    // Keep track of unprocessed PayloadVerified events caused by not having processed yet the
+    // corresponding PacketSent event on the source chain. This is most relevant for when
+    // recovering past relays.
+    private readonly pendingPayloadVerifiedEvents: PayloadVerifiedEvent[] = [];
+
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
     private fromBlock: number = 0;
 
+
     constructor() {
-        this.config = workerData as LayerZeroWorkerDataWithMapping;
+        this.config = workerData as LayerZeroWorkerData;
+
         this.chainId = this.config.chainId;
-        this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
-        this.incentivesAddresses = this.config.incentivesAddresses;
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
-        this.receiveULN302 = ReceiveULN302__factory.connect(
-            this.config.receiverAddress,
-            this.provider,
-        );
-        this.receiveULN302Interface = ReceiveULN302__factory.createInterface();
-        this.bridgeAddress = this.config.bridgeAddress;
-        this.receiverAddress = this.config.receiverAddress;
-        this.layerZeroEnpointV2Interface =
-            LayerZeroEnpointV2__factory.createInterface();
         this.resolver = this.loadResolver(
             this.config.resolver,
             this.provider,
             this.logger,
         );
-        this.filterTopics = [
-            [this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
-            this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,]
-        ];
+
+        this.bridgeAddress = this.config.bridgeAddress;
+        this.receiverAddress = this.config.receiverAddress;
+        this.layerZeroEnpointV2Interface = LayerZeroEnpointV2__factory.createInterface();
+        this.receiveULN302Interface = ReceiveULN302__factory.createInterface();
+        this.receiveULN302 = ReceiveULN302__factory.connect(
+            this.config.receiverAddress,
+            this.provider,
+        );
+
+        this.filterTopics = [[
+            this.layerZeroEnpointV2Interface.getEvent('PacketSent').topicHash,
+            this.receiveULN302Interface.getEvent('PayloadVerified').topicHash,
+        ]];
+        this.layerZeroChainIdMap = this.config.layerZeroChainIdMap;
+        this.incentivesAddresses = this.config.incentivesAddresses;
+
+        this.messageEscrowContract = this.initializeMessageEscrowContract(
+            this.config.incentivesAddress,
+            this.provider,
+        );
+
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
 
         this.initiateIntervalStatusLog();
     }
+
+
 
     // Initialization helpers
     // ********************************************************************************************
@@ -140,6 +174,16 @@ class LayerZeroWorker {
         return loadResolver(resolver, provider, logger);
     }
 
+    private initializeMessageEscrowContract(
+        incentivesAddress: string,
+        provider: JsonRpcProvider,
+    ): IncentivizedMessageEscrow {
+        return IncentivizedMessageEscrow__factory.connect(
+            incentivesAddress,
+            provider,
+        );
+    }
+
     /**
      * Starts listening to the monitor.
      * 
@@ -153,6 +197,8 @@ class LayerZeroWorker {
         });
         return monitor;
     }
+
+
 
     // Main handler
     // ********************************************************************************************
@@ -168,6 +214,8 @@ class LayerZeroWorker {
             },
             `LayerZero collector worker started.`,
         );
+
+        await this.listenForProcessedPackets();
 
         this.fromBlock = await this.getStartingBlock();
         const stopBlock = this.config.stoppingBlock ?? Infinity;
@@ -298,6 +346,67 @@ class LayerZeroWorker {
         return logs;
     }
 
+    private async listenForProcessedPackets(): Promise<void> {
+        // Listen for whenever a packet is registered.
+        await this.store.on(
+            this.getOnPacketSentChannel(),
+            (payloadHash: string) => {
+                // Add a delay to prevent this handler from being executed at the exact same time
+                // as the `handlePayloadVerifiedEvent()` handler, which can cause this handler to
+                // search for a pending PayloadVerified event before it's registered.
+                setTimeout(
+                    () => void this.onProcessedPacketHandler(payloadHash),
+                    ON_PACKET_SENT_PROCESSED_DELAY
+                );
+            }
+        )
+    }
+
+    private async onProcessedPacketHandler(
+        payloadHash: string
+    ): Promise<void> {
+
+        this.logger.debug(
+            { payloadHash },
+            `On PacketSent event recovery handler triggered.`
+        );
+
+        const pendingPayloadVerifiedEventIndex = this.pendingPayloadVerifiedEvents.findIndex(
+            (event) => event.payloadHash === payloadHash,
+        );
+
+        if (pendingPayloadVerifiedEventIndex == -1) {
+            return;
+        }
+
+        this.logger.info(
+            { payloadHash },
+            `Recovering PayloadVerified event.`
+        );
+
+        const [pendingEvent] = this.pendingPayloadVerifiedEvents.splice(pendingPayloadVerifiedEventIndex, 1);
+
+        const parsedLog = this.receiveULN302Interface.parseLog(pendingEvent!.log);
+
+        try {
+            await this.handlePayloadVerifiedEvent(
+                pendingEvent!.log,
+                parsedLog!          // The log has been previously parsed, `parsedLog` should never be null.
+            );
+        }
+        catch (error) {
+            this.logger.error(
+                {
+                    payloadHash,
+                    error: tryErrorToString(error),
+                },
+                `Error on PayloadVerified event recovery.`
+            );
+        }
+    }
+
+
+
     // Event handlers
     // ********************************************************************************************
 
@@ -348,220 +457,364 @@ class LayerZeroWorker {
         log: Log,
         parsedLog: LogDescription,
     ): Promise<void> {
-        try {
-            const {
-                encodedPayload,
-                options,
-                sendLibrary
-            } = parsedLog.args as unknown as PacketSentEvent.OutputObject;
-            const packet = this.decodePacket(encodedPayload);
-            const srcEidMapped = this.layerZeroChainIdMap[packet.srcEid];
-            const dstEidMapped = this.layerZeroChainIdMap[packet.dstEid];
+        const {
+            encodedPayload
+        } = parsedLog.args as unknown as PacketSentEvent.OutputObject;
 
+        const packet = decodePacket(encodedPayload);
+        const fromChainId = this.layerZeroChainIdMap[packet.srcEid];
+        const toChainId = this.layerZeroChainIdMap[packet.dstEid];
+
+        const payloadHash = calculatePayloadHash(
+            packet.guid,
+            packet.message,
+        );
+
+        this.logger.debug(
+            {
+                transactionHash: log.transactionHash,
+                payloadHash,
+            },
+            'PacketSent event found.',
+        );
+
+        if (fromChainId === undefined || toChainId === undefined) {
             this.logger.debug(
-                { transactionHash: log.transactionHash, packet, options, sendLibrary },
-                'PacketSent event found.',
+                {
+                    transactionHash: log.transactionHash,
+                    srcEid: packet.srcEid,
+                    dstEid: packet.dstEid,
+                },
+                'Skipping PacketSent event: unsupported srcEid/dstEid.',
             );
-
-            if (srcEidMapped === undefined || dstEidMapped === undefined) {
-                this.logger.debug(
-                    {
-                        transactionHash: log.transactionHash,
-                        packet,
-                        options,
-                        sendLibrary,
-                    },
-                    'Skipping packet: unsupported srcEid/dstEid.',
-                );
-                return;
-            }
-
-            const decodedMessage = ParsePayload(packet.message);
-            if (decodedMessage === undefined) {
-                throw new Error('Failed to decode message payload.');
-            }
-            if (
-                paddedTo0xAddress(packet.sender).toLowerCase() ===
-                this.incentivesAddresses[srcEidMapped]
-            ) {
-                this.logger.info(
-                    { sender: packet.sender, message: packet.message },
-                    'Processing packet from specific sender: sender and message details.',
-                );
-                const transactionBlockNumber =
-                    await this.resolver.getTransactionBlockNumber(log.blockNumber);
-                await this.store.setAmb(
-                    {
-                        messageIdentifier: decodedMessage.messageIdentifier,
-                        amb: 'layer-zero',
-                        sourceChain: srcEidMapped.toString(),
-                        destinationChain: dstEidMapped.toString(),
-                        sourceEscrow: packet.sender,
-                        payload: decodedMessage.message,
-                        recoveryContext: '0x',
-                        blockNumber: log.blockNumber,
-                        transactionBlockNumber,
-                        blockHash: log.blockHash,
-                        transactionHash: log.transactionHash,
-                    },
-                    log.transactionHash,
-                );
-
-                const payloadHash = this.calculatePayloadHash(
-                    packet.guid,
-                    packet.message,
-                );
-
-                await this.store.setPayload('layer-zero', 'ambMessage', payloadHash, {
-                    messageIdentifier: decodedMessage.messageIdentifier,
-                    destinationChain: dstEidMapped,
-                    payload: encodedPayload,
-                });
-
-                this.logger.info(
-                    {
-                        messageIdentifier: decodedMessage.messageIdentifier,
-                        transactionHash: log.transactionHash,
-                        payloadHash
-                    },
-                    'Collected message.',
-                );
-            } else {
-                this.logger.debug(
-                    { sender: packet.sender },
-                    'Skipping packet: sender is not a GARP contract.',
-                );
-            }
-        } catch (error) {
-            this.logger.error({ error: tryErrorToString(error), log }, 'Failed to handle PacketSent event.');
+            return;
         }
+
+        if (packet.sender !== this.incentivesAddresses[fromChainId]) {
+            this.logger.debug(
+                {
+                    transactionHash: log.transactionHash,
+                    sender: packet.sender
+                },
+                'Skipping PacketSent event: unsupported packet sender.',
+            );
+            return;
+        }
+
+        const decodedMessage = ParsePayload(packet.message);
+        if (decodedMessage === undefined) {
+            throw new Error('Failed to decode GeneralisedIncentives payload.');
+        }
+
+        const messageIdentifier = '0x' + decodedMessage.messageIdentifier;
+
+        this.logger.info(
+            {
+                messageIdentifier,
+                transactionHash: log.transactionHash,
+                payloadHash,
+            },
+            'Collected message.',
+        );
+
+        const transactionBlockNumber = await this.resolver.getTransactionBlockNumber(log.blockNumber);
+        
+
+        const channelId = defaultAbiCoder.encode(
+            ['uint256'],
+            [packet.dstEid],
+        );
+
+        const toIncentivesAddress = await getDestinationImplementation(
+            decodedMessage.sourceApplicationAddress,
+            channelId,
+            this.messageEscrowContract,
+            this.destinationImplementationCache,
+            this.logger,
+            this.config.retryInterval
+        );
+
+        const ambMessage: AMBMessage = {
+            messageIdentifier,
+
+            amb: 'layer-zero',
+            fromChainId,
+            toChainId,
+            fromIncentivesAddress: packet.sender,
+            toIncentivesAddress,
+
+            incentivesPayload: packet.message,
+
+            transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            transactionHash: log.transactionHash,
+        }
+
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage,
+        );
+
+        await this.store.setAdditionalAMBData<LayerZeroPayloadData>(
+            'layer-zero',
+            payloadHash,
+            {
+                messageIdentifier,
+                payload: encodedPayload
+            },
+        );
+
+        // Broadcast that the PacketSent event has been processed to recover any pending logic
+        // resulting from PayloadVerified events.
+        await this.store.postMessage(
+            this.getOnPacketSentChannel(),
+            payloadHash
+        );
     }
 
     /**
      * Handles PayloadVerified events.
      * 
-     * @param _log - The log data.
+     * ! A PayloadVerified event is emitted every time a specific packet is verified, but a single
+     * ! event may not be enough to indicate that the packet is valid. Thus, there may be multiple
+     * ! events for a single packet, which, depending at the time at which they are processed, can
+     * ! result in this function submitting the proof for the same packet multiple times. This
+     * ! undesired side effect is mitigated by the Store's `setAMBProof()` function, which will not
+     * ! register proofs for the same packet more than once.
+     * 
+     * @param log - The log data.
      * @param parsedLog - The parsed log description.
      */
     private async handlePayloadVerifiedEvent(
-        _log: Log,
+        log: Log,
         parsedLog: LogDescription,
     ): Promise<void> {
-        const { dvn, header, confirmations, proofHash } = parsedLog.args as any;
-        const decodedHeader = this.decodeHeader(header);
-        const srcEidMapped = this.layerZeroChainIdMap[decodedHeader.srcEid];
-        const dstEidMapped = this.layerZeroChainIdMap[decodedHeader.dstEid];
-        if (srcEidMapped === undefined || dstEidMapped === undefined) {
-            this.logger.error(
+        const {
+            dvn,
+            header,
+            proofHash: payloadHash
+        } = parsedLog.args as unknown as PayloadVerifiedEvent.OutputObject;
+
+        const decodedHeader = decodeHeader(header);
+        const fromChainId = this.layerZeroChainIdMap[decodedHeader.srcEid];
+        const toChainId = this.layerZeroChainIdMap[decodedHeader.dstEid];
+
+        this.logger.debug(
+            {
+                transactionHash: log.transactionHash,
+                payloadHash,
+            },
+            'PayloadVerified event found.',
+        );
+
+        if (fromChainId === undefined || toChainId === undefined) {
+            this.logger.debug(
                 {
+                    transactionHash: log.transactionHash,
                     srcEid: decodedHeader.srcEid,
                     dstEid: decodedHeader.dstEid
                 },
-                'Failed to map srcEidMapped or dstEidMapped.',
+                'Skipping PayloadVerified event: unsupported srcEid/dstEid.',
             );
             return;
         }
-        if (
-            decodedHeader.sender.toLowerCase() ===
-            this.incentivesAddresses[srcEidMapped]
-        ) {
-            this.logger.info(
-                { dvn, decodedHeader, confirmations, proofHash },
-                'PayloadVerified event decoded.',
+
+        if (decodedHeader.sender !== this.incentivesAddresses[fromChainId]) {
+            this.logger.debug(
+                {
+                    transactionHash: log.transactionHash,
+                    payloadHash,
+                    sender: decodedHeader.sender
+                },
+                'Skipping PayloadVerified event: unsupported packet sender.',
             );
-            const payloadData = await this.store.getPayload('layer-zero', 'ambMessage', proofHash);
-            if (!payloadData) {
-                this.logger.error(
-                    { proofHash },
-                    'No data found in database for the given payloadHash: proofHash details.',
-                );
-                return;
-            }
-            try {
-                const config = await getConfigData(
-                    this.receiveULN302,
-                    dvn,
-                    decodedHeader.dstEid,
-                );
-                const isVerifiable = await checkIfVerifiable(
-                    this.receiveULN302,
-                    config,
-                    keccak256(header),
-                    proofHash,
-                );
-                if (isVerifiable) {
-                    const ambPayload: AmbPayload = {
-                        messageIdentifier: '0x' + payloadData.messageIdentifier,
-                        amb: 'layer-zero',
-                        destinationChainId: dstEidMapped.toString(),
-                        message: payloadData.payload,
-                        messageCtx: '0x',
-                    };
-                    this.logger.info({ proofHash }, `LayerZero proof found.`);
-                    await this.store.submitProof(
-                        this.layerZeroChainIdMap[decodedHeader.dstEid]!,
-                        ambPayload,
-                    );
-                } else {
-                    this.logger.debug('Payload could not be verified');
-                }
-            } catch (error) {
-                this.logger.error(
-                    { error: tryErrorToString(error) },
-                    'Error during payload verification.',
-                );
-            }
+            return;
+        }
+
+        // Recover the encoded payload data from storage (saved on an earlier PacketSent event).
+        const payloadData = await this.store.getAdditionalAMBData<LayerZeroPayloadData>(
+            'layer-zero',
+            payloadHash.toLowerCase()
+        );
+        if (!payloadData) {
+            this.logger.info(
+                { payloadHash },
+                'No payload data found for the given payloadHash. Queueing for recovery for when the payload is available.',
+            );
+
+            this.queuePendingPayloadVerifiedEvent(
+                payloadHash,
+                log,
+            );
+
+            return;
+        }
+
+        const config = await this.getConfigData(
+            dvn,
+            decodedHeader.dstEid,
+        );
+
+        const isVerifiable = await this.checkIfVerifiable(
+            config,
+            keccak256(header),
+            payloadHash,
+        );
+
+        if (isVerifiable) {
+            const ambProof: AMBProof = {
+                messageIdentifier: payloadData.messageIdentifier,
+
+                amb: 'layer-zero',
+                fromChainId,
+                toChainId,
+
+                message: payloadData.payload,
+                messageCtx: '0x',
+            };
+
+            this.logger.info(
+                {
+                    messageIdentifier: payloadData.messageIdentifier,
+                    payloadHash,
+                },
+                `LayerZero proof found.`
+            );
+
+            await this.store.setAMBProof(
+                this.layerZeroChainIdMap[decodedHeader.dstEid]!,
+                ambProof,
+            );
+        } else {
+            this.logger.debug(
+                {
+                    messageIdentifier: payloadData.messageIdentifier,
+                    payloadHash,
+                },
+                'Payload has not been verified yet.'
+            );
         }
     }
 
-    // Helper function to decode the packet data
-    private decodePacket(encodedPacket: string): any {
-        return {
-            nonce: encodedPacket.slice(2 + 2, 2 + 2 + 16),
-            srcEid: Number('0x' + encodedPacket.slice(20, 28)),
-            sender: encodedPacket.slice(2 + 26, 2 + 26 + 64),
-            dstEid: Number('0x' + encodedPacket.slice(2 + 90, 2 + 98)),
-            receiver: encodedPacket.slice(2 + 98, 2 + 98 + 64),
-            guid: encodedPacket.slice(2 + 162, 2 + 162 + 64),
-            message: encodedPacket.slice(2 + 226),
-        };
+    private queuePendingPayloadVerifiedEvent(
+        payloadHash: string,
+        log: Log,
+    ): void {
+        // Prune any old pending events (note that events are stored in chronological order).
+        const pruneTimestamp = Date.now() - MAX_PENDING_PAYLOAD_VERIFIED_EVENT_DURATION;
+
+        let firstNonStaleIndex;
+        for (
+            firstNonStaleIndex = 0;
+            firstNonStaleIndex < this.pendingPayloadVerifiedEvents.length;
+            firstNonStaleIndex++
+        ) {
+            if (this.pendingPayloadVerifiedEvents[firstNonStaleIndex]!.timestamp > pruneTimestamp) {
+                break;
+            }
+        }
+
+        if (firstNonStaleIndex != 0) {
+            this.pendingPayloadVerifiedEvents.splice(0, firstNonStaleIndex);
+        }
+
+
+        // Register the pending event if not already pending, otherwise update the pending's event
+        // 'timestamp'.
+        const alreadyPendingEvent = this.pendingPayloadVerifiedEvents.find((event) => {
+            event.payloadHash === payloadHash
+        });
+
+        if (alreadyPendingEvent != undefined) {
+            alreadyPendingEvent.timestamp = Date.now();
+        }
+        else {
+            this.pendingPayloadVerifiedEvents.push({
+                timestamp: Date.now(),
+                payloadHash,
+                log,
+            });
+        }
+    }
+    
+
+    async checkIfVerifiable(
+        config: UlnConfigStruct,
+        headerHash: BytesLike,
+        payloadHash: BytesLike,
+        maxTries: number = 3,
+    ): Promise<boolean> {
+
+        for (let tryCount = 0; tryCount < maxTries; tryCount++) {
+            try {
+                const isVerifiable = await this.receiveULN302.verifiable(
+                    config,
+                    headerHash,
+                    payloadHash,
+                );
+                return isVerifiable;
+            } catch (error) {
+                this.logger.warn(
+                    {
+                        config,
+                        headerHash,
+                        payloadHash,
+                        try: tryCount + 1,
+                    },
+                    `Failed to check the verifiable status of the given payload. Retrying if possible.`
+                );
+            }
+
+            await wait(this.config.retryInterval);
+        }
+
+        throw new Error(`Failed to check verifiable status of the given payload (payload hash: ${payloadHash}).`);
     }
 
-    /**
-     * Decodes the header of a payload.
-     * This function extracts specific fields from the encoded header string, converting
-     * hexadecimal values to appropriate formats, and returns an object containing these values.
-     * The function ensures proper handling and formatting of Ethereum addresses and numeric IDs.
-     * The first 2 bytes of the encoded header are skipped as they represent the version, later 
-     * instead of using a counter to skip bytes, the slice function is used to extract the required.
-     * 
-     * @param encodedHeader - The encoded header string to be decoded.
-     * @returns An object containing the decoded header fields.
-     */
-    private decodeHeader(encodedHeader: string): any {
-        const version = encodedHeader.slice(2, 2 + 2);
-        const nonce = encodedHeader.slice(2 + 2, 2 + 2 + 16);
-        const srcEid = Number('0x' + encodedHeader.slice(2 + 18, 2 + 18 + 8));
-        const sender = '0x' + encodedHeader.slice(2 + 26, 2 + 26 + 64).slice(24);
-        const dstEid = Number('0x' + encodedHeader.slice(2 + 90, 2 + 90 + 8));
-        const receiver = '0x' + encodedHeader.slice(2 + 98, 2 + 98 + 64).slice(24);
+    //TODO can this be cached?
+    async getConfigData(
+        dvn: string,
+        dstEid: number,
+        maxTries: number = 3,
+    ): Promise<UlnConfigStruct> {
 
-        return {
-            version,
-            nonce: Number('0x' + nonce),
-            srcEid,
-            sender,
-            dstEid,
-            receiver,
-        };
+        for (let tryCount = 0; tryCount < maxTries; tryCount++) {
+            try {
+                const config = await this.receiveULN302.getUlnConfig(
+                    dvn,
+                    dstEid,
+                );
+
+                return {
+                    confirmations: config.confirmations,
+                    requiredDVNCount: config.requiredDVNCount,
+                    optionalDVNCount: config.optionalDVNCount,
+                    optionalDVNThreshold: config.optionalDVNThreshold,
+                    requiredDVNs: config.requiredDVNs.map(dvn => dvn.toString()),
+                    optionalDVNs: config.optionalDVNs.map(dvn => dvn.toString()),
+                };
+            } catch (error) {
+                this.logger.warn(
+                    {
+                        dvn,
+                        dstEid,
+                        try: tryCount + 1,
+                    },
+                    `Failed to query the ULN configuration. Retrying if possible.`
+                );
+            }
+
+            await wait(this.config.retryInterval);
+        }
+
+        throw new Error(`Failed to query the ULN configuration. (dvn: ${dvn}, destination eid: ${dstEid}).`);
     }
 
-
-    private calculatePayloadHash(guid: string, message: string): string {
-        const payload = `0x${guid}${message}`;
-        return ethers.keccak256(payload);
+    private getOnPacketSentChannel(): string {
+        return Store.getChannel('layer-zero', ON_PACKET_SENT_PROCESSED_CHANNEL);
     }
-
 
 
     // Misc Helpers
@@ -578,70 +831,6 @@ class LayerZeroWorker {
             );
         };
         setInterval(logStatus, STATUS_LOG_INTERVAL);
-    }
-}
-
-/**
-     * Checks if the configuration is verifiable.
-     * 
-     * @param receiveULN302 - The ULN302 contract instance.
-     * @param config - The ULN configuration.
-     * @param headerHash - The header hash.
-     * @param payloadHash - The payload hash.
-     * @returns A boolean indicating if the configuration is verifiable.
-     */
-async function checkIfVerifiable(
-    receiveULN302: ReceiveULN302,
-    config: UlnConfigStruct,
-    headerHash: BytesLike,
-    payloadHash: BytesLike,
-): Promise<boolean> {
-    try {
-        const requiredDVNs = config.requiredDVNs.map(dvn => dvn.toString());
-        const optionalDVNs = config.optionalDVNs.map(dvn => dvn.toString());
-        const formatConfig: UlnConfigStruct = {
-            confirmations: '0x' + config.confirmations.toString(16).padStart(16, '0'),
-            requiredDVNCount:
-                '0x' + config.requiredDVNCount.toString(16).padStart(2, '0'),
-            optionalDVNCount:
-                '0x' + config.optionalDVNCount.toString(16).padStart(2, '0'),
-            optionalDVNThreshold:
-                '0x' + config.optionalDVNThreshold.toString(16).padStart(2, '0'),
-            requiredDVNs: requiredDVNs,
-            optionalDVNs: optionalDVNs,
-        };
-        const isVerifiable = await receiveULN302.verifiable(
-            formatConfig,
-            headerHash,
-            payloadHash,
-        );
-        return isVerifiable;
-    } catch (error) {
-        throw new Error('Error verifying the payload.');
-    }
-}
-
-/**
-     * Retrieves the ULN configuration data.
-     * 
-     * @param receiveULN302 - The ULN302 contract instance.
-     * @param dvn - The DVN.
-     * @param remoteEid - The remote EID.
-     * @returns The ULN configuration data.
-     */
-async function getConfigData(
-    receiveULN302: ReceiveULN302,
-    dvn: string,
-    remoteEid: BigNumberish,
-): Promise<UlnConfigStructOutput> {
-    try {
-        const config = await receiveULN302.getUlnConfig(
-            dvn,
-            '0x' + remoteEid.toString(16).padStart(8, '0'),
-        );
-        return config;
-    } catch (error) {
-        throw new Error('Error fetching configuration data: error details.');
     }
 }
 

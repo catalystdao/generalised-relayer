@@ -146,10 +146,10 @@ export class SubmitQueue extends ProcessingQueue<
     ): Promise<void> {
         // Currently the 'ack' submission cost is not registered.
         if (order.isDelivery) {
-            void this.store.registerDeliveryCost({
-                messageIdentifier: order.messageIdentifier,
-                deliveryGasCost: gasUsed
-            });
+            void this.store.setDeliveryCost(
+                order.messageIdentifier,
+                gasUsed,
+            );
         }
     }
 }

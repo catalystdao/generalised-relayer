@@ -154,17 +154,17 @@ class EvaluatorWorker {
             return response;
         }
 
-        const bounty = await this.store.getBounty(messageIdentifier);
-        // TODO ideally the check `bounty.toChainId != chainId` would be performed at this point 
+        const relayState = await this.store.getRelayState(messageIdentifier);
+        // TODO ideally the check `relayState.toChainId != chainId` would be performed at this point 
         // for extra precaution, but with the current implementation the `toChainId` field is not
         // available until the message is delivered.
-        if (bounty == null) {
+        if (relayState?.bountyPlacedEvent == null) {
             this.logger.info(
                 {
                     chainId,
                     messageIdentifier,
                 },
-                `Unable to perform delivery evaluation: no bounty information found for the 'messageIdentifier' provided.`
+                `Unable to perform delivery evaluation: no BountyPlaced information found for the 'messageIdentifier' provided.`
             );
             // Send a 'null' evaluation response
             return response;
@@ -177,7 +177,13 @@ class EvaluatorWorker {
         } = gasEstimateComponents;
         
         const destinationGasPrice = await this.getGasPrice(chainId);
-        const sourceGasPrice = await this.getGasPrice(bounty.fromChainId);
+        const sourceGasPrice = await this.getGasPrice(relayState.bountyPlacedEvent.fromChainId);
+
+        const bountyPlacedEvent = relayState?.bountyPlacedEvent;
+        const priceOfDeliveryGas = relayState.bountyIncreasedEvent?.newDeliveryGasPrice
+            ?? bountyPlacedEvent.priceOfDeliveryGas;
+        const priceOfAckGas = relayState.bountyIncreasedEvent?.newAckGasPrice
+            ?? bountyPlacedEvent.priceOfAckGas;
 
         const deliveryCost = this.calcGasCost(              // ! In destination chain gas value
             gasEstimate,
@@ -188,16 +194,16 @@ class EvaluatorWorker {
         const deliveryReward = this.calcGasReward(          // ! In source chain gas value
             observedGasEstimate,
             evaluationConfig.unrewardedDeliveryGas,
-            BigInt(bounty.maxGasDelivery),
-            bounty.priceOfDeliveryGas
+            bountyPlacedEvent.maxGasDelivery,
+            priceOfDeliveryGas
         );
 
         const maxAckLoss = this.calcMaxGasLoss(             // ! In source chain gas value
             sourceGasPrice,
             evaluationConfig.unrewardedAckGas,
             evaluationConfig.verificationAckGas,
-            BigInt(bounty.maxGasAck),
-            bounty.priceOfAckGas,
+            bountyPlacedEvent.maxGasAck,
+            priceOfAckGas,
         );
 
 
@@ -217,7 +223,7 @@ class EvaluatorWorker {
 
         const securedDeliveryFiatReward = await this.getGasCostFiatPrice(
             securedDeliveryReward,
-            bounty.fromChainId
+            bountyPlacedEvent.fromChainId
         );
 
         // Compute the 'deliveryFiatReward' for logging purposes (i.e. without the 'maxAckLoss' factor)
@@ -239,8 +245,8 @@ class EvaluatorWorker {
         );
 
         response.evaluation = {
-            maxGasDelivery: bounty.maxGasDelivery,
-            maxGasAck: bounty.maxGasAck,
+            maxGasDelivery: bountyPlacedEvent.maxGasDelivery,
+            maxGasAck: bountyPlacedEvent.maxGasAck,
             gasEstimate,
             observedGasEstimate,
             additionalFeeEstimate,
@@ -291,20 +297,21 @@ class EvaluatorWorker {
             return response
         }
 
-        const bounty = await this.store.getBounty(messageIdentifier);
-        if (bounty == null) {
+        const relayState = await this.store.getRelayState(messageIdentifier);
+        if (relayState?.bountyPlacedEvent == null) {
             this.logger.info(
                 {
                     chainId,
                     messageIdentifier,
                 },
-                `Unable to perform ack evaluation: no bounty information found for the 'messageIdentifier' provided.`
+                `Unable to perform ack evaluation: no BountyPlaced information found for the 'messageIdentifier' provided.`
             );
             // Send a 'null' evaluation response
             return response
         }
 
-        if (bounty.fromChainId != chainId) {
+        const bountyPlacedEvent = relayState.bountyPlacedEvent;
+        if (bountyPlacedEvent.fromChainId != chainId) {
             this.logger.info(
                 {
                     chainId,
@@ -316,8 +323,11 @@ class EvaluatorWorker {
             return response
         }
 
-        const amb = await this.store.getAmb(messageIdentifier);
-        if (!amb) {
+        const toChainId = relayState.messageDeliveredEvent?.toChainId;
+        const ackAMBMessage = toChainId != undefined
+            ? await this.store.getAMBMessage(toChainId, messageIdentifier)
+            : undefined;
+        if (!ackAMBMessage) {
             this.logger.info(
                 {
                     chainId,
@@ -326,7 +336,7 @@ class EvaluatorWorker {
                 `Message delivery data not found, ack evaluation will be less accurate.`
             );
         }
-        const incentivesPayload = amb?.payload;
+        const ackIncentivesPayload = ackAMBMessage?.incentivesPayload;
 
         const {
             gasEstimate,
@@ -335,6 +345,11 @@ class EvaluatorWorker {
         } = gasEstimateComponents;
 
         const sourceGasPrice = await this.getGasPrice(chainId);
+
+        const priceOfDeliveryGas = relayState.bountyIncreasedEvent?.newDeliveryGasPrice
+            ?? bountyPlacedEvent.priceOfDeliveryGas;
+        const priceOfAckGas = relayState.bountyIncreasedEvent?.newAckGasPrice
+            ?? bountyPlacedEvent.priceOfAckGas;
 
         const ackCost = this.calcGasCost(           // ! In source chain gas value
             gasEstimate,
@@ -345,8 +360,8 @@ class EvaluatorWorker {
         const ackReward = this.calcGasReward(       // ! In source chain gas value
             observedGasEstimate,
             evaluationConfig.unrewardedAckGas,
-            BigInt(bounty.maxGasAck),
-            bounty.priceOfAckGas
+            bountyPlacedEvent.maxGasAck,
+            priceOfAckGas
         );
 
         const adjustedAckReward = evaluationConfig.profitabilityFactor == 0
@@ -359,19 +374,19 @@ class EvaluatorWorker {
         const ackRelativeProfit = Number(ackProfit) / Number(ackCost);
 
         let deliveryReward = 0n;
-        const deliveryCost = bounty.deliveryGasCost ?? 0n;  // This is only present if *this* relayer submitted the message delivery.
+        const deliveryCost = relayState.deliveryGasCost ?? 0n;  // This is only present if *this* relayer submitted the message delivery.
         if (deliveryCost != 0n) {
 
             // Recalculate the delivery reward using the latest pricing info
-            const usedGasDelivery = incentivesPayload
-                ? await this.getGasUsedForDelivery(incentivesPayload) ?? 0n
+            const usedGasDelivery = ackIncentivesPayload
+                ? await this.getGasUsedForDelivery(ackIncentivesPayload) ?? 0n
                 : 0n;   // 'gasUsed' should not be 'undefined', but if it is, continue as if it was 0
 
             deliveryReward = this.calcGasReward(    // ! In source chain gas value
                 usedGasDelivery,
                 0n,     // No 'unrewarded' gas, as 'usedGasDelivery' is the exact value that is used to compute the reward.
-                BigInt(bounty.maxGasDelivery),
-                bounty.priceOfDeliveryGas
+                bountyPlacedEvent.maxGasDelivery,
+                priceOfDeliveryGas
             );
         }
 
@@ -387,8 +402,8 @@ class EvaluatorWorker {
         );
 
         response.evaluation = {
-            maxGasDelivery: bounty.maxGasDelivery,
-            maxGasAck: bounty.maxGasAck,
+            maxGasDelivery: bountyPlacedEvent.maxGasDelivery,
+            maxGasAck: bountyPlacedEvent.maxGasAck,
             gasEstimate,
             observedGasEstimate,
             additionalFeeEstimate,

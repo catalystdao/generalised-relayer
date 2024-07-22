@@ -8,6 +8,7 @@ import { JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { BountyClaimedEvent, BountyIncreasedEvent, BountyPlacedEvent, IMessageEscrowEventsInterface, MessageDeliveredEvent } from 'src/contracts/IMessageEscrowEvents';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { BountyClaimedEventDetails, BountyIncreasedEventDetails, BountyPlacedEventDetails, MessageDeliveredEventDetails } from 'src/store/store.types';
 
 class GetterWorker {
 
@@ -34,7 +35,7 @@ class GetterWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
 
@@ -289,16 +290,29 @@ class GetterWorker {
         const event = parsedLog.args as unknown as BountyPlacedEvent.OutputObject;
 
         const messageIdentifier = event.messageIdentifier;
-        const incentive = event.incentive;
 
         this.logger.info({ messageIdentifier }, `BountyPlaced event found.`);
 
-        await this.store.registerBountyPlaced({
-            messageIdentifier,
-            incentive,
-            incentivesAddress: log.address,
+        const eventDetails: BountyPlacedEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
+            fromChainId: this.chainId,
+            incentivesAddress: log.address,
+
+            maxGasDelivery: event.incentive.maxGasDelivery,
+            maxGasAck: event.incentive.maxGasAck,
+            refundGasTo: event.incentive.refundGasTo,
+            priceOfDeliveryGas: event.incentive.priceOfDeliveryGas,
+            priceOfAckGas: event.incentive.priceOfAckGas,
+            targetDelta: event.incentive.targetDelta,
+        };
+
+        await this.store.setBountyPlaced(
+            messageIdentifier,
+            eventDetails,
+        );
     };
 
     private async handleBountyClaimedEvent(
@@ -312,11 +326,16 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `BountyClaimed event found.`);
 
-        await this.store.registerBountyClaimed({
-            messageIdentifier,
-            incentivesAddress: log.address,
+        const eventDetails: BountyClaimedEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+        };
+
+        await this.store.setBountyClaimed(
+            messageIdentifier,
+            eventDetails
+        );
     };
 
     private async handleMessageDeliveredEvent(
@@ -330,11 +349,18 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `MessageDelivered event found.`);
 
-        await this.store.registerMessageDelivered({
-            messageIdentifier,
-            incentivesAddress: log.address,
+        const eventDetails: MessageDeliveredEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
+            toChainId: this.chainId,
+        };
+
+        await this.store.setMessageDelivered(
+            messageIdentifier,
+            eventDetails,
+        );
     };
 
     private async handleBountyIncreasedEvent(
@@ -348,13 +374,19 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `BountyIncreased event found.`);
 
-        await this.store.registerBountyIncreased({
-            messageIdentifier,
+        const eventDetails: BountyIncreasedEventDetails = {
+            transactionHash: log.transactionHash,
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
             newDeliveryGasPrice: event.newDeliveryGasPrice,
             newAckGasPrice: event.newAckGasPrice,
-            incentivesAddress: log.address,
-            transactionHash: log.transactionHash,
-        });
+        };
+
+        await this.store.setBountyIncreased(
+            messageIdentifier,
+            eventDetails,
+        );
     };
 
 

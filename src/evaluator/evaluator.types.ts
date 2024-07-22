@@ -91,8 +91,8 @@ export interface EvaluateDeliveryResponseMessage {
     chainId: string;
     messageIdentifier: string;
     evaluation: {
-        maxGasDelivery: number;
-        maxGasAck: number;
+        maxGasDelivery: bigint;
+        maxGasAck: bigint;
         gasEstimate: bigint;
         observedGasEstimate: bigint;
         additionalFeeEstimate: bigint;
@@ -127,8 +127,8 @@ export interface EvaluateAckResponseMessage {
     chainId: string;
     messageIdentifier: string;
     evaluation: {
-        maxGasDelivery: number;
-        maxGasAck: number;
+        maxGasDelivery: bigint;
+        maxGasAck: bigint;
         gasEstimate: bigint;
         observedGasEstimate: bigint;
         additionalFeeEstimate: bigint;
@@ -168,8 +168,8 @@ export interface EvaluateDeliveryQuery {
 export interface EvaluteDeliveryQueryResponse {
     chainId: string;
     messageIdentifier: string;
-    maxGasDelivery: number;
-    maxGasAck: number;
+    maxGasDelivery: string;
+    maxGasAck: string;
     gasEstimate: string;
     observedGasEstimate: string;
     additionalFeeEstimate: string;
@@ -202,8 +202,8 @@ export interface EvaluateAckQuery {
 export interface EvaluateAckQueryResponse {
     chainId: string;
     messageIdentifier: string;
-    maxGasDelivery: number;
-    maxGasAck: number;
+    maxGasDelivery: string;
+    maxGasAck: string;
     gasEstimate: string;
     observedGasEstimate: string;
     additionalFeeEstimate: string;

@@ -8,16 +8,15 @@ import {
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { tryErrorToString, wait } from '../../common/utils';
+import { defaultAbiCoder, getDestinationImplementation, tryErrorToString, wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
-import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { JsonRpcProvider } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-
-const defaultAbiCoder = AbiCoder.defaultAbiCoder();
+import { AMBMessage } from 'src/store/store.types';
 
 class WormholeMessageSnifferWorker {
     private readonly store: Store;
@@ -34,6 +33,8 @@ class WormholeMessageSnifferWorker {
 
     private readonly resolver: Resolver;
 
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
+
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
@@ -45,7 +46,7 @@ class WormholeMessageSnifferWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -281,23 +282,6 @@ class WormholeMessageSnifferWorker {
             log.blockNumber
         );
 
-        await this.store.setAmb(
-            {
-                messageIdentifier: decodedWormholeMessage.messageIdentifier,
-                amb: 'wormhole',
-                sourceChain: this.chainId,
-                destinationChain,
-                sourceEscrow: log.args.sender,
-                payload: decodedWormholeMessage.payload,
-                recoveryContext: log.args.sequence.toString(),
-                blockNumber: log.blockNumber,
-                transactionBlockNumber,
-                blockHash: log.blockHash,
-                transactionHash: log.transactionHash,
-            },
-            log.transactionHash,
-        );
-
         // Decode payload
         const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
         if (decodedPayload === undefined) {
@@ -305,16 +289,43 @@ class WormholeMessageSnifferWorker {
             return;
         }
 
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
+        const channelId = defaultAbiCoder.encode(
+            ['uint256'],
+            [destinationWormholeChainId],
+        );
+
+        const toIncentivesAddress = await getDestinationImplementation(
+            decodedPayload.sourceApplicationAddress,
+            channelId,
+            this.messageEscrowContract,
+            this.destinationImplementationCache,
+            this.logger,
+            this.config.retryInterval
+        );
+
+        const ambMessage: AMBMessage = {
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
-            //TODO the following contract call could fail
-            destinationAddress:
-                await this.messageEscrowContract.implementationAddress(
-                    decodedPayload?.sourceApplicationAddress,
-                    defaultAbiCoder.encode(['uint256'], [destinationChain]),
-                ),
-        });
+
+            amb: 'wormhole',
+            fromChainId: this.chainId,
+            toChainId: destinationChain,
+            fromIncentivesAddress: log.args.sender,
+            toIncentivesAddress,
+
+            incentivesPayload: decodedWormholeMessage.payload,
+            recoveryContext: log.args.sequence.toString(),
+
+            transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            transactionHash: log.transactionHash,
+        };
+
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage,
+        );
     }
 
 

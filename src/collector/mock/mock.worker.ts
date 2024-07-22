@@ -3,7 +3,7 @@ import pino from 'pino';
 import { convertHexToDecimal, tryErrorToString, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
+import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import {
     decodeMockMessage,
@@ -65,7 +65,7 @@ class MockCollectorWorker {
         // Get a connection to the redis store.
         // The redis store has been wrapped into a lib to make it easier to standardise
         // communication between the various components.
-        this.store = new Store(this.chainId);
+        this.store = new Store();
 
         // Get an Ethers provider with which to collect the bounties information.
         this.provider = this.initializeProvider(this.config.rpc);
@@ -320,25 +320,30 @@ class MockCollectorWorker {
             log.blockNumber
         );
 
-        const amb: AmbMessage = {
-            ...decodedMessage,
+        const ambMessage: AMBMessage = {
+            messageIdentifier: decodedMessage.messageIdentifier,
+
             amb: 'mock',
-            sourceEscrow: this.config.incentivesAddress,
-            blockNumber: log.blockNumber,
+            fromChainId: decodedMessage.sourceChain,
+            toChainId: decodedMessage.destinationChain,
+            fromIncentivesAddress: this.config.incentivesAddress,
+            toIncentivesAddress: messageEvent.recipient,
+
+            incentivesPayload: decodedMessage.payload,
+
             transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
             blockHash: log.blockHash,
             transactionHash: log.transactionHash
         }
 
         // Set the collect message on-chain. This is not the proof but the raw message.
         // It can be used by plugins to facilitate other jobs.
-        await this.store.setAmb(amb, log.transactionHash);
-
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
-            messageIdentifier: amb.messageIdentifier,
-            destinationAddress: messageEvent.recipient,
-        });
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage
+        );
 
         // Encode and sign the message for delivery.
         // This is the proof which enables us to submit the transaciton later.
@@ -348,27 +353,30 @@ class MockCollectorWorker {
         const signature = this.signingKey.sign(keccak256(encodedMessage));
         const executionContext = encodeSignature(signature);
 
-        const destinationChainId = convertHexToDecimal(amb.destinationChain);
+        const destinationChainId = convertHexToDecimal(ambMessage.toChainId);
 
         // Construct the payload.
-        const ambPayload: AmbPayload = {
-            messageIdentifier: amb.messageIdentifier,
+        const ambPayload: AMBProof = {
+            messageIdentifier: ambMessage.messageIdentifier,
+
             amb: 'mock',
-            destinationChainId,
+            fromChainId: this.chainId,
+            toChainId: destinationChainId,
+
             message: encodedMessage,
             messageCtx: executionContext, // If the generalised incentives implementation does not use the context set it to "0x".
         };
 
         this.logger.info(
             {
-                messageIdentifier: amb.messageIdentifier,
+                messageIdentifier: ambMessage.messageIdentifier,
                 destinationChainId: destinationChainId,
             },
             `Mock message found.`,
         );
 
         // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
-        await this.store.submitProof(destinationChainId, ambPayload);
+        await this.store.setAMBProof(destinationChainId, ambPayload);
     }
 
 

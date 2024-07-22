@@ -2,7 +2,7 @@ import pino from 'pino';
 import { tryErrorToString, wait } from 'src/common/utils';
 import { IbcEventEmitter__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { AmbMessage } from 'src/store/types/store.types';
+import { AMBMessage } from 'src/store/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import { PolymerWorkerData } from './polymer';
 import { AbiCoder, JsonRpcProvider, Log, LogDescription, zeroPadValue } from 'ethers6';
@@ -40,7 +40,7 @@ class PolymerCollectorSnifferWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
         this.resolver = this.loadResolver(
@@ -295,26 +295,30 @@ class PolymerCollectorSnifferWorker {
             log.blockNumber
         );
 
-        const amb: AmbMessage = {
+        const ambMessage: AMBMessage = {
             messageIdentifier,
+
             amb: 'polymer',
-            sourceChain: this.chainId,
-            destinationChain,
-            sourceEscrow: event.sourcePortAddress,
-            payload: packet,
-            blockNumber: log.blockNumber,
+            fromChainId: this.chainId,
+            toChainId: destinationChain,
+            fromIncentivesAddress: event.sourcePortAddress,
+
+            incentivesPayload: packet,
+
             transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
             blockHash: log.blockHash,
             transactionHash: log.transactionHash
-        };
+        }
 
         // Set the collect message  on-chain. This is not the proof but the raw message.
         // It can be used by plugins to facilitate other jobs.
-        await this.store.setAmb(amb, log.transactionHash);
+        await this.store.setAMBMessage(this.chainId, ambMessage);
 
         this.logger.info(
             {
-                messageIdentifier: amb.messageIdentifier,
+                messageIdentifier,
                 destinationChainId: destinationChain,
             },
             `Polymer message found.`,
