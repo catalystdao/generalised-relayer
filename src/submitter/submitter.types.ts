@@ -47,18 +47,3 @@ export interface Bounty {
 
     deliveryGasCost?: bigint;
 }
-
-
-export interface BountyEvaluationConfig {
-    evaluationRetryInterval: number,
-    maxEvaluationDuration: number,
-    unrewardedDeliveryGas: bigint;
-    verificationDeliveryGas: bigint;
-    minDeliveryReward: number;
-    relativeMinDeliveryReward: number,
-    unrewardedAckGas: bigint;
-    verificationAckGas: bigint;
-    minAckReward: number;
-    relativeMinAckReward: number;
-    profitabilityFactor: number;
-}

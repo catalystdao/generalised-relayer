@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
-import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig } from './config.types';
+import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig, EvaluatorGlobalConfig, EvaluatorConfig } from './config.types';
 import { JsonRpcProvider } from 'ethers6';
 
 @Injectable()
@@ -101,6 +101,7 @@ export class ConfigService {
             monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
             getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),
             pricing: this.formatPricingGlobalConfig(rawGlobalConfig.pricing),
+            evaluator: this.formatEvaluatorGlobalConfig(rawGlobalConfig.evaluator),
             submitter: this.formatSubmitterGlobalConfig(rawGlobalConfig.submitter),
             persister: this.formatPersisterGlobalConfig(rawGlobalConfig.persister),
             wallet: this.formatWalletGlobalConfig(rawGlobalConfig.wallet),
@@ -122,6 +123,7 @@ export class ConfigService {
                 monitor: this.formatMonitorConfig(rawChainConfig.monitor),
                 getter: this.formatGetterConfig(rawChainConfig.getter),
                 pricing: this.formatPricingConfig(rawChainConfig.pricing),
+                evaluator: this.formatEvaluatorConfig(rawChainConfig.evaluator),
                 submitter: this.formatSubmitterConfig(rawChainConfig.submitter),
                 wallet: this.formatWalletConfig(rawChainConfig.wallet),
             });
@@ -227,7 +229,7 @@ export class ConfigService {
         return formattedConfig as PricingGlobalConfig;
     }
 
-    private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
+    private formatEvaluatorGlobalConfig(rawConfig: any): EvaluatorGlobalConfig {
         const config = { ...rawConfig };
         if (config.unrewardedDeliveryGas != undefined) {
             config.unrewardedDeliveryGas = BigInt(config.unrewardedDeliveryGas);
@@ -241,7 +243,11 @@ export class ConfigService {
         if (config.verificationAckGas != undefined) {
             config.verificationAckGas = BigInt(config.verificationAckGas);
         }
-        return config as SubmitterGlobalConfig;
+        return config as EvaluatorGlobalConfig;
+    }
+
+    private formatSubmitterGlobalConfig(rawConfig: any): SubmitterGlobalConfig {
+        return { ...rawConfig } as SubmitterGlobalConfig;
     }
 
     private formatPersisterGlobalConfig(rawConfig: any): PersisterConfig {
@@ -276,6 +282,10 @@ export class ConfigService {
 
     private formatPricingConfig(rawConfig: any): PricingConfig {
         return this.formatPricingGlobalConfig(rawConfig);
+    }
+
+    private formatEvaluatorConfig(rawConfig: any): EvaluatorConfig {
+        return this.formatEvaluatorGlobalConfig(rawConfig);
     }
 
     private formatSubmitterConfig(rawConfig: any): SubmitterConfig {
