@@ -32,6 +32,8 @@ async function bootstrap() {
 
     logLoadedOptions(configService, loggerService);
 
+    await configService.isReady;
+
     await app.listen(configService.globalConfig.port);
 }
 void bootstrap();

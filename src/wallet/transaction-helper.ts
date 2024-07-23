@@ -224,78 +224,102 @@ export class TransactionHelper {
         }
     }
 
-    getFeeDataForTransaction(priority?: boolean): GasFeeOverrides {
-        const queriedFeeData = this.feeData;
-        if (queriedFeeData == undefined) {
-            return {};
+    getCachedFeeData(): FeeData | undefined {
+        return this.feeData;
+    }
+
+    getAdjustedFeeData(
+        priority?: boolean,
+    ): FeeData | undefined {
+        const feeData = {...this.feeData};
+        if (feeData == undefined) {
+            return undefined;
         }
 
-        const queriedMaxPriorityFeePerGas = queriedFeeData.maxPriorityFeePerGas;
-        if (queriedMaxPriorityFeePerGas != null) {
-            // Set fee data for an EIP 1559 transactions
-            let maxFeePerGas = this.maxFeePerGas;
+        // Override 'maxFeePerGas' if it is specified on the config.
+        if (this.maxFeePerGas) {
+            feeData.maxFeePerGas = this.maxFeePerGas;
+        }
 
+        // Adjust the 'maxPriorityFeePerGas' if present.
+        if (feeData.maxPriorityFeePerGas != undefined) {
             // Adjust the 'maxPriorityFeePerGas' by the adjustment factor
-            let maxPriorityFeePerGas;
             if (this.maxPriorityFeeAdjustmentFactor != undefined) {
-                maxPriorityFeePerGas = queriedMaxPriorityFeePerGas
+                feeData.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
                     * this.maxPriorityFeeAdjustmentFactor
                     / DECIMAL_BASE_BIG_INT;
             }
 
             // Apply the max allowed 'maxPriorityFeePerGas'
             if (
-                maxPriorityFeePerGas != undefined &&
                 this.maxAllowedPriorityFeePerGas != undefined &&
-                this.maxAllowedPriorityFeePerGas < maxPriorityFeePerGas
+                this.maxAllowedPriorityFeePerGas < feeData.maxPriorityFeePerGas
             ) {
-                maxPriorityFeePerGas = this.maxAllowedPriorityFeePerGas;
+                feeData.maxPriorityFeePerGas = this.maxAllowedPriorityFeePerGas;
             }
+        }
 
-            if (priority) {
-                if (maxFeePerGas != undefined) {
-                    maxFeePerGas = maxFeePerGas * this.priorityAdjustmentFactor / DECIMAL_BASE_BIG_INT;
-                }
-
-                if (maxPriorityFeePerGas != undefined) {
-                    maxPriorityFeePerGas = maxPriorityFeePerGas * this.priorityAdjustmentFactor / DECIMAL_BASE_BIG_INT;
-                }
-            }
-
-            return {
-                maxFeePerGas,
-                maxPriorityFeePerGas,
-            };
-        } else {
-            // Set traditional gasPrice
-            const queriedGasPrice = queriedFeeData.gasPrice;
-            if (queriedGasPrice == null) return {};
-
+        // Adjust the 'gasPrice' if present.
+        if (feeData.gasPrice) {
             // Adjust the 'gasPrice' by the adjustment factor
-            let gasPrice;
             if (this.gasPriceAdjustmentFactor != undefined) {
-                gasPrice = queriedGasPrice
+                feeData.gasPrice = feeData.gasPrice
                     * this.gasPriceAdjustmentFactor
                     / DECIMAL_BASE_BIG_INT;
             }
 
             // Apply the max allowed 'gasPrice'
             if (
-                gasPrice != undefined &&
                 this.maxAllowedGasPrice != undefined &&
-                this.maxAllowedGasPrice < gasPrice
+                this.maxAllowedGasPrice < feeData.gasPrice
             ) {
-                gasPrice = this.maxAllowedGasPrice;
+                feeData.gasPrice = this.maxAllowedGasPrice;
             }
+        }
 
-            if (priority && gasPrice != undefined) {
-                gasPrice = gasPrice
-                    * this.priorityAdjustmentFactor
+        // Apply the 'priority' adjustment factor
+        if (priority) {
+            if (feeData.maxFeePerGas != undefined) {
+                feeData.maxFeePerGas = feeData.maxFeePerGas
+                    *this.priorityAdjustmentFactor
                     / DECIMAL_BASE_BIG_INT;
             }
 
+            if (feeData.maxPriorityFeePerGas != undefined) {
+                feeData.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
+                    *this.priorityAdjustmentFactor
+                    / DECIMAL_BASE_BIG_INT;
+            }
+
+            if (feeData.gasPrice != undefined) {
+                feeData.gasPrice = feeData.gasPrice
+                    * this.priorityAdjustmentFactor
+                    / DECIMAL_BASE_BIG_INT;
+            }
+        }
+
+        return new FeeData(
+            feeData.gasPrice,
+            feeData.maxFeePerGas,
+            feeData.maxPriorityFeePerGas
+        );
+    }
+
+    getFeeDataForTransaction(priority?: boolean): GasFeeOverrides {
+        const adjustedFeeData = this.getAdjustedFeeData(priority);
+        if (adjustedFeeData == undefined) {
+            return {};
+        }
+
+        if (adjustedFeeData.maxPriorityFeePerGas != undefined) {
+            // Set fee data for EIP 1559 transactions
             return {
-                gasPrice,
+                maxFeePerGas: adjustedFeeData.maxFeePerGas ?? undefined,
+                maxPriorityFeePerGas: adjustedFeeData.maxPriorityFeePerGas,
+            };
+        } else {
+            return {
+                gasPrice: adjustedFeeData.gasPrice ?? undefined,
             };
         }
     }

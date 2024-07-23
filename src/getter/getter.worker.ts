@@ -7,6 +7,8 @@ import { GetterWorkerData } from './getter.service';
 import { JsonRpcProvider, Log, LogDescription } from 'ethers6';
 import { BountyClaimedEvent, BountyIncreasedEvent, BountyPlacedEvent, IMessageEscrowEventsInterface, MessageDeliveredEvent } from 'src/contracts/IMessageEscrowEvents';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
+import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { BountyClaimedEventDetails, BountyIncreasedEventDetails, BountyPlacedEventDetails, MessageDeliveredEventDetails } from 'src/store/store.types';
 
 class GetterWorker {
 
@@ -25,22 +27,26 @@ class GetterWorker {
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
+    private fromBlock: number = 0;
+
 
     constructor() {
         this.config = workerData as GetterWorkerData;
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.provider = this.initializeProvider(this.config.rpc);
         this.logger = this.initializeLogger(this.chainId);
 
         this.incentiveAddresses = this.config.incentivesAddresses;
         const contractTypes = this.initializeContractTypes();
-        this.incentivesEscrowInterface = contractTypes.chainInterfaceInterface;
+        this.incentivesEscrowInterface = contractTypes.incentivesEscrowInterface;
         this.topics = contractTypes.topics;
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+
+        this.initiateIntervalStatusLog();
     }
 
 
@@ -64,22 +70,22 @@ class GetterWorker {
     }
 
     private initializeContractTypes(): {
-        chainInterfaceInterface: IMessageEscrowEventsInterface,
+        incentivesEscrowInterface: IMessageEscrowEventsInterface,
         topics: string[][]
     } {
 
-        const chainInterfaceInterface = IMessageEscrowEvents__factory.createInterface();
+        const incentivesEscrowInterface = IMessageEscrowEvents__factory.createInterface();
         const topics = [
             [
-                chainInterfaceInterface.getEvent('BountyPlaced').topicHash,
-                chainInterfaceInterface.getEvent('BountyClaimed').topicHash,
-                chainInterfaceInterface.getEvent('MessageDelivered').topicHash,
-                chainInterfaceInterface.getEvent('BountyIncreased').topicHash,
+                incentivesEscrowInterface.getEvent('BountyPlaced').topicHash,
+                incentivesEscrowInterface.getEvent('BountyClaimed').topicHash,
+                incentivesEscrowInterface.getEvent('MessageDelivered').topicHash,
+                incentivesEscrowInterface.getEvent('BountyIncreased').topicHash,
             ]
         ];
 
         return {
-            chainInterfaceInterface,
+            incentivesEscrowInterface,
             topics
         }
     }
@@ -104,34 +110,14 @@ class GetterWorker {
             `Getter worker started.`,
         );
 
-        let fromBlock = null;
-        while (fromBlock == null) {
-            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
-            // 'startingBlock' is specified.
-            if (this.currentStatus != null) {
-                if (this.config.startingBlock != null) {
-                    if (this.config.startingBlock < 0) {
-                        fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
-                        if (fromBlock < 0) {
-                            throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
-                        }
-                    } else {
-                        fromBlock = this.config.startingBlock;
-                    }
-                } else {
-                    fromBlock = this.currentStatus.blockNumber;
-                }
-            }
-
-            await wait(this.config.processingInterval);
-        }
+        this.fromBlock = await this.getStartingBlock();
 
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
             try {
                 let toBlock = this.currentStatus?.blockNumber;
-                if (!toBlock || fromBlock > toBlock) {
+                if (!toBlock || this.fromBlock > toBlock) {
                     await wait(this.config.processingInterval);
                     continue;
                 }
@@ -140,20 +126,20 @@ class GetterWorker {
                     toBlock = stopBlock;
                 }
 
-                const blocksToProcess = toBlock - fromBlock;
+                const blocksToProcess = toBlock - this.fromBlock;
                 if (this.config.maxBlocks != null && blocksToProcess > this.config.maxBlocks) {
-                    toBlock = fromBlock + this.config.maxBlocks;
+                    toBlock = this.fromBlock + this.config.maxBlocks;
                 }
 
-                this.logger.info(
+                this.logger.debug(
                     {
-                        fromBlock,
+                        fromBlock: this.fromBlock,
                         toBlock,
                     },
                     `Scanning bounties.`,
                 );
 
-                await this.queryAndProcessEvents(fromBlock, toBlock);
+                await this.queryAndProcessEvents(this.fromBlock, toBlock);
 
                 if (toBlock >= stopBlock) {
                     this.logger.info(
@@ -163,7 +149,7 @@ class GetterWorker {
                     break;
                 }
 
-                fromBlock = toBlock + 1;
+                this.fromBlock = toBlock + 1;
             }
             catch (error) {
                 this.logger.error(error, `Failed on getter.worker`);
@@ -178,6 +164,35 @@ class GetterWorker {
         await this.store.quit();
     }
 
+    private async getStartingBlock(): Promise<number> {
+        let fromBlock: number | null = null;
+        while (fromBlock == null) {
+
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus == null) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (this.config.startingBlock == null) {
+                fromBlock = this.currentStatus.blockNumber;
+                break;
+            }
+
+            if (this.config.startingBlock < 0) {
+                fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                if (fromBlock < 0) {
+                    throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                }
+            } else {
+                fromBlock = this.config.startingBlock;
+            }
+        }
+
+        return fromBlock;
+    }
+
     private async queryAndProcessEvents(
         fromBlock: number,
         toBlock: number
@@ -190,7 +205,7 @@ class GetterWorker {
                 await this.handleEvent(log);
             } catch (error) {
                 this.logger.error(
-                    { log, error },
+                    { log, error: tryErrorToString(error) },
                     `Failed to process event on getter worker.`
                 );
             }
@@ -275,16 +290,29 @@ class GetterWorker {
         const event = parsedLog.args as unknown as BountyPlacedEvent.OutputObject;
 
         const messageIdentifier = event.messageIdentifier;
-        const incentive = event.incentive;
 
         this.logger.info({ messageIdentifier }, `BountyPlaced event found.`);
 
-        await this.store.registerBountyPlaced({
-            messageIdentifier,
-            incentive,
-            incentivesAddress: log.address,
+        const eventDetails: BountyPlacedEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
+            fromChainId: this.chainId,
+            incentivesAddress: log.address,
+
+            maxGasDelivery: event.incentive.maxGasDelivery,
+            maxGasAck: event.incentive.maxGasAck,
+            refundGasTo: event.incentive.refundGasTo,
+            priceOfDeliveryGas: event.incentive.priceOfDeliveryGas,
+            priceOfAckGas: event.incentive.priceOfAckGas,
+            targetDelta: event.incentive.targetDelta,
+        };
+
+        await this.store.setBountyPlaced(
+            messageIdentifier,
+            eventDetails,
+        );
     };
 
     private async handleBountyClaimedEvent(
@@ -298,11 +326,16 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `BountyClaimed event found.`);
 
-        await this.store.registerBountyClaimed({
-            messageIdentifier,
-            incentivesAddress: log.address,
+        const eventDetails: BountyClaimedEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+        };
+
+        await this.store.setBountyClaimed(
+            messageIdentifier,
+            eventDetails
+        );
     };
 
     private async handleMessageDeliveredEvent(
@@ -316,11 +349,18 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `MessageDelivered event found.`);
 
-        await this.store.registerMessageDelivered({
-            messageIdentifier,
-            incentivesAddress: log.address,
+        const eventDetails: MessageDeliveredEventDetails = {
             transactionHash: log.transactionHash,
-        });
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
+            toChainId: this.chainId,
+        };
+
+        await this.store.setMessageDelivered(
+            messageIdentifier,
+            eventDetails,
+        );
     };
 
     private async handleBountyIncreasedEvent(
@@ -334,14 +374,38 @@ class GetterWorker {
 
         this.logger.info({ messageIdentifier }, `BountyIncreased event found.`);
 
-        await this.store.registerBountyIncreased({
-            messageIdentifier,
+        const eventDetails: BountyIncreasedEventDetails = {
+            transactionHash: log.transactionHash,
+            blockHash: log.blockHash,
+            blockNumber: log.blockNumber,
+
             newDeliveryGasPrice: event.newDeliveryGasPrice,
             newAckGasPrice: event.newAckGasPrice,
-            incentivesAddress: log.address,
-            transactionHash: log.transactionHash,
-        });
+        };
+
+        await this.store.setBountyIncreased(
+            messageIdentifier,
+            eventDetails,
+        );
     };
+
+
+
+    // Misc Helpers
+    // ********************************************************************************************
+
+    private initiateIntervalStatusLog(): void {
+        const logStatus = () => {
+            this.logger.info(
+                {
+                    latestBlock: this.currentStatus?.blockNumber,
+                    currentBlock: this.fromBlock,
+                },
+                'Getter status.'
+            );
+        };
+        setInterval(logStatus, STATUS_LOG_INTERVAL);
+    }
 
 }
 

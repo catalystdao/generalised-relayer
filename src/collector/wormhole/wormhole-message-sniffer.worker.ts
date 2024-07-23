@@ -8,15 +8,15 @@ import {
 } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
 import { workerData, MessagePort } from 'worker_threads';
-import { tryErrorToString, wait } from '../../common/utils';
+import { defaultAbiCoder, getDestinationImplementation, tryErrorToString, wait } from '../../common/utils';
 import { decodeWormholeMessage } from './wormhole.utils';
 import { ParsePayload } from 'src/payload/decode.payload';
 import { WormholeMessageSnifferWorkerData } from './wormhole.types';
-import { AbiCoder, JsonRpcProvider } from 'ethers6';
+import { JsonRpcProvider } from 'ethers6';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
-
-const defaultAbiCoder = AbiCoder.defaultAbiCoder();
+import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
+import { AMBMessage } from 'src/store/store.types';
 
 class WormholeMessageSnifferWorker {
     private readonly store: Store;
@@ -33,8 +33,12 @@ class WormholeMessageSnifferWorker {
 
     private readonly resolver: Resolver;
 
+    private readonly destinationImplementationCache: Record<string, Record<string, string>> = {};   // Map fromApplication + toChainId => destinationImplementation
+
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
+
+    private fromBlock: number = 0;
 
 
     constructor() {
@@ -42,7 +46,7 @@ class WormholeMessageSnifferWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -65,6 +69,8 @@ class WormholeMessageSnifferWorker {
         );
 
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+
+        this.initiateIntervalStatusLog();
     }
 
     // Initialization helpers
@@ -127,32 +133,12 @@ class WormholeMessageSnifferWorker {
             `Wormhole worker started.`,
         );
 
-        let fromBlock = null;
-        while (fromBlock == null) {
-            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
-            // 'startingBlock' is specified.
-            if (this.currentStatus != null) {
-                if (this.config.startingBlock != null) {
-                    if (this.config.startingBlock < 0) {
-                        fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
-                        if (fromBlock < 0) {
-                            throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
-                        }
-                    } else {
-                        fromBlock = this.config.startingBlock;
-                    }
-                } else {
-                    fromBlock = this.currentStatus.blockNumber;
-                }
-            }
-
-            await wait(this.config.processingInterval);
-        }
+        this.fromBlock = await this.getStartingBlock();
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
             let toBlock = this.currentStatus?.blockNumber;
-            if (!toBlock || fromBlock > toBlock) {
+            if (!toBlock || this.fromBlock > toBlock) {
                 await wait(this.config.processingInterval);
                 continue;
             }
@@ -161,23 +147,23 @@ class WormholeMessageSnifferWorker {
                 toBlock = stopBlock;
             }
 
-            const blocksToProcess = toBlock - fromBlock;
+            const blocksToProcess = toBlock - this.fromBlock;
             if (
                 this.config.maxBlocks != null &&
                 blocksToProcess > this.config.maxBlocks
             ) {
-                toBlock = fromBlock + this.config.maxBlocks;
+                toBlock = this.fromBlock + this.config.maxBlocks;
             }
 
-            this.logger.info(
+            this.logger.debug(
                 {
-                    fromBlock,
+                    fromBlock: this.fromBlock,
                     toBlock,
                 },
                 `Scanning wormhole messages.`,
             );
 
-            const logs = await this.queryLogs(fromBlock, toBlock);
+            const logs = await this.queryLogs(this.fromBlock, toBlock);
 
             for (const log of logs) {
                 try {
@@ -198,7 +184,7 @@ class WormholeMessageSnifferWorker {
                 break;
             }
 
-            fromBlock = toBlock + 1;
+            this.fromBlock = toBlock + 1;
 
             await wait(this.config.processingInterval);
         }
@@ -206,6 +192,35 @@ class WormholeMessageSnifferWorker {
         // Cleanup worker
         this.monitor.close();
         await this.store.quit();
+    }
+
+    private async getStartingBlock(): Promise<number> {
+        let fromBlock: number | null = null;
+        while (fromBlock == null) {
+
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus == null) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (this.config.startingBlock == null) {
+                fromBlock = this.currentStatus.blockNumber;
+                break;
+            }
+
+            if (this.config.startingBlock < 0) {
+                fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                if (fromBlock < 0) {
+                    throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                }
+            } else {
+                fromBlock = this.config.startingBlock;
+            }
+        }
+
+        return fromBlock;
     }
 
     private async queryLogs(
@@ -267,23 +282,6 @@ class WormholeMessageSnifferWorker {
             log.blockNumber
         );
 
-        await this.store.setAmb(
-            {
-                messageIdentifier: decodedWormholeMessage.messageIdentifier,
-                amb: 'wormhole',
-                sourceChain: this.chainId,
-                destinationChain,
-                sourceEscrow: log.args.sender,
-                payload: decodedWormholeMessage.payload,
-                recoveryContext: log.args.sequence.toString(),
-                blockNumber: log.blockNumber,
-                transactionBlockNumber,
-                blockHash: log.blockHash,
-                transactionHash: log.transactionHash,
-            },
-            log.transactionHash,
-        );
-
         // Decode payload
         const decodedPayload = ParsePayload(decodedWormholeMessage.payload);
         if (decodedPayload === undefined) {
@@ -291,16 +289,61 @@ class WormholeMessageSnifferWorker {
             return;
         }
 
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
+        const channelId = defaultAbiCoder.encode(
+            ['uint256'],
+            [destinationWormholeChainId],
+        );
+
+        const toIncentivesAddress = await getDestinationImplementation(
+            decodedPayload.sourceApplicationAddress,
+            channelId,
+            this.messageEscrowContract,
+            this.destinationImplementationCache,
+            this.logger,
+            this.config.retryInterval
+        );
+
+        const ambMessage: AMBMessage = {
             messageIdentifier: decodedWormholeMessage.messageIdentifier,
-            //TODO the following contract call could fail
-            destinationAddress:
-                await this.messageEscrowContract.implementationAddress(
-                    decodedPayload?.sourceApplicationAddress,
-                    defaultAbiCoder.encode(['uint256'], [destinationChain]),
-                ),
-        });
+
+            amb: 'wormhole',
+            fromChainId: this.chainId,
+            toChainId: destinationChain,
+            fromIncentivesAddress: log.args.sender,
+            toIncentivesAddress,
+
+            incentivesPayload: decodedWormholeMessage.payload,
+            recoveryContext: log.args.sequence.toString(),
+
+            transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            transactionHash: log.transactionHash,
+        };
+
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage,
+        );
+    }
+
+
+
+    // Misc Helpers
+    // ********************************************************************************************
+
+    private initiateIntervalStatusLog(): void {
+        const logStatus = () => {
+            this.logger.info(
+                {
+                    latestBlock: this.currentStatus?.blockNumber,
+                    currentBlock: this.fromBlock,
+                },
+                'Wormhole message sniffer status.'
+            );
+        };
+        setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 }
 

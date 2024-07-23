@@ -35,7 +35,7 @@ export class MonitorGateway implements OnModuleInit {
     }
 
     private async listenToMonitors(): Promise<void> {
-        this.loggerService.info(`Listening to Monitor services to broadcast state events.`);
+        this.loggerService.debug(`Listening to Monitor services to broadcast state events.`);
 
         for (const [chainId] of this.configService.chainsConfig) {
             const monitorPort = await this.monitorService.attachToMonitor(chainId);

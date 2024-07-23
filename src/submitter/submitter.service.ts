@@ -8,12 +8,15 @@ import { LoggerOptions } from 'pino';
 import { WalletService } from 'src/wallet/wallet.service';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
+import { EvaluatorService } from 'src/evaluator/evaluator.service';
 
 const RETRY_INTERVAL_DEFAULT = 30000;
 const PROCESSING_INTERVAL_DEFAULT = 100;
 const MAX_TRIES_DEFAULT = 3;
 const MAX_PENDING_TRANSACTIONS = 50;
 const NEW_ORDERS_DELAY_DEFAULT = 0;
+const EVALUATION_RETRY_INTERVAL_DEFAULT = 60 * 60 * 1000;
+const MAX_EVALUATION_DURATION_DEFAULT = 24 * 60 * 60 * 1000;
 
 interface GlobalSubmitterConfig {
     enabled: boolean;
@@ -22,21 +25,25 @@ interface GlobalSubmitterConfig {
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
-    gasLimitBuffer: Record<string, number> & { default?: number };
+    evaluationRetryInterval: number;
+    maxEvaluationDuration: number;
     walletPublicKey: string;
 }
 
 export interface SubmitterWorkerData {
     chainId: string;
     rpc: string;
-    relayerPrivateKey: string;
+    resolver: string | null;
     incentivesAddresses: Map<string, string>;
+    packetCosts: Map<string, bigint>;
     newOrdersDelay: number;
     retryInterval: number;
     processingInterval: number;
     maxTries: number;
     maxPendingTransactions: number;
-    gasLimitBuffer: Record<string, number>;
+    evaluationRetryInterval: number;
+    maxEvaluationDuration: number;
+    evaluatorPort: MessagePort;
     walletPublicKey: string;
     walletPort: MessagePort;
     loggerOptions: LoggerOptions;
@@ -48,6 +55,7 @@ export class SubmitterService {
 
     constructor(
         private readonly configService: ConfigService,
+        private readonly evaluatorService: EvaluatorService,
         private readonly walletService: WalletService,
         private readonly loggerService: LoggerService,
     ) {}
@@ -73,7 +81,10 @@ export class SubmitterService {
 
             const worker = new Worker(join(__dirname, 'submitter.worker.js'), {
                 workerData,
-                transferList: [workerData.walletPort]
+                transferList: [
+                    workerData.evaluatorPort,
+                    workerData.walletPort
+                ]
             });
 
             worker.on('error', (error) =>
@@ -113,10 +124,10 @@ export class SubmitterService {
         const maxPendingTransactions =
             submitterConfig.maxPendingTransactions ?? MAX_PENDING_TRANSACTIONS;
 
-        const gasLimitBuffer = submitterConfig.gasLimitBuffer ?? {};
-        if (!('default' in gasLimitBuffer)) {
-            gasLimitBuffer['default'] = 0;
-        }
+        const evaluationRetryInterval =
+            submitterConfig.evaluationRetryInterval ?? EVALUATION_RETRY_INTERVAL_DEFAULT;
+        const maxEvaluationDuration =
+            submitterConfig.maxEvaluationDuration ?? MAX_EVALUATION_DURATION_DEFAULT;
 
         const walletPublicKey = (new Wallet(await this.configService.globalConfig.privateKey)).address;
 
@@ -127,8 +138,9 @@ export class SubmitterService {
             processingInterval,
             maxTries,
             maxPendingTransactions,
-            gasLimitBuffer,
             walletPublicKey,
+            evaluationRetryInterval,
+            maxEvaluationDuration,
         };
     }
 
@@ -138,7 +150,6 @@ export class SubmitterService {
     ): Promise<SubmitterWorkerData> {
         const chainId = chainConfig.chainId;
         const rpc = chainConfig.rpc;
-        const relayerPrivateKey = await this.configService.globalConfig.privateKey;
 
         const incentivesAddresses = new Map<string, string>();
         this.configService.ambsConfig.forEach((amb) => {
@@ -151,11 +162,27 @@ export class SubmitterService {
             }
         });
 
+        const packetCosts = new Map<string, bigint>();
+        this.configService.ambsConfig.forEach((amb) => {
+            const packetCost: string = this.configService.getAMBConfig(
+                amb.name,
+                'packetCost',
+                chainConfig.chainId
+            );
+            if (packetCost != undefined) {
+                packetCosts.set(
+                    amb.name,
+                    BigInt(packetCost), //TODO add log error if this fails
+                );
+            }
+        });
+
         return {
             chainId,
             rpc,
-            relayerPrivateKey,
+            resolver: chainConfig.resolver,
             incentivesAddresses,
+            packetCosts,
 
             newOrdersDelay:
                 chainConfig.submitter.newOrdersDelay ?? globalConfig.newOrdersDelay,
@@ -172,34 +199,21 @@ export class SubmitterService {
             maxPendingTransactions:
                 chainConfig.submitter.maxPendingTransactions ??
                 globalConfig.maxPendingTransactions,
+            
+            evaluationRetryInterval:
+                chainConfig.submitter.evaluationRetryInterval ??
+                globalConfig.evaluationRetryInterval,
 
-            gasLimitBuffer: this.getChainGasLimitBufferConfig(
-                globalConfig.gasLimitBuffer,
-                chainConfig.submitter.gasLimitBuffer ?? {},
-            ),
+            maxEvaluationDuration:
+                chainConfig.submitter.maxEvaluationDuration ??
+                globalConfig.maxEvaluationDuration,
+
+
+            evaluatorPort: await this.evaluatorService.attachToEvaluator(),
 
             walletPublicKey: globalConfig.walletPublicKey,
-            walletPort: await this.walletService.attachToWallet(chainId),
+            walletPort: await this.walletService.attachToWallet(),
             loggerOptions: this.loggerService.loggerOptions,
         };
-    }
-
-    private getChainGasLimitBufferConfig(
-        defaultGasLimitBufferConfig: Record<string, number>,
-        chainGasLimitBufferConfig: Record<string, number>,
-    ): Record<string, number> {
-        const gasLimitBuffers: Record<string, number> = {};
-
-        // Apply defaults
-        for (const key in defaultGasLimitBufferConfig) {
-            gasLimitBuffers[key] = defaultGasLimitBufferConfig[key]!;
-        }
-
-        // Apply chain overrides
-        for (const key in chainGasLimitBufferConfig) {
-            gasLimitBuffers[key] = chainGasLimitBufferConfig[key]!;
-        }
-
-        return gasLimitBuffers;
     }
 }

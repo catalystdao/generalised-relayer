@@ -1,8 +1,8 @@
-import { BountyJson } from '../types/store.types';
+import { RelayStateJSON } from '../store.types';
 import { bounties } from './postgres.schema';
 
 export function bountyFromJson(
-    bounty: BountyJson,
+    bounty: RelayStateJSON,
 ): typeof bounties.$inferInsert & {
     submitTransactionHash?: string;
     execTransactionHash?: string;
@@ -10,17 +10,22 @@ export function bountyFromJson(
 } {
     return {
         bountyIdentifier: bounty.messageIdentifier,
-        fromChainId: bounty.fromChainId,
-        toChainId: bounty.toChainId,
-        maxGasDelivery: bounty.maxGasDelivery?.toString(),
-        maxGasAck: bounty.maxGasAck?.toString(),
-        refundGasTo: bounty.refundGasTo,
-        priceOfDeliveryGas: bounty.priceOfDeliveryGas,
-        priceOfAckGas: bounty.priceOfAckGas,
-        targetDelta: bounty.targetDelta,
+
+        fromChainId: bounty.bountyPlacedEvent?.fromChainId,
+        toChainId: bounty.messageDeliveredEvent?.toChainId,
+
+        maxGasDelivery: bounty.bountyPlacedEvent?.maxGasDelivery?.toString(),
+        maxGasAck: bounty.bountyPlacedEvent?.maxGasAck?.toString(),
+        refundGasTo: bounty.bountyPlacedEvent?.refundGasTo,
+        priceOfDeliveryGas: bounty.bountyIncreasedEvent?.newDeliveryGasPrice
+            ?? bounty.bountyPlacedEvent?.priceOfDeliveryGas,
+        priceOfAckGas: bounty.bountyIncreasedEvent?.newAckGasPrice
+            ?? bounty.bountyPlacedEvent?.priceOfAckGas,
+        targetDelta: bounty.bountyPlacedEvent?.targetDelta,
+
         bountyStatus: bounty.status,
-        sourceAddress: bounty.sourceAddress,
-        destinationAddress: bounty.destinationAddress,
+
+        sourceAddress: bounty.bountyPlacedEvent?.incentivesAddress,
     };
 }
 
