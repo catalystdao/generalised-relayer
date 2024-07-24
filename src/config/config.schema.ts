@@ -4,8 +4,8 @@ import { AnyValidateFunction } from "ajv/dist/core"
 const MIN_PROCESSING_INTERVAL = 1;
 const MAX_PROCESSING_INTERVAL = 500;
 
-const EVM_ADDRESS_EXPR = '^0x[0-9a-fA-F]{40}$';  // '0x' + 20 bytes (40 chars)
-const BYTES_32_HEX_EXPR = '^0x[0-9a-fA-F]{64}$';  // '0x' + 32 bytes (64 chars)
+export const EVM_ADDRESS_EXPR = '^0x[0-9a-fA-F]{40}$';  // '0x' + 20 bytes (40 chars)
+export const BYTES_32_HEX_EXPR = '^0x[0-9a-fA-F]{64}$';  // '0x' + 32 bytes (64 chars)
 
 const POSITIVE_NUMBER_SCHEMA = {
     $id: "positive-number-schema",
@@ -73,10 +73,7 @@ const GLOBAL_SCHEMA = {
     $id: "global-schema",
     type: "object",
     properties: {
-        privateKey: {
-            type: "string",
-            pattern: BYTES_32_HEX_EXPR,
-        },
+        privateKey: { $ref: "private-key-schema" },
         logLevel: { $ref: "non-empty-string-schema" },
 
         monitor: { $ref: "monitor-schema" },
@@ -87,8 +84,26 @@ const GLOBAL_SCHEMA = {
         persister: { $ref: "persister-schema" },
         wallet: { $ref: "wallet-schema" },
     },
-    required: ["privateKey"],
+    required: [],
     additionalProperties: false
+}
+
+const PRIVATE_KEY_SCHEMA = {
+    $id: "private-key-schema",
+    "anyOf": [
+        {
+            type: "string",
+            pattern: BYTES_32_HEX_EXPR,
+        },
+        {
+            type: "object",
+            properties: {
+                loader: { $ref: "non-empty-string-schema" },
+            },
+            required: ["loader"],
+            additionalProperties: true,
+        }
+    ]
 }
 
 const MONITOR_SCHEMA = {
@@ -275,6 +290,7 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(PROCESSING_INTERVAL_SCHEMA);
     ajv.addSchema(CONFIG_SCHEMA);
     ajv.addSchema(GLOBAL_SCHEMA);
+    ajv.addSchema(PRIVATE_KEY_SCHEMA);
     ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
     ajv.addSchema(PRICING_SCHEMA);

@@ -67,14 +67,14 @@ export class WalletService implements OnModuleInit {
 
     private readonly queuedMessages: Record<string, WalletServiceRoutingData[]> = {};
 
-    readonly publicKey: string;
+    readonly publicKey: Promise<string>;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
     ) {
         this.defaultWorkerConfig = this.loadDefaultWorkerConfig();
-        this.publicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
+        this.publicKey = this.loadPublicKey();
     }
 
     async onModuleInit() {
@@ -85,10 +85,14 @@ export class WalletService implements OnModuleInit {
         this.initiateIntervalStatusLog();
     }
 
+    private async loadPublicKey(): Promise<string> {
+        return (new Wallet(await this.configService.globalConfig.privateKey)).address;
+    }
+
     private async initializeWorkers(): Promise<void> {
 
         for (const [chainId,] of this.configService.chainsConfig) {
-            this.spawnWorker(chainId);
+            await this.spawnWorker(chainId);
         }
 
         // Add a small delay to wait for the workers to be initialized
@@ -134,9 +138,9 @@ export class WalletService implements OnModuleInit {
         }
     }
 
-    private loadWorkerConfig(
+    private async loadWorkerConfig(
         chainId: string,
-    ): WalletWorkerData {
+    ): Promise<WalletWorkerData> {
 
         const defaultConfig = this.defaultWorkerConfig;
 
@@ -170,7 +174,7 @@ export class WalletService implements OnModuleInit {
                 chainWalletConfig.gasBalanceUpdateInterval ??
                 defaultConfig.balanceUpdateInterval,
 
-            privateKey: this.configService.globalConfig.privateKey,
+            privateKey: await this.configService.globalConfig.privateKey,
 
             maxFeePerGas:
                 chainWalletConfig.maxFeePerGas ??
@@ -200,10 +204,10 @@ export class WalletService implements OnModuleInit {
         };
     }
 
-    private spawnWorker(
+    private async spawnWorker(
         chainId: string
-    ): void {
-        const workerData = this.loadWorkerConfig(chainId);
+    ): Promise<void> {
+        const workerData = await this.loadWorkerConfig(chainId);
         this.loggerService.info(
             {
                 chainId,

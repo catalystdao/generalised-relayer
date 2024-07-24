@@ -3,8 +3,9 @@ import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
 import { PRICING_SCHEMA, getConfigValidator } from './config.schema';
-import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingConfig, PricingGlobalConfig, EvaluatorGlobalConfig, EvaluatorConfig } from './config.types';
+import { GlobalConfig, ChainConfig, AMBConfig, GetterGlobalConfig, SubmitterGlobalConfig, PersisterConfig, WalletGlobalConfig, GetterConfig, SubmitterConfig, WalletConfig, MonitorConfig, MonitorGlobalConfig, PricingGlobalConfig, EvaluatorGlobalConfig, PricingConfig, EvaluatorConfig } from './config.types';
 import { JsonRpcProvider } from 'ethers6';
+import { loadPrivateKeyLoader } from './privateKeyLoaders/privateKeyLoader';
 
 @Injectable()
 export class ConfigService {
@@ -85,6 +86,21 @@ export class ConfigService {
         }
     }
 
+    private async loadPrivateKey(rawPrivateKeyConfig: any): Promise<string> {
+        if (typeof rawPrivateKeyConfig === "string") {
+            //NOTE: Using 'console.warn' as the logger is not available at this point.  //TODO use logger
+            console.warn('WARNING: the privateKey has been loaded from the configuration file. Consider storing the privateKey using an alternative safer method.')
+            return rawPrivateKeyConfig;
+        }
+
+        const privateKeyLoader = loadPrivateKeyLoader(
+            rawPrivateKeyConfig?.['loader'] ?? null,
+            rawPrivateKeyConfig ?? {},
+        );
+
+        return privateKeyLoader.load();
+    }
+
     private loadGlobalConfig(): GlobalConfig {
         const rawGlobalConfig = this.rawConfig['global'];
 
@@ -96,7 +112,7 @@ export class ConfigService {
 
         return {
             port: parseInt(process.env['RELAYER_PORT']),
-            privateKey: rawGlobalConfig.privateKey,
+            privateKey: this.loadPrivateKey(rawGlobalConfig.privateKey),
             logLevel: rawGlobalConfig.logLevel,
             monitor: this.formatMonitorGlobalConfig(rawGlobalConfig.monitor),
             getter: this.formatGetterGlobalConfig(rawGlobalConfig.getter),

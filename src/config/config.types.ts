@@ -1,6 +1,6 @@
 export interface GlobalConfig {
   port: number;
-  privateKey: string;
+  privateKey: Promise<string>;
   logLevel?: string;
   monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
@@ -9,6 +9,10 @@ export interface GlobalConfig {
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
   wallet: WalletGlobalConfig;
+}
+
+export type PrivateKeyConfig = string | {
+  loader: string;
 }
 
 export interface MonitorGlobalConfig {
