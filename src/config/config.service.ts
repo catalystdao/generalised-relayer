@@ -37,7 +37,7 @@ export class ConfigService {
     // is executed across services (i.e. there is no guarantee that the config service will be the
     // first to initialize). The `isReady` promise must be awaited on Relayer initialization.
     private async initialize(): Promise<void> {
-        await this.validateChains(this.chainsConfig);
+        await this.validateChainIds(this.chainsConfig);
     }
 
     private loadNodeEnv(): string {
@@ -185,28 +185,20 @@ export class ConfigService {
         return this.ambsConfig.get(amb)?.globalProperties[key];
     }
 
-    private async validateChains(chainsConfig: Map<string, ChainConfig>): Promise<void> {
-        const validateChainIdFromRPC = async (rpc: string, expectedChainId: string): Promise<boolean> => {
-            const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
-            try {
-                const network = await provider.getNetwork();
-                const actualChainId = network.chainId.toString();
-                return actualChainId === expectedChainId;
-            } catch (error) {
-                return false;
-            }
-        };
+    private async validateChainIds(chainsConfig: Map<string, ChainConfig>): Promise<void> {
 
         const validationPromises = [];
-
         for (const [chainId, config] of chainsConfig) {
-            const validationPromise = async () => {
-                const chainIdValidate = await validateChainIdFromRPC(config.rpc, chainId);
-                if (!chainIdValidate) {
-                    throw new Error(`Error validating the Chain ID for chain ${chainId}`);
+            const provider = new JsonRpcProvider(config.rpc, undefined, { staticNetwork: true });
+            const validationPromise = provider.getNetwork().then(
+                (network) => {
+                    const rpcChainId = network.chainId.toString();
+                    if (rpcChainId !== chainId) {
+                        throw new Error(`Error validating the chain ID of chain ${chainId}: the RPC chain ID is ${rpcChainId}.`)
+                    }
                 }
-            };
-            validationPromises.push(validationPromise());
+            )
+            validationPromises.push(validationPromise);
         }
 
         await Promise.all(validationPromises);
