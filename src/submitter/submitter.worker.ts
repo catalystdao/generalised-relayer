@@ -1,21 +1,17 @@
-import {
-    BytesLike,
-    JsonRpcProvider,
-    Wallet,
-} from 'ethers6';
+import { BytesLike, JsonRpcProvider } from 'ethers6';
 import pino, { LoggerOptions } from 'pino';
 import { Store } from 'src/store/store.lib';
-import { IncentivizedMessageEscrow } from 'src/contracts';
-import { IncentivizedMessageEscrow__factory } from 'src/contracts/factories/IncentivizedMessageEscrow__factory';
 import { workerData } from 'worker_threads';
-import { AmbPayload } from 'src/store/types/store.types';
+import { AMBProof } from 'src/store/store.types';
 import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { EvalOrder, NewOrder } from './submitter.types';
+import { EvalOrder, PendingOrder } from './submitter.types';
 import { EvalQueue } from './queues/eval-queue';
 import { SubmitQueue } from './queues/submit-queue';
 import { wait } from 'src/common/utils';
 import { SubmitterWorkerData } from './submitter.service';
 import { WalletInterface } from 'src/wallet/wallet.interface';
+import { Resolver, loadResolver } from 'src/resolvers/resolver';
+import { EvaluatorInterface } from 'src/evaluator/evaluator.interface';
 
 class SubmitterWorker {
     private readonly store: Store;
@@ -24,13 +20,15 @@ class SubmitterWorker {
     private readonly config: SubmitterWorkerData;
 
     private readonly provider: JsonRpcProvider;
-    private readonly signer: Wallet;
 
     private readonly chainId: string;
 
+    private readonly resolver: Resolver;
+
+    private readonly evaluator: EvaluatorInterface;
     private readonly wallet: WalletInterface;
 
-    private readonly newOrdersQueue: NewOrder<EvalOrder>[] = [];
+    private readonly pendingQueue: PendingOrder<EvalOrder>[] = [];
     private readonly evalQueue: EvalQueue;
     private readonly submitQueue: SubmitQueue;
 
@@ -41,7 +39,7 @@ class SubmitterWorker {
 
         this.chainId = this.config.chainId;
 
-        this.store = new Store(this.chainId);
+        this.store = new Store();
         this.logger = this.initializeLogger(
             this.chainId,
             this.config.loggerOptions,
@@ -49,19 +47,28 @@ class SubmitterWorker {
         this.provider = new JsonRpcProvider(this.config.rpc, undefined, {
             staticNetwork: true,
         });
-        this.signer = new Wallet(this.config.relayerPrivateKey, this.provider);
 
+        this.resolver = loadResolver(
+            this.config.resolver,
+            this.provider,
+            this.logger
+        );
+
+        this.evaluator = new EvaluatorInterface(this.config.evaluatorPort);
         this.wallet = new WalletInterface(this.config.walletPort);
 
         [this.evalQueue, this.submitQueue] =
             this.initializeQueues(
                 this.config.retryInterval,
                 this.config.maxTries,
-                this.store,
-                this.loadIncentivesContracts(this.config.incentivesAddresses),
-                this.config.chainId,
-                this.config.gasLimitBuffer,
                 this.config.walletPublicKey,
+                this.resolver,
+                this.store,
+                this.config.incentivesAddresses,
+                this.config.packetCosts,
+                this.config.chainId,
+                this.evaluator,
+                this.provider,
                 this.wallet,
                 this.logger,
             );
@@ -84,30 +91,36 @@ class SubmitterWorker {
     private initializeQueues(
         retryInterval: number,
         maxTries: number,
-        store: Store,
-        incentivesContracts: Map<string, IncentivizedMessageEscrow>,
-        chainId: string,
-        gasLimitBuffer: Record<string, number>,
         walletPublicKey: string,
+        resolver: Resolver,
+        store: Store,
+        incentivesContracts: Map<string, string>,
+        packetCosts: Map<string, bigint>,
+        chainId: string,
+        evaluator: EvaluatorInterface,
+        provider: JsonRpcProvider,
         wallet: WalletInterface,
         logger: pino.Logger,
     ): [EvalQueue, SubmitQueue] {
         const evalQueue = new EvalQueue(
             retryInterval,
             maxTries,
+            walletPublicKey,
+            resolver,
             store,
             incentivesContracts,
+            packetCosts,
             chainId,
-            gasLimitBuffer,
-            walletPublicKey,
+            evaluator,
             logger,
         );
 
         const submitQueue = new SubmitQueue(
             retryInterval,
             maxTries,
-            incentivesContracts,
-            walletPublicKey,
+            store,
+            chainId,
+            provider,
             wallet,
             logger,
         );
@@ -124,7 +137,7 @@ class SubmitterWorker {
         const logStatus = () => {
             const status = {
                 capacity: this.getSubmitterCapacity(),
-                newOrdersQueue: this.newOrdersQueue.length,
+                pendingQueue: this.pendingQueue.length,
                 evalQueue: this.evalQueue.size,
                 evalRetryQueue: this.evalQueue.retryQueue.length,
                 submitQueue: this.submitQueue.size,
@@ -136,26 +149,10 @@ class SubmitterWorker {
         setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
-    private loadIncentivesContracts(
-        incentivesAddresses: Map<string, string>,
-    ): Map<string, IncentivizedMessageEscrow> {
-        const incentivesContracts = new Map<string, IncentivizedMessageEscrow>();
-
-        incentivesAddresses.forEach((address: string, amb: string) => {
-            const contract = IncentivizedMessageEscrow__factory.connect(
-                address,
-                this.signer,
-            );
-            incentivesContracts.set(amb, contract);
-        });
-
-        return incentivesContracts;
-    }
-
     /***************  Main Logic Loop.  ***************/
 
     async run(): Promise<void> {
-        this.logger.debug({ relayer: this.signer.address }, `Relaying messages.`);
+        this.logger.debug({ relayer: this.config.walletPublicKey }, `Relaying messages.`);
 
         // Initialize the queues
         await this.evalQueue.init();
@@ -165,14 +162,17 @@ class SubmitterWorker {
         await this.listenForOrders();
 
         while (true) {
-            const evalOrders = await this.processNewOrdersQueue();
+            const evalOrders = await this.processPendingQueue();
 
             await this.evalQueue.addOrders(...evalOrders);
             await this.evalQueue.processOrders();
 
-            const [newSubmitOrders, ,] = this.evalQueue.getFinishedOrders();
+            const [newSubmitOrders, noSubmitEvalOrders,] = this.evalQueue.getFinishedOrders();
+            this.processNoSubmitEvalOrders(noSubmitEvalOrders);
             await this.submitQueue.addOrders(...newSubmitOrders);
             await this.submitQueue.processOrders();
+
+            //TODO process failed submissions in any way?
 
             this.submitQueue.getFinishedOrders(); // Flush the internal queues
 
@@ -180,95 +180,158 @@ class SubmitterWorker {
         }
     }
 
+    private processNoSubmitEvalOrders(evalOrders: EvalOrder[]): void {
+        for (const order of evalOrders) {
+            if (order.retryEvaluation) {
+
+                // Clear the 'retryEvaluation' flag to avoid unexpected retries.
+                order.retryEvaluation = undefined;
+
+                const nextEvaluationTime = Date.now() + this.config.evaluationRetryInterval;
+                if (nextEvaluationTime > order.evaluationDeadline) {
+                    this.logger.info(
+                        {
+                            messageIdentifier: order.messageIdentifier,
+                            nextEvaluationTime,
+                            evaluationDeadline: order.evaluationDeadline,
+                        },
+                        'Dropping evaluation order.'
+                    );
+                }
+                else {
+                    this.logger.info(
+                        {
+                            messageIdentifier: order.messageIdentifier,
+                            nextEvaluationTime,
+                            evaluationDeadline: order.evaluationDeadline,
+                        },
+                        'Queueing order for reevaluation.'
+                    );
+                    this.addPendingOrder(nextEvaluationTime, order);
+                }
+            }
+        }
+    }
+
     /**
      * Subscribe to the Store to listen for relevant payloads to submit.
      */
     private async listenForOrders(): Promise<void> {
-        const listenToChannel = Store.getChannel('submit', this.chainId);
+        const onAMBProofChannel = Store.getOnAMBProofChannel(this.chainId);
         this.logger.info(
-            { globalChannel: listenToChannel },
+            { channel: onAMBProofChannel },
             `Listing for messages to submit.`,
         );
 
-        await this.store.on(listenToChannel, (event: any) => {
+        await this.store.on(onAMBProofChannel, (event: any) => {
 
-            //TODO verify event format
-            const message = event as AmbPayload;
+            const ambProof = event as AMBProof;
 
-            void this.store.getAmb(message.messageIdentifier)
-                .then(ambMessage => {
-                    if (ambMessage == null) {
-                        this.logger.warn(
-                            {
-                                messageIdentifier: message.messageIdentifier,
-                            },
-                            `AMB message not found on submit order. Priority set to 'false'.`
-                        )
-                    }
-
-                    return this.addSubmitOrder(
-                        message.amb,
-                        message.messageIdentifier,
-                        message.message,
-                        message.messageCtx ?? '',
-                        ambMessage?.priority ?? false, // eval priority => undefined = false.
+            void this.store.getAMBMessage(
+                ambProof.fromChainId,
+                ambProof.messageIdentifier
+            ).then(ambMessage => {
+                if (ambMessage == null) {
+                    this.logger.warn(
+                        {
+                            messageIdentifier: ambProof.messageIdentifier,
+                        },
+                        `AMB message not found on submit order. Submission evaluation will be less accurate.`
                     );
-                })
+                }
+
+                return this.addSubmitOrder(
+                    ambProof.amb,
+                    ambProof.fromChainId,
+                    ambProof.messageIdentifier,
+                    ambProof.message,
+                    ambProof.messageCtx ?? '0x',
+                    ambMessage?.priority ?? false,
+                    ambMessage?.incentivesPayload,
+                );
+            });
         });
     }
 
     private async addSubmitOrder(
         amb: string,
+        fromChainId: string,
         messageIdentifier: string,
         message: BytesLike,
         messageCtx: BytesLike,
         priority: boolean,
+        incentivesPayload?: BytesLike,
     ) {
-        this.logger.debug(
+        this.logger.info(
             { messageIdentifier, priority },
             `Submit order received.`,
         );
         if (priority) {
-            // Push directly into the submit queue
+            // Push directly into the eval queue
             await this.evalQueue.addOrders({
                 amb,
+                fromChainId,
                 messageIdentifier,
                 message,
                 messageCtx,
                 priority: true,
+                evaluationDeadline: Date.now() + this.config.maxEvaluationDuration,
+                incentivesPayload,
             });
         } else {
-            // Push into the evaluation queue
-            this.newOrdersQueue.push({
-                processAt: Date.now() + this.config.newOrdersDelay,
-                order: {
+            // Push into the pending queue
+            this.addPendingOrder(
+                Date.now() + this.config.newOrdersDelay,
+                {
                     amb,
+                    fromChainId,
                     messageIdentifier,
                     message,
                     messageCtx,
                     priority: false,
+                    evaluationDeadline: Date.now() + this.config.maxEvaluationDuration,
+                    incentivesPayload,
                 },
-            });
+            );
         }
     }
 
-    /***************  New Order Queue  ***************/
+    /***************  Pending Orders Queue  ***************/
 
-    private async processNewOrdersQueue(): Promise<EvalOrder[]> {
+    private addPendingOrder(processAt: number, order: EvalOrder): void {
+        
+        // Insert the new order into the 'pendingQueue' keeping the queue order.
+        const insertIndex = this.pendingQueue.findIndex(order => {
+            return order.processAt > processAt;
+        });
+
+        const pendingOrder: PendingOrder<EvalOrder> = {
+            order,
+            processAt
+        };
+
+        if (insertIndex == -1) {
+            this.pendingQueue.push(pendingOrder);
+        } else {
+            this.pendingQueue.splice(insertIndex, 0, pendingOrder);
+        }
+    }
+
+    private async processPendingQueue(): Promise<EvalOrder[]> {
         const currentTimestamp = Date.now();
         const capacity = this.getSubmitterCapacity();
 
         let i;
-        for (i = 0; i < this.newOrdersQueue.length; i++) {
-            const nextNewOrder = this.newOrdersQueue[i]!;
+        for (i = 0; i < this.pendingQueue.length; i++) {
+            const nextPendingOrder = this.pendingQueue[i]!;
 
-            if (nextNewOrder.processAt > currentTimestamp || i + 1 > capacity) {
+            if (nextPendingOrder.processAt > currentTimestamp || i + 1 > capacity) {
                 break;
             }
         }
 
-        const ordersToEval = this.newOrdersQueue.splice(0, i).map((newOrder) => {
-            return newOrder.order;
+        const ordersToEval = this.pendingQueue.splice(0, i).map((pendingOrder) => {
+            return pendingOrder.order;
         });
 
         return ordersToEval;

@@ -60,7 +60,7 @@ export class GetterService implements OnModuleInit {
                     { chainId },
                     'Skipping getter worker creation: no incentive address to listen for found.',
                 );
-                return;
+                continue;
             }
 
             const worker = new Worker(join(__dirname, 'getter.worker.js'), {

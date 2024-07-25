@@ -3,7 +3,7 @@ import pino from 'pino';
 import { convertHexToDecimal, tryErrorToString, wait } from 'src/common/utils';
 import { IncentivizedMockEscrow__factory } from 'src/contracts';
 import { Store } from 'src/store/store.lib';
-import { AmbMessage, AmbPayload } from 'src/store/types/store.types';
+import { AMBMessage, AMBProof } from 'src/store/store.types';
 import { workerData, MessagePort } from 'worker_threads';
 import {
     decodeMockMessage,
@@ -14,6 +14,7 @@ import { MockWorkerData } from './mock';
 import { IncentivizedMockEscrowInterface, MessageEvent } from 'src/contracts/IncentivizedMockEscrow';
 import { MonitorInterface, MonitorStatus } from 'src/monitor/monitor.interface';
 import { Resolver, loadResolver } from 'src/resolvers/resolver';
+import { STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
 
 
 /**
@@ -53,6 +54,8 @@ class MockCollectorWorker {
     private currentStatus: MonitorStatus | null = null;
     private monitor: MonitorInterface;
 
+    private fromBlock: number = 0;
+
 
     constructor() {
         this.config = workerData as MockWorkerData;
@@ -62,7 +65,7 @@ class MockCollectorWorker {
         // Get a connection to the redis store.
         // The redis store has been wrapped into a lib to make it easier to standardise
         // communication between the various components.
-        this.store = new Store(this.chainId);
+        this.store = new Store();
 
         // Get an Ethers provider with which to collect the bounties information.
         this.provider = this.initializeProvider(this.config.rpc);
@@ -87,6 +90,8 @@ class MockCollectorWorker {
 
         // Start listening to the monitor service (get the latest block data).
         this.monitor = this.startListeningToMonitor(this.config.monitorPort);
+
+        this.initiateIntervalStatusLog();
     }
 
 
@@ -142,25 +147,14 @@ class MockCollectorWorker {
         );
 
         // Get the effective starting and stopping blocks.
-        let fromBlock = null;
-        while (fromBlock == null) {
-            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
-            // 'startingBlock' is specified.
-            if (this.currentStatus != null) {
-                fromBlock = (
-                    this.config.startingBlock ?? this.currentStatus.blockNumber
-                );
-            }
-
-            await wait(this.config.processingInterval);
-        }
+        this.fromBlock = await this.getStartingBlock();
 
         const stopBlock = this.config.stoppingBlock ?? Infinity;
 
         while (true) {
             try {
                 let toBlock = this.currentStatus?.blockNumber;
-                if (!toBlock || fromBlock > toBlock) {
+                if (!toBlock || this.fromBlock > toBlock) {
                     await wait(this.config.processingInterval);
                     continue;
                 }
@@ -171,20 +165,20 @@ class MockCollectorWorker {
                 }
 
                 // Do not process more than 'maxBlocks' within a single rpc call.
-                const blocksToProcess = toBlock - fromBlock;
+                const blocksToProcess = toBlock - this.fromBlock;
                 if (this.config.maxBlocks != null && blocksToProcess > this.config.maxBlocks) {
-                    toBlock = fromBlock + this.config.maxBlocks;
+                    toBlock = this.fromBlock + this.config.maxBlocks;
                 }
 
-                this.logger.info(
+                this.logger.debug(
                     {
-                        fromBlock,
+                        fromBlock: this.fromBlock,
                         toBlock,
                     },
                     `Scanning mock messages.`,
                 );
 
-                await this.queryAndProcessEvents(fromBlock, toBlock);
+                await this.queryAndProcessEvents(this.fromBlock, toBlock);
 
                 if (toBlock >= stopBlock) {
                     this.logger.info(
@@ -194,7 +188,7 @@ class MockCollectorWorker {
                     break;
                 }
 
-                fromBlock = toBlock + 1;
+                this.fromBlock = toBlock + 1;
             }
             catch (error) {
                 this.logger.error(error, `Error on mock.worker`);
@@ -207,6 +201,35 @@ class MockCollectorWorker {
         // Cleanup worker
         this.monitor.close();
         await this.store.quit();
+    }
+
+    private async getStartingBlock(): Promise<number> {
+        let fromBlock: number | null = null;
+        while (fromBlock == null) {
+
+            // Do not initialize 'fromBlock' whilst 'currentStatus' is null, even if
+            // 'startingBlock' is specified.
+            if (this.currentStatus == null) {
+                await wait(this.config.processingInterval);
+                continue;
+            }
+
+            if (this.config.startingBlock == null) {
+                fromBlock = this.currentStatus.blockNumber;
+                break;
+            }
+
+            if (this.config.startingBlock < 0) {
+                fromBlock = this.currentStatus.blockNumber + this.config.startingBlock;
+                if (fromBlock < 0) {
+                    throw new Error(`Invalid 'startingBlock': negative offset is larger than the current block number.`)
+                }
+            } else {
+                fromBlock = this.config.startingBlock;
+            }
+        }
+
+        return fromBlock;
     }
 
     private async queryAndProcessEvents(
@@ -297,25 +320,30 @@ class MockCollectorWorker {
             log.blockNumber
         );
 
-        const amb: AmbMessage = {
-            ...decodedMessage,
+        const ambMessage: AMBMessage = {
+            messageIdentifier: decodedMessage.messageIdentifier,
+
             amb: 'mock',
-            sourceEscrow: this.config.incentivesAddress,
-            blockNumber: log.blockNumber,
+            fromChainId: decodedMessage.sourceChain,
+            toChainId: decodedMessage.destinationChain,
+            fromIncentivesAddress: this.config.incentivesAddress,
+            toIncentivesAddress: messageEvent.recipient,
+
+            incentivesPayload: decodedMessage.payload,
+
             transactionBlockNumber,
+
+            blockNumber: log.blockNumber,
             blockHash: log.blockHash,
             transactionHash: log.transactionHash
         }
 
         // Set the collect message on-chain. This is not the proof but the raw message.
         // It can be used by plugins to facilitate other jobs.
-        await this.store.setAmb(amb, log.transactionHash);
-
-        // Set destination address for the bounty.
-        await this.store.registerDestinationAddress({
-            messageIdentifier: amb.messageIdentifier,
-            destinationAddress: messageEvent.recipient,
-        });
+        await this.store.setAMBMessage(
+            this.chainId,
+            ambMessage
+        );
 
         // Encode and sign the message for delivery.
         // This is the proof which enables us to submit the transaciton later.
@@ -325,27 +353,48 @@ class MockCollectorWorker {
         const signature = this.signingKey.sign(keccak256(encodedMessage));
         const executionContext = encodeSignature(signature);
 
-        const destinationChainId = convertHexToDecimal(amb.destinationChain);
+        const destinationChainId = convertHexToDecimal(ambMessage.toChainId);
 
         // Construct the payload.
-        const ambPayload: AmbPayload = {
-            messageIdentifier: amb.messageIdentifier,
+        const ambPayload: AMBProof = {
+            messageIdentifier: ambMessage.messageIdentifier,
+
             amb: 'mock',
-            destinationChainId,
+            fromChainId: this.chainId,
+            toChainId: destinationChainId,
+
             message: encodedMessage,
             messageCtx: executionContext, // If the generalised incentives implementation does not use the context set it to "0x".
         };
 
         this.logger.info(
             {
-                messageIdentifier: amb.messageIdentifier,
+                messageIdentifier: ambMessage.messageIdentifier,
                 destinationChainId: destinationChainId,
             },
             `Mock message found.`,
         );
 
         // Submit the proofs to any listeners. If there is a submitter, it will process the proof and submit it.
-        await this.store.submitProof(destinationChainId, ambPayload);
+        await this.store.setAMBProof(destinationChainId, ambPayload);
+    }
+
+
+
+    // Misc Helpers
+    // ********************************************************************************************
+
+    private initiateIntervalStatusLog(): void {
+        const logStatus = () => {
+            this.logger.info(
+                {
+                    latestBlock: this.currentStatus?.blockNumber,
+                    currentBlock: this.fromBlock,
+                },
+                'Mock collector status.'
+            );
+        };
+        setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
 }

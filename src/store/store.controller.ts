@@ -1,14 +1,19 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { LoggerService } from 'src/logger/logger.service';
 import { Store } from './store.lib';
-import { PrioritiseMessage } from './types/store.types';
+import { PrioritiseMessage } from './store.types';
 
 
 @Controller()
 export class StoreController {
+
+    private readonly store: Store;
+
     constructor(
         private readonly loggerService: LoggerService,
-    ) {}
+    ) {
+        this.store = new Store();
+    }
 
     @Get('getAMBMessages')
     async getAMBMessages(@Query() query: any): Promise<any | undefined> {
@@ -19,8 +24,7 @@ export class StoreController {
             return undefined; //TODO return error
         }
 
-        const store = new Store(chainId);
-        const amb = await store.getAMBsByTxHash(chainId, txHash);
+        const amb = await this.store.getAMBMessagesByTransactionHash(chainId, txHash);
         if (amb != null) return JSON.stringify(amb);
     }
 
@@ -38,8 +42,8 @@ export class StoreController {
             `Message prioritisation requested.`
         )
 
-        const store = new Store();
-        await store.setAmbPriority(
+        await this.store.setAMBMessagePriority(
+            body.sourceChainId,
             body.messageIdentifier,
             true,
         );

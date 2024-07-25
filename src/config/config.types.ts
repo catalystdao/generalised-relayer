@@ -1,17 +1,24 @@
 export interface GlobalConfig {
   port: number;
-  privateKey: string;
+  privateKey: Promise<string>;
   logLevel?: string;
   monitor: MonitorGlobalConfig;
   getter: GetterGlobalConfig;
+  pricing: PricingGlobalConfig;
+  evaluator: EvaluatorGlobalConfig;
   submitter: SubmitterGlobalConfig;
   persister: PersisterConfig;
   wallet: WalletGlobalConfig;
 }
 
+export type PrivateKeyConfig = string | {
+  loader: string;
+}
+
 export interface MonitorGlobalConfig {
   interval?: number;
   blockDelay?: number;
+  noBlockUpdateWarningInterval?: number;
 }
 
 export interface MonitorConfig extends MonitorGlobalConfig {}
@@ -24,6 +31,32 @@ export interface GetterGlobalConfig {
 
 export interface GetterConfig extends GetterGlobalConfig {}
 
+export interface PricingGlobalConfig {
+  provider?: string;
+  coinDecimals?: number;
+  pricingDenomination?: string;
+  cacheDuration?: number;
+  retryInterval?: number;
+  maxTries?: number;
+  providerSpecificConfig: Record<string, any>;
+};
+
+export interface PricingConfig extends PricingGlobalConfig {}
+
+export interface EvaluatorGlobalConfig {
+  unrewardedDeliveryGas?: bigint;
+  verificationDeliveryGas?: bigint;
+  minDeliveryReward?: number;
+  relativeMinDeliveryReward?: number;
+  unrewardedAckGas?: bigint;
+  verificationAckGas?: bigint;
+  minAckReward?: number;
+  relativeMinAckReward?: number;
+  profitabilityFactor?: number;
+}
+
+export interface EvaluatorConfig extends EvaluatorGlobalConfig {}
+
 export interface SubmitterGlobalConfig {
   enabled?: boolean;
   newOrdersDelay?: number;
@@ -32,7 +65,8 @@ export interface SubmitterGlobalConfig {
   maxTries?: number;
   maxPendingTransactions?: number;
 
-  gasLimitBuffer?: Record<string, number> & { default?: number };
+  evaluationRetryInterval?: number;
+  maxEvaluationDuration?: number;
 }
 
 export interface SubmitterConfig extends SubmitterGlobalConfig {}
@@ -78,6 +112,8 @@ export interface ChainConfig {
   stoppingBlock?: number;
   monitor: MonitorConfig;
   getter: GetterConfig;
+  pricing: PricingConfig;
+  evaluator: EvaluatorConfig;
   submitter: SubmitterConfig;
   wallet: WalletConfig;
 }

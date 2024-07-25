@@ -4,13 +4,19 @@ import { AnyValidateFunction } from "ajv/dist/core"
 const MIN_PROCESSING_INTERVAL = 1;
 const MAX_PROCESSING_INTERVAL = 500;
 
-const EVM_ADDRESS_EXPR = '^0x[0-9a-fA-F]{40}$';  // '0x' + 20 bytes (40 chars)
-const BYTES_32_HEX_EXPR = '^0x[0-9a-fA-F]{64}$';  // '0x' + 32 bytes (64 chars)
+export const EVM_ADDRESS_EXPR = '^0x[0-9a-fA-F]{40}$';  // '0x' + 20 bytes (40 chars)
+export const BYTES_32_HEX_EXPR = '^0x[0-9a-fA-F]{64}$';  // '0x' + 32 bytes (64 chars)
 
 const POSITIVE_NUMBER_SCHEMA = {
     $id: "positive-number-schema",
     type: "number",
     minimum: 0,
+}
+
+const INTEGER_SCHEMA = {
+    $id: "integer-schema",
+    type: "number",
+    multipleOf: 1,
 }
 
 const POSITIVE_NON_ZERO_INTEGER_SCHEMA = {
@@ -67,20 +73,37 @@ const GLOBAL_SCHEMA = {
     $id: "global-schema",
     type: "object",
     properties: {
-        privateKey: {
-            type: "string",
-            pattern: BYTES_32_HEX_EXPR,
-        },
+        privateKey: { $ref: "private-key-schema" },
         logLevel: { $ref: "non-empty-string-schema" },
 
         monitor: { $ref: "monitor-schema" },
         getter: { $ref: "getter-schema" },
+        pricing: { $ref: "pricing-schema" },
+        evaluator: { $ref: "evaluator-schema" },
         submitter: { $ref: "submitter-schema" },
         persister: { $ref: "persister-schema" },
         wallet: { $ref: "wallet-schema" },
     },
-    required: ["privateKey"],
+    required: [],
     additionalProperties: false
+}
+
+const PRIVATE_KEY_SCHEMA = {
+    $id: "private-key-schema",
+    "anyOf": [
+        {
+            type: "string",
+            pattern: BYTES_32_HEX_EXPR,
+        },
+        {
+            type: "object",
+            properties: {
+                loader: { $ref: "non-empty-string-schema" },
+            },
+            required: ["loader"],
+            additionalProperties: true,
+        }
+    ]
 }
 
 const MONITOR_SCHEMA = {
@@ -93,6 +116,7 @@ const MONITOR_SCHEMA = {
             maximum: 120_000,   // 2 minutes
         },
         blockDelay: { $ref: "positive-number-schema" },
+        noBlockUpdateWarningInterval: { $ref: "positive-number-schema"},
     },
     additionalProperties: false
 }
@@ -112,6 +136,37 @@ const GETTER_SCHEMA = {
     additionalProperties: false
 }
 
+export const PRICING_SCHEMA = {
+    $id: "pricing-schema",
+    type: "object",
+    properties: {
+        provider: { $ref: "non-empty-string-schema" },
+        coinDecimals: { $ref: "positive-non-zero-integer-schema" },
+        pricingDenomination: { $ref: "non-empty-string-schema" },
+        cacheDuration: { $ref: "positive-number-schema" },
+        retryInterval: { $ref: "positive-number-schema" },
+        maxTries: { $ref: "positive-non-zero-integer-schema" },
+    },
+    additionalProperties: true  // Allow for provider-specific configurations
+}
+
+const EVALUATOR_SCHEMA = {
+    $id: "evaluator-schema",
+    type: "object",
+    properties: {
+        unrewardedDeliveryGas: { $ref: "gas-field-schema" },
+        verificationDeliveryGas: { $ref: "gas-field-schema" },
+        minDeliveryReward: { $ref: "positive-number-schema" },
+        relativeMinDeliveryReward: { $ref: "positive-number-schema" },
+        unrewardedAckGas: { $ref: "gas-field-schema" },
+        verificationAckGas: { $ref: "gas-field-schema" },
+        minAckReward: { $ref: "positive-number-schema" },
+        relativeMinAckReward: { $ref: "positive-number-schema" },
+        profitabilityFactor: { $ref: "positive-number-schema" },
+    },
+    additionalProperties: false
+}
+
 const SUBMITTER_SCHEMA = {
     $id: "submitter-schema",
     type: "object",
@@ -125,14 +180,8 @@ const SUBMITTER_SCHEMA = {
         maxTries: { $ref: "positive-number-schema" },
         maxPendingTransactions: { $ref: "positive-number-schema" },
 
-        gasLimitBuffer: {
-            type: "object",
-            patternProperties: {
-                default: { $ref: "positive-number-schema" },
-                ["^[a-zA-Z0-9_-]+$"]: { $ref: "positive-number-schema" },
-            },
-            additionalProperties: false
-        },
+        evaluationRetryInterval: { $ref: "positive-number-schema" },
+        maxEvaluationDuration: { $ref: "positive-number-schema" },
     },
     additionalProperties: false
 }
@@ -193,7 +242,8 @@ const AMBS_SCHEMA = {
             enabled: {
                 type: "boolean"
             },
-            incentivesAddress: { $ref: "address-field-schema" }
+            incentivesAddress: { $ref: "address-field-schema" },
+            packetCost: { $ref: "gas-field-schema" }
         },
         required: ["name"],
         additionalProperties: true,
@@ -212,11 +262,13 @@ const CHAINS_SCHEMA = {
             rpc: { $ref: "non-empty-string-schema" },
             resolver: { $ref: "non-empty-string-schema" },
 
-            startingBlock: { $ref: "positive-number-schema" },
+            startingBlock: { $ref: "integer-schema" },
             stoppingBlock: { $ref: "positive-number-schema" },
 
             monitor: { $ref: "monitor-schema" },
             getter: { $ref: "getter-schema" },
+            pricing: { $ref: "pricing-schema" },
+            evaluator: { $ref: "evaluator-schema" },
             submitter: { $ref: "submitter-schema" },
             wallet: { $ref: "wallet-schema" },
         },
@@ -229,6 +281,7 @@ const CHAINS_SCHEMA = {
 export function getConfigValidator(): AnyValidateFunction<unknown> {
     const ajv = new Ajv({ strict: true });
     ajv.addSchema(POSITIVE_NUMBER_SCHEMA);
+    ajv.addSchema(INTEGER_SCHEMA);
     ajv.addSchema(POSITIVE_NON_ZERO_INTEGER_SCHEMA);
     ajv.addSchema(NON_EMPTY_STRING_SCHEMA);
     ajv.addSchema(ADDRESS_FIELD_SCHEMA);
@@ -237,8 +290,11 @@ export function getConfigValidator(): AnyValidateFunction<unknown> {
     ajv.addSchema(PROCESSING_INTERVAL_SCHEMA);
     ajv.addSchema(CONFIG_SCHEMA);
     ajv.addSchema(GLOBAL_SCHEMA);
+    ajv.addSchema(PRIVATE_KEY_SCHEMA);
     ajv.addSchema(MONITOR_SCHEMA);
     ajv.addSchema(GETTER_SCHEMA);
+    ajv.addSchema(PRICING_SCHEMA);
+    ajv.addSchema(EVALUATOR_SCHEMA);
     ajv.addSchema(SUBMITTER_SCHEMA);
     ajv.addSchema(PERSISTER_SCHEMA);
     ajv.addSchema(WALLET_SCHEMA);

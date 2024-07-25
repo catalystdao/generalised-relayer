@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from "ethers6";
+import { JsonRpcProvider, TransactionRequest } from "ethers6";
 import pino from "pino";
 
 export const RESOLVER_TYPE_DEFAULT = 'default';
@@ -62,6 +62,12 @@ export async function loadResolverAsync(
     );
 }
 
+export interface GasEstimateComponents {
+    gasEstimate: bigint;                // The overall gas usage (used to set the transaction 'gasLimit').
+    observedGasEstimate: bigint;        // The gas usage observed by the contract.
+    additionalFeeEstimate: bigint;      // Any additional fee incurred by the transaction.
+}
+
 export class Resolver {
     readonly resolverType;
 
@@ -78,4 +84,28 @@ export class Resolver {
     ): Promise<number> {
         return new Promise((resolve) => resolve(observedBlockNumber));
     };
+
+    async estimateGas(
+        transactionRequest: TransactionRequest
+    ): Promise<GasEstimateComponents> {
+        const gasEstimatePromise = this.provider.estimateGas(transactionRequest);
+        const additionalFeeEstimatePromise = this.estimateAdditionalFee(transactionRequest);
+
+        const [
+            gasEstimate,
+            additionalFeeEstimate
+        ] = await Promise.all([gasEstimatePromise, additionalFeeEstimatePromise]);
+
+        return {
+            gasEstimate,
+            observedGasEstimate: gasEstimate,
+            additionalFeeEstimate,
+        };
+    }
+
+    estimateAdditionalFee(
+        _transactionRequest: TransactionRequest
+    ): Promise<bigint> {
+        return new Promise((resolve) => resolve(0n));
+    }
 }
