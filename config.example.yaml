@@ -1,6 +1,15 @@
 # Global Relayer configuration
 global:
-  privateKey: ''                        # The privateKey of the account that will be submitting the packet relays
+  # ! The 'privateKey' of the account that will be submitting the packet relays is by default
+  # ! loaded from the environment variable 'RELAYER_PRIVATE_KEY'. Alternatively, the privateKey
+  # ! may be specified here (not recommended).
+  # privateKey: ''
+  # ! Optionally, custom privateKey loaders may be implemented and specified (NOTE: the 'env' 
+  # ! loader is used if no privateKey configuration is specified):
+  # privateKey:
+  #   loader: 'env'                     # The privateKey loader name (must match the implementation on src/config/privateKeyLoaders/<loader>.ts).
+  #   customLoaderConfig: ''            # Custom loader configs may be specified.
+
   logLevel: 'info'
 
   monitor:
@@ -17,11 +26,26 @@ global:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
     maxTries: 3                         # Maximum tries for a transaction
     maxPendingTransactions: 50          # Maximum number of transactions within the 'submit' pipeline.
+    evaluationRetryInterval: 3600000    # Interval at which to reevaluate whether to relay a message.
+    maxEvaluationDuration: 86400000     # Time after which to drop an undelivered message.
 
-    # Gas properties
-    gasLimitBuffer:                     # Extra gasLimit buffer. Customizable per AMB.
-      default: 10000
-      mock: 50000
+  evaluator:
+    verificationDeliveryGas: '55000'    # Gas amount used for packet verification upon delivery.
+    unrewardedDeliveryGas: '25000'      # Gas amount that will be unrewarded on delivery submission.
+    minDeliveryReward: 0.001            # In the 'pricingDenomination' specified below
+    relativeMinDeliveryReward: 0.001
+    verificationAckGas: '55000'         # Gas amount used for packet verification upon ack.
+    unrewardedAckGas: '25000'           # Gas amount that will be unrewarded on ack submission.
+    minAckReward: 0.001                 # In the 'pricingDenomination' specified below
+    relativeMinAckReward: 0.001
+    profitabilityFactor: 1.0            # Profitiability evaluation adjustment factor. A larger
+                                        # factor implies a larger profitability guarantee.
+
+  pricing:
+    provider: 'coin-gecko'
+    coinDecimals: 18
+    pricingDenomination: 'usd'
+
 
   wallet:
     retryInterval: 30000                # Time to wait before retrying a failed transaction
@@ -67,6 +91,7 @@ chains:
   - chainId: 10
     name: 'OP Mainnet'
     rpc: 'https://mainnet.optimism.io'
+    resolver: 'optimism'
 
     # startingBlock   # The block number at which to start Relaying (not all AMB collectors may support this property)
     # stoppingBlock   # The block number at which to stop Relaying (not all AMB collectors may support this property)
@@ -74,6 +99,9 @@ chains:
     # Overrides
     monitor:
       interval: 1000
+
+    pricing:
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
 
     # AMB configuration
     wormhole:
@@ -86,6 +114,8 @@ chains:
     rpc: 'https://rpc.blast.io'
     monitor:
       interval: 1000
+    pricing:
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
       wormholeChainId: 36
       incentivesAddress: '0x3C5C5436BCa59042cBC835276E51428781366d85'
@@ -94,8 +124,11 @@ chains:
   - chainId: 8453
     name: 'Base Mainnet'
     rpc: 'https://mainnet.base.org'
+    resolver: 'base'
     monitor:
       interval: 1000
+    pricing:
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
       wormholeChainId: 30
       incentivesAddress: '0x3C5C5436BCa59042cBC835276E51428781366d85'

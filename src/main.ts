@@ -27,7 +27,12 @@ async function bootstrap() {
     const configService = app.get(ConfigService);
     const loggerService = app.get(LoggerService);
 
+    // Wait for the privateKey to be ready
+    await configService.globalConfig.privateKey;
+
     logLoadedOptions(configService, loggerService);
+
+    await configService.isReady;
 
     await app.listen(configService.globalConfig.port);
 }

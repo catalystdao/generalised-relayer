@@ -6,8 +6,10 @@ services:
       - ${REDIS_PORT}:${REDIS_PORT}
     attach: false
     logging:
+      driver: 'local'
       options:
-        max-size: 5m
+        max-size: 50m
+        max-file: 5
 
   spy:
     image: ghcr.io/wormhole-foundation/guardiand:latest
@@ -27,11 +29,13 @@ services:
     attach: false
     profiles: ['wormhole']
     logging:
+      driver: 'local'
       options:
         max-size: 50m
+        max-file: 5
 
   relayer:
-    image: ghcr.io/catalystdao/generalised-relayer:latest
+    image: ghcr.io/catalystdao/generalised-relayer:testnet
     build:
       context: .
       dockerfile: dockerfile.relayer
@@ -49,5 +53,7 @@ services:
     depends_on:
       - redis
     logging:
+      driver: 'local'
       options:
-        max-size: 5g
+        max-size: ${MAX_LOG_SIZE:-500m}
+        max-file: ${MAX_LOG_FILES:-5}

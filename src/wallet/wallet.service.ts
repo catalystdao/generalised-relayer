@@ -4,11 +4,9 @@ import { LoggerOptions } from 'pino';
 import { Worker, MessagePort, MessageChannel } from 'worker_threads';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService, STATUS_LOG_INTERVAL } from 'src/logger/logger.service';
-import { WalletServiceRoutingMessage, WalletTransactionRequestMessage } from './wallet.types';
+import { WALLET_WORKER_CRASHED_MESSAGE_ID, WalletCrashedMessage, WalletMessageType, WalletPortData, WalletServiceRoutingData } from './wallet.types';
 import { Wallet } from 'ethers6';
 import { tryErrorToString } from 'src/common/utils';
-
-export const WALLET_WORKER_CRASHED_MESSAGE_ID = -1;
 
 const DEFAULT_WALLET_RETRY_INTERVAL = 30000;
 const DEFAULT_WALLET_PROCESSING_INTERVAL = 100;
@@ -58,11 +56,6 @@ export interface WalletWorkerData {
 
 }
 
-interface PortDescription {
-    chainId: string;
-    port: MessagePort;
-}
-
 @Global()
 @Injectable()
 export class WalletService implements OnModuleInit {
@@ -70,18 +63,18 @@ export class WalletService implements OnModuleInit {
 
     private workers: Record<string, Worker | null> = {};
     private portsCount = 0;
-    private readonly ports: Record<number, PortDescription> = {};
+    private readonly ports: Record<number, MessagePort> = {};
 
-    private readonly queuedRequests: Record<string, WalletServiceRoutingMessage[]> = {};
+    private readonly queuedMessages: Record<string, WalletServiceRoutingData[]> = {};
 
-    readonly publicKey: string;
+    readonly publicKey: Promise<string>;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
     ) {
         this.defaultWorkerConfig = this.loadDefaultWorkerConfig();
-        this.publicKey = (new Wallet(this.configService.globalConfig.privateKey)).address;
+        this.publicKey = this.loadPublicKey();
     }
 
     async onModuleInit() {
@@ -92,10 +85,14 @@ export class WalletService implements OnModuleInit {
         this.initiateIntervalStatusLog();
     }
 
+    private async loadPublicKey(): Promise<string> {
+        return (new Wallet(await this.configService.globalConfig.privateKey)).address;
+    }
+
     private async initializeWorkers(): Promise<void> {
 
         for (const [chainId,] of this.configService.chainsConfig) {
-            this.spawnWorker(chainId);
+            await this.spawnWorker(chainId);
         }
 
         // Add a small delay to wait for the workers to be initialized
@@ -141,9 +138,9 @@ export class WalletService implements OnModuleInit {
         }
     }
 
-    private loadWorkerConfig(
+    private async loadWorkerConfig(
         chainId: string,
-    ): WalletWorkerData {
+    ): Promise<WalletWorkerData> {
 
         const defaultConfig = this.defaultWorkerConfig;
 
@@ -177,7 +174,7 @@ export class WalletService implements OnModuleInit {
                 chainWalletConfig.gasBalanceUpdateInterval ??
                 defaultConfig.balanceUpdateInterval,
 
-            privateKey: this.configService.globalConfig.privateKey,
+            privateKey: await this.configService.globalConfig.privateKey,
 
             maxFeePerGas:
                 chainWalletConfig.maxFeePerGas ??
@@ -207,10 +204,10 @@ export class WalletService implements OnModuleInit {
         };
     }
 
-    private spawnWorker(
+    private async spawnWorker(
         chainId: string
-    ): void {
-        const workerData = this.loadWorkerConfig(chainId);
+    ): Promise<void> {
+        const workerData = await this.loadWorkerConfig(chainId);
         this.loggerService.info(
             {
                 chainId,
@@ -243,17 +240,23 @@ export class WalletService implements OnModuleInit {
             this.recoverQueuedMessages(chainId);
         });
 
-        worker.on('message', (message: WalletServiceRoutingMessage) => {
-            const portDescription = this.ports[message.portId];
-            if (portDescription == undefined) {
+        worker.on('message', (routingData: WalletServiceRoutingData) => {
+            const port = this.ports[routingData.portId];
+            if (port == undefined) {
                 this.loggerService.error(
-                    message,
+                    { routingData },
                     `Unable to route transaction response on wallet: port id not found.`
                 );
                 return;
             }
 
-            portDescription.port.postMessage(message.data);
+            const portData: WalletPortData = {
+                chainId,
+                messageId: routingData.messageId,
+                message: routingData.message,
+            };
+
+            port.postMessage(portData);
         });
     }
 
@@ -274,38 +277,35 @@ export class WalletService implements OnModuleInit {
         setInterval(logStatus, STATUS_LOG_INTERVAL);
     }
 
-    async attachToWallet(chainId: string): Promise<MessagePort> {
+    async attachToWallet(): Promise<MessagePort> {
         
         const portId = this.portsCount++;
 
         const { port1, port2 } = new MessageChannel();
 
-        port1.on('message', (message: WalletTransactionRequestMessage) => {
-            this.handleTransactionRequestMessage(
-                chainId,
+        port1.on('message', (portData: WalletPortData) => {
+            this.handleWalletPortData(
                 portId,
-                message,
+                portData,
             );
         });
 
-        this.ports[portId] = {
-            chainId,
-            port: port1,
-        };
+        this.ports[portId] = port1;
 
         return port2;
     }
 
-    private handleTransactionRequestMessage(
-        chainId: string,
+    private handleWalletPortData(
         portId: number,
-        message: WalletTransactionRequestMessage
+        portData: WalletPortData,
     ): void {
+        const chainId = portData.chainId;
         const worker = this.workers[chainId];
 
-        const routingMessage: WalletServiceRoutingMessage = {
+        const routingData: WalletServiceRoutingData = {
             portId,
-            data: message
+            messageId: portData.messageId,
+            message: portData.message,
         };
 
         if (worker == undefined) {
@@ -313,51 +313,60 @@ export class WalletService implements OnModuleInit {
                 {
                     chainId,
                     portId,
-                    message
+                    message: portData.message
                 },
                 `Wallet does not exist for the requested chain. Queueing message.`
             );
 
-            if (!(chainId in this.queuedRequests)) {
-                this.queuedRequests[chainId] = [];
+            if (!(chainId in this.queuedMessages)) {
+                this.queuedMessages[chainId] = [];
             }
-            this.queuedRequests[chainId]!.push(routingMessage);
+            this.queuedMessages[chainId]!.push(routingData);
         } else {
-            worker.postMessage(routingMessage);
+            worker.postMessage(routingData);
         }
     }
 
     private abortPendingRequests(
         chainId: string,
     ): void {
-        for (const portDescription of Object.values(this.ports)) {
-            if (portDescription.chainId === chainId) {
-                portDescription.port.postMessage({
-                    messageId: WALLET_WORKER_CRASHED_MESSAGE_ID
-                });
-            }
+        const message: WalletCrashedMessage = {
+            type: WalletMessageType.WalletCrashed,
+        };
+
+        const walletCrashBroadcast: WalletPortData = {
+            chainId,
+            messageId: WALLET_WORKER_CRASHED_MESSAGE_ID,
+            message,
+        }
+
+        for (const port of Object.values(this.ports)) {
+            port.postMessage(walletCrashBroadcast);
         }
     }
 
     private recoverQueuedMessages(
         chainId: string,
     ): void {
-        const queuedRequests = this.queuedRequests[chainId] ?? [];
-        this.queuedRequests[chainId] = [];
+        const queuedMessages = this.queuedMessages[chainId] ?? [];
+        this.queuedMessages[chainId] = [];
 
         this.loggerService.info(
             {
                 chainId,
-                count: queuedRequests.length,
+                count: queuedMessages.length,
             },
             `Recovering queued wallet requests.`
         );
 
-        for (const request of queuedRequests) {
-            this.handleTransactionRequestMessage(
-                chainId,
-                request.portId,
-                request.data,
+        for (const queuedMessage of queuedMessages) {
+            this.handleWalletPortData(
+                queuedMessage.portId,
+                {
+                    chainId,
+                    messageId: queuedMessage.messageId,
+                    message: queuedMessage.message,
+                },
             );
         }
     }

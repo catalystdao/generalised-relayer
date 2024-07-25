@@ -10,11 +10,13 @@ import { ChainConfig } from 'src/config/config.types';
 
 export const DEFAULT_MONITOR_INTERVAL = 5000;
 export const DEFAULT_MONITOR_BLOCK_DELAY = 1;
+export const DEFAULT_MONITOR_NO_BLOCK_UPDATE_WARNING_INTERVAL = 5 * 60000;
 
 
 interface DefaultMonitorWorkerData {
     interval: number,
     blockDelay: number,
+    noBlockUpdateWarningInterval: number,
 }
 
 export interface MonitorWorkerData {
@@ -22,6 +24,7 @@ export interface MonitorWorkerData {
     chainName: string,
     rpc: string,
     blockDelay: number,
+    noBlockUpdateWarningInterval: number,
     interval: number,
     loggerOptions: LoggerOptions
 }
@@ -79,10 +82,12 @@ export class MonitorService implements OnModuleInit {
 
         const blockDelay = globalMonitorConfig.blockDelay ?? DEFAULT_MONITOR_BLOCK_DELAY;
         const interval = globalMonitorConfig.interval ?? DEFAULT_MONITOR_INTERVAL;
+        const noBlockUpdateWarningInterval = globalMonitorConfig.noBlockUpdateWarningInterval ?? DEFAULT_MONITOR_NO_BLOCK_UPDATE_WARNING_INTERVAL;
 
         return {
             interval,
             blockDelay,
+            noBlockUpdateWarningInterval,
         }
     }
 
@@ -98,6 +103,7 @@ export class MonitorService implements OnModuleInit {
             rpc: chainConfig.rpc,
             blockDelay: chainMonitorConfig.blockDelay ?? defaultConfig.blockDelay,
             interval: chainMonitorConfig.interval ?? defaultConfig.interval,
+            noBlockUpdateWarningInterval: chainMonitorConfig.noBlockUpdateWarningInterval ?? defaultConfig.noBlockUpdateWarningInterval,
             loggerOptions: this.loggerService.loggerOptions
         };
     }

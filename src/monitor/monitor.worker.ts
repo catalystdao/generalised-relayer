@@ -18,6 +18,8 @@ class MonitorWorker {
     private portsCount = 0;
     private readonly ports: Record<number, MessagePort> = {};
 
+    private noBlockUpdateReferenceTimestamp = Date.now();
+
     private lastBroadcastBlockNumber = -1;
     private latestBlock: Block | null = null;
 
@@ -95,6 +97,22 @@ class MonitorWorker {
             try {
                 const newBlock = await this.provider.getBlock(-this.config.blockDelay);
                 if (!newBlock || newBlock.number <= this.lastBroadcastBlockNumber) {
+
+                    const noBlockUpdateWarningElapsedTime = Date.now()
+                        - this.noBlockUpdateReferenceTimestamp;
+
+                    if (noBlockUpdateWarningElapsedTime > this.config.noBlockUpdateWarningInterval) {
+                        this.logger.warn(
+                            {
+                                warningInterval: this.config.noBlockUpdateWarningInterval,
+                                latestBlockQuery: newBlock
+                            },
+                            `Failed to update block.`
+                        );
+
+                        // Avoid the logs from getting filled with warnings once 'noBlockUpdateWarningInterval' has elapsed
+                        this.noBlockUpdateReferenceTimestamp = Date.now();
+                    }
                     await wait(this.config.interval);
                     continue;
                 }
@@ -104,6 +122,8 @@ class MonitorWorker {
                 );
 
                 this.latestBlock = newBlock;
+                this.noBlockUpdateReferenceTimestamp = Date.now();
+
                 this.broadcastStatus();
             }
             catch (error) {
@@ -116,7 +136,7 @@ class MonitorWorker {
 
     private broadcastStatus(): void {
         if (!this.latestBlock) {
-            this.logger.warn('Unable to broadcast status. \'latestBlock\' is null.');
+            this.logger.error('Unable to broadcast status. \'latestBlock\' is null.');
             return;
         }
 
