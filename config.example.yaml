@@ -124,7 +124,7 @@ chains:
   - chainId: 11155420
     name: 'OP Sepolia'
     rpc: 'https://sepolia.optimism.io'
-    resolver: 'op-sepolia'
+    resolver: 'optimism-sepolia'
     pricing:
       gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     wormhole:
@@ -163,7 +163,7 @@ chains:
     rpc: "https://arbitrum-sepolia-rpc.publicnode.com"
     resolver: 'arbitrum'
     pricing:
-      coinId: 'ethereum'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'ethereum'  # coin-gecko pricing provider specific configuration
     monitor:
       blockDelay: 5
       interval: 2000
@@ -183,7 +183,7 @@ chains:
     name: 'Sei Devnet'
     rpc: 'https://evm-rpc-arctic-1.sei-apis.com'
     pricing:
-      coinId: 'sei-network'  # coin-gecko pricing provider specific configuration
+      gasCoinId: 'sei-network'  # coin-gecko pricing provider specific configuration
     monitor:
       interval: 2000
       blockDelay: 10
