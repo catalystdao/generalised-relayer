@@ -10,6 +10,7 @@ The goal for the Generalised Relayer is 2 fold:
 Currently, the Relayer supports the following AMBs:
 
 - Wormhole
+- LayerZero
 
 It also supports a 'Mock' AMB implementation that operates with signed messages (see the [Generalised Incentives](https://github.com/catalystdao/GeneralisedIncentives) repository for more information).
 
@@ -31,12 +32,12 @@ Most of the Relayer configuration is specified within a `.yaml` file located at 
 The `.yaml` configuration file is divided into the following sections:
 - `global`: Defines the global relayer configuration.
     - The `privateKey` of the account that will submit the relay transactions on all chains must be defined at this point. 
-    - Default configuration for the `getter` and `submitter` can also be specified at this point.
+    - Default configuration for the `monitor`, `getter`, `pricing`, `evaluator`, `submitter` and `wallet` can also be specified at this point.
 - `ambs`: The AMBs configuration.
     - Every AMB configuration must have at least the address of the Generalised Incentives contract that implements the AMB (`incentivesAddress`) at this point, or otherwise within the chain-specific AMB configuration (under `chains -> $ambName -> incentivesAddress`).
 - `chains`: Defines the configuration for each of the chains to be supported by the relayer.
     - This includes the `chainId` and the `rpc` to be used for the chain.
-    - Each chain may override the global `getter` and `submitter` configurations (those defined under the `global` configuration), and `amb` configurations.
+    - Each chain may override the global `monitor`, `getter`, `pricing`, `evaluator`, `submitter` and `wallet` configurations (those defined under the `global` configuration), and `amb` configurations.
 
 > ℹ️ For a full reference of the configuration file, see `config.example.yaml`.
 
@@ -76,7 +77,11 @@ For further insight into the requirements for running the Relayer see the `docke
 
 ## Relayer Structure
 
-The Relayer is devided into 4 main services: `Getter`, `Evaluator`, `Collector`, and `Submitter`. These services work together to get the *GeneralisedIncentives* message bounties, evaluate their value, collect the message proofs, and submit them on the destination chain. The services are run in parallel and communicate using Redis. Wherever it makes sense, chains are allocated seperate workers to ensure a chain fault doesn't propagate and impact the performance on other chains.
+The Relayer is devided into 6 main services: `Monitor`, `Getter`, `Evaluator`, `Collector`, `Submitter` and `Wallet`. These services work together to get the *GeneralisedIncentives* message bounties, evaluate their value, collect the message proofs, and submit them on the destination chain. The services are run in parallel and communicate using Redis. Wherever it makes sense, chains are allocated seperate workers to ensure a chain fault doesn't propagate and impact the performance on other chains.
+
+### Monitor
+
+The Monitor service keeps track of the latest block information for each supported chain by polling the RPCs at the configured intervals. Other services may listen for the block changes that are observed by this Monitor service (this is mainly done by the Getter service). Additionally, external services may subscribe to the observed block changes via a websocket connection as exposed on the Monitor controller.
 
 ### Getter
 
@@ -91,8 +96,7 @@ The incentive information gathered with these events is sent to the common Redis
 
 ### Evaluator
 
-The Evaluator takes in messages along with their incentive parameters to estimate if it is worth relaying them. It exposes a method which is called on the submittor for evaluations.
-> ⚠️ The Evaluator is not implemented yet. Currently, simple evaluation logic is written within the Submitter.
+The Evaluator service determines the profitability of delivering/acking a message using a provided gas estimation for the transaction in question together with the Bounty information gathered by the Getter. It is used by the Submitter to dettermine whether to relay a message or not, and can be used by external services via exposed API endopints defined on the Evaluator controller.
 
 ### Collector
 
@@ -103,32 +107,54 @@ The Collector service collects the information to relay the cross-chain messages
 The Submitter service gets packets that need relaying from Redis. For every packet received, the submitter:
 1. Gets the associated bounty information (i.e. the relaying incentive) from Redis.
 2. Simulates the transaction to get a gas estimate.
-3. Evaluates whether the relaying bounty covers the gas cost of the packet submission.
-4. Submits the packet if the evaluation is successful using the [processPacket](https://github.com/catalystdao/GeneralisedIncentives/blob/903891f4acdf514eb558767d9a3d431dd627ce5b/src/IncentivizedMessageEscrow.sol#L238) method of the IncentivizedMessageEscrow contract.
-5. Confirms that the submission transaction is mined.
+3. Evaluates whether the relaying bounty covers the gas cost of the packet submission by querying the Evaluator service.
+4. Request the packet submission if the evaluation is successful using the [processPacket](https://github.com/catalystdao/GeneralisedIncentives/blob/903891f4acdf514eb558767d9a3d431dd627ce5b/src/IncentivizedMessageEscrow.sol#L238) method of the IncentivizedMessageEscrow contract via the Wallet service.
 
-To make the Submitter as resilitent as possible to RPC failures/connection errors, each evaluation, submission and confirmation step is tried up to `maxTries` times with a `retryInterval` delay between tries (these default to `3` and `2000` ms, but can be modified on the Relayer config).
+To make the Submitter as resilitent as possible to RPC failures/connection errors, each evaluation and submission step is tried up to `maxTries` times with a `retryInterval` delay between tries (these default to `3` and `2000` ms, but can be modified on the Relayer config).
 
-The Submitter additionally limits the maximum number of transactions within the 'submission' pipeline (i.e. transactions that have been started to be processed and are not completed), and will not accept any further relay orders once reached. If a submitted transactions fails to commit within the number of specified tries and timeout, the Submitter will attempt to cancel the transaction.
-> ⚠️ If the Submitter fails to cancel a transaction, the Submitter pipeline will stall and no further orders will be processed until the stuck transaction is resolved.
+The Submitter additionally limits the maximum number of transactions within the 'submission' pipeline (i.e. transactions that have been started to be processed and are not completed), and will not accept any further relay orders once reached.
+
+### Wallet
+
+The Wallet service is used to submit transactions requested by the other services of the Relayer (only the Submitter at the time of writing). For every transaction request:
+1. The transaction fee values are dynamically determined according to the following configuration:
+    #### EIP-1559 transactions
+    - The `maxFeePerGas` configuration sets the transaction `maxFeePerGas` property. This defines the maximum fee to be paid per gas for a transaction (including both the base fee and the miner fee). If not set, no `maxFeePerGas` is set on the transaction.
+    - The `maxPriorityFeeAdjustmentFactor` determines the amount by which to modify the queried recommended `maxPriorityFee` from the rpc. If not set, no `maxPriorityFee` is set on the transaction.
+    - The `maxAllowedPriorityFeePerGas` sets the maximum value that `maxPriorityFee` may be set to (after applying the `maxPriorityFeeAdjustmentFactor`).
+
+    #### Legacy transaction
+    - The `gasPriceAdjustmentFactor` determines the amount by which to modify the queried recommended `gasPrice` from the rpc. If not set, no `gasPrice` is set on the transaction.
+    - The `maxAllowedGasPrice` sets the maximum value that `gasPrice` may be set to (after applying the `gasPriceAdjustmentFactor`).
+
+    > ⚠️ If the above gas configurations are not specified, the transactions will be submitted using the `ethers`/rpc defaults.
+2. The transaction is submitted.
+3. The transaction confirmation is awaited.
+4. If the transaction fails to be mined after a configurable time interval, the transaction is repriced.
+    - If a transaction does not mine in time (`maxTries * (confirmationTimeout + retryInterval)` approximately), the Relayer will attempt to reprice the transaction by resubmitting the transaction with higher gas price values. The gas prices are adjusted according to the `priorityAdjustmentFactor` configuration. If not set, it defaults to `1.1` (i.e +10%).
+5. If the transaction still fails to be mined, the wallet will attempt at cancelling the transaction.
+    > ⚠️ If the Wallet fails to cancel a transaction, the Submitter pipeline will stall and no further orders will be processed until the stuck transaction is resolved.
+
 
 ## Further features
 
-### Automatic transaction pricing
-The Relayer has the ability to automatically set the relay transactions gas pricing.
-#### EIP-1559 transactions
-- The `maxFeePerGas` configuration sets the transaction `maxFeePerGas` property. This defines the maximum fee to be paid per gas for a transaction (including both the base fee and the miner fee). If not set, no `maxFeePerGas` is set on the transaction.
-- The `maxPriorityFeeAdjustmentFactor` determines the amount by which to modify the queried recommended `maxPriorityFee` from the rpc. If not set, no `maxPriorityFee` is set on the transaction.
-- The `maxAllowedPriorityFeePerGas` sets the maximum value that `maxPriorityFee` may be set to (after applying the `maxPriorityFeeAdjustmentFactor`).
+### Pricing
+A Pricing Service is implemented to be able to determine the value of gas/tokens handled by the Relayer. This service is mainly used by the Evaluator service to determine the profitability of relays, but can also be queried by external services using the exposed API endpoints specified on the Pricing controller.
 
-#### Legacy transaction
-- The `gasPriceAdjustmentFactor` determines the amount by which to modify the queried recommended `gasPrice` from the rpc. If not set, no `gasPrice` is set on the transaction.
-- The `maxAllowedGasPrice` sets the maximum value that `gasPrice` may be set to (after applying the `gasPriceAdjustmentFactor`).
+The Relayer includes 2 pricing providers:
+- `fixed`: Can be used to specify a 'fixed' value for each token.
+- `coin-gecko`: Provides real-time pricing information for each token. Using this provider requires the additional `gasCoinId` configuration to be specified (see the provided `config.example.yaml` file).
 
-> ⚠️ If the above gas configuration is not specified, the transactions will be submitted using the `ethers`/rpc defaults.
+The base Pricing controller provided includes price caching at a configurable `cacheDuration` interval (set to 0 to disable caching).
 
-#### Transaction repricing
-If a transaction does not mine in time (`maxTries * (confirmationTimeout + retryInterval)` approximately), the Relayer will attempt to reprice the transaction by resubmitting the transaction with higher gas price values. The gas prices are adjusted according to the `priorityAdjustmentFactor` configuration. If not set, it defaults to `1.1` (i.e +10%).
+> ℹ️ Further custom pricing providers can be implemented following the example of the existing providers. 
+
+### Resolvers
+To take into consideration the different behaviours and characteristics of different chains, a custom *Resolvers* can be specified for each chain. At the time of writing, the Resolvers can:
+- Map the rpc block number to the one observed by the transactions itself (for chains like Arbitrum).
+- Estimate gas parameters for transactions, including estimating the gas usage as observed by the transactions (for chains like Arbitrum) and additional L1 fees (for op-stack chains).
+
+> ℹ️ Resolvers have to be specified on the configuration file for each desired chain. See `src/resolvers` for the available resolvers.
 
 ### Low balance warning
 The Relayer keeps an estimate of the Relayer account gas balance for each chain. A warning is emitted to the logs if the gas balance falls below a configurable threshold `lowBalanceWarning` (in Wei).
@@ -140,7 +166,7 @@ The distinct services of the Relayer communicate with each other using a Redis d
 The Relayer makes available a `getAMBs` endpoint with which an external service may query the AMB messages corresponding to a transaction hash.
 
 ### Persister
-> TODO
+The Persister service can be enabled to save the information gathered by the Relayer to a persistent PostgreSQL database.
 
 ## Development
 
