@@ -13,7 +13,7 @@ import {
     KeyActionMessage,
     AMBMessageJSON,
     AMBProofJSON,
-} from 'src/store/store.types';
+} from './store.types';
 
 // Monkey patch BigInt. https://github.com/GoogleChromeLabs/jsbi/issues/30#issuecomment-1006086291
 (BigInt.prototype as any).toJSON = function () {
@@ -51,12 +51,12 @@ export class Store {
 
     // Redis Keys
     static readonly KEY_SEPARATOR: string = ':';
-    
+
     static readonly RELAY_STATE_KEY_PREFIX: string = 'relay_state';
     static readonly AMB_MESSAGE_KEY_PREFIX: string = 'amb_message';
     static readonly AMB_PROOF_KEY_PREFIX: string = 'amb_proof';
     static readonly AMB_TRANSACTION_HASH_MAP_KEY_PREFIX: string = 'amb_transaction_hash_map';
-    
+
     // Redis Channels
     static readonly ON_KEY_CHANGE_CHANNEL: string = 'on_key_change_channel';
     static readonly ON_AMB_MESSAGE_CHANNEL_PREFIX: string = 'on_amb_message_channel';
@@ -124,7 +124,7 @@ export class Store {
         await Promise.all(quitPromises);
     }
 
-    
+
 
     // Key management helpers
     // ********************************************************************************************
@@ -152,7 +152,7 @@ export class Store {
             { key, action: 'del' }
         );
     }
-    
+
 
 
     // Channel helpers
