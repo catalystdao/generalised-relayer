@@ -189,3 +189,35 @@ The mock implementation is proof-of-authentication (PoA) scheme which works well
 
 ### Typechain Types
 The Relayer uses `ethers` types for the contracts that it interacts with (e.g. the Generalised Incentives contract). These types are generated with the `typechain` package using the contract *abis* (under the `abis/` folder) upon installation of the `npm` packages. If the contract *abis* change the types must be regenerated (see the `postinstall` script on `package.json`).
+
+
+## Running Tests for the Application
+Please follow the steps below to ensure proper setup and execution of the tests.
+
+### Setup
+
+Before running the tests, it is crucial to set up the appropriate TypeChain contract typings. This can be done by executing the following command:
+
+```sh
+pnpm before-tests
+```
+
+This command will deploy the necessary TypeChain contract typings required for testing.
+
+### Running Tests
+
+To run the tests, use the following command:
+
+```sh
+pnpm test
+```
+
+### Watch Mode
+
+If you want to run the tests in watch mode, you can do so with the following command:
+
+```sh
+pnpm test:watch
+```
+
+However, please note that there are specific instructions that need to be followed before proceeding with watch mode. These instructions are detailed in the `jest.watch-mode.ts` file. Make sure to read and follow the instructions in that file to ensure the correct execution of tests in watch mode.
