@@ -11,7 +11,7 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": ".",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
@@ -21,6 +21,12 @@
     "noImplicitReturns": true,
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true
-  }
+    "noFallthroughCasesInSwitch": true,
+    "paths": { 
+      "@App/*": ["src/*"],
+      "tests/*": ["tests/*"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*"]
+
 }
