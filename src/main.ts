@@ -3,6 +3,8 @@ import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { LoggerService } from './logger/logger.service';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 
 function logLoadedOptions(
     configService: ConfigService,
@@ -21,7 +23,15 @@ function logLoadedOptions(
 }
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const configFilePath = process.env['CONFIG_FILE_PATH'];
+    let app;
+
+    if (configFilePath && existsSync(resolve(configFilePath))) {
+        app = await NestFactory.create(AppModule.initiateWithConfig(configFilePath));
+    } else {
+        app = await NestFactory.create(AppModule.initiateWithConfig());
+    }
+
     app.useWebSocketAdapter(new WsAdapter(app));
 
     const configService = app.get(ConfigService);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import * as yaml from 'js-yaml';
 import dotenv from 'dotenv';
@@ -19,11 +19,13 @@ export class ConfigService {
 
     readonly isReady: Promise<void>;
 
-    constructor() {
+    constructor(
+        @Optional() private configFilePath?: string
+    ) {
         this.nodeEnv = this.loadNodeEnv();
 
         this.loadEnvFile();
-        this.rawConfig = this.loadConfigFile();
+        this.rawConfig = this.loadConfigFile(configFilePath);
 
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
@@ -56,8 +58,8 @@ export class ConfigService {
         dotenv.config();
     }
 
-    private loadConfigFile(): Record<string, any> {
-        const configFileName = `config.${this.nodeEnv}.yaml`;
+    private loadConfigFile(configFilePath?: string): Record<string, any> {
+        const configFileName = configFilePath || `config.${this.nodeEnv}.yaml`;
 
         let rawConfig;
         try {
