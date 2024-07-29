@@ -37,6 +37,7 @@ lerna-debug.log*
 
 # TypeChain
 src/contracts
+tests/contracts
 
 # env
 .env
