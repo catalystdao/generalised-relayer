@@ -12,7 +12,7 @@ export default async function globalTeardown() {
     console.log('Running global teardown...');
 
     try {
-        await execPromise('pkill pnpm');
+        await execPromise('pkill -f pnpm');
         console.log('Relayer process stopped.');
     } catch (error) {
         console.error('Failed to stop relayer process:', error);
