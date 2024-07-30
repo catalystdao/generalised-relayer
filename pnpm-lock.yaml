@@ -16,31 +16,34 @@ importers:
         version: 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
       '@nestjs/core':
         specifier: ^10.0.0
-        version: 10.3.3(@nestjs/common@10.3.3)(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
+        version: 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       '@nestjs/platform-express':
         specifier: ^10.0.0
-        version: 10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)
+        version: 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)
       '@nestjs/platform-ws':
         specifier: ^10.3.7
-        version: 10.3.7(@nestjs/common@10.3.3)(@nestjs/websockets@10.3.7)(rxjs@7.8.1)
+        version: 10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/websockets@10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1))(bufferutil@4.0.8)(rxjs@7.8.1)(utf-8-validate@5.0.10)
       '@nestjs/schematics':
         specifier: ^10.0.0
-        version: 10.1.1(typescript@5.4.2)
+        version: 10.1.1(chokidar@3.6.0)(typescript@5.4.2)
       '@nestjs/websockets':
         specifier: ^10.3.7
-        version: 10.3.7(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
+        version: 10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       '@typechain/ethers-v6':
         specifier: ^0.5.1
-        version: 0.5.1(ethers@5.7.2)(typechain@8.3.2)(typescript@5.4.2)
+        version: 0.5.1(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typechain@8.3.2(typescript@5.4.2))(typescript@5.4.2)
       '@wormhole-foundation/relayer-engine':
         specifier: ^0.3.2
-        version: 0.3.2(@bull-board/ui@5.14.2)(@improbable-eng/grpc-web@0.15.0)(@types/node@20.11.25)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(typescript@5.4.2)
+        version: 0.3.2(@bull-board/ui@5.14.2)(@improbable-eng/grpc-web@0.15.0(google-protobuf@3.21.2))(@types/node@20.11.25)(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(lodash@4.17.21)(mustache@4.2.0)(typescript@5.4.2)(utf-8-validate@5.0.10)
       ajv:
         specifier: ^8.12.0
         version: 8.12.0
       axios:
         specifier: ^1.6.8
         version: 1.7.2
+      cross-spawn:
+        specifier: ^7.0.3
+        version: 7.0.3
       dotenv:
         specifier: ^16.3.1
         version: 16.4.5
@@ -52,10 +55,10 @@ importers:
         version: 0.29.5(@types/pg@8.11.2)(pg@8.11.3)
       ethers:
         specifier: ^5.7.0
-        version: 5.7.2
+        version: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       ethers6:
         specifier: npm:ethers@^6.11.1
-        version: ethers@6.11.1
+        version: ethers@6.11.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       ioredis:
         specifier: ^5.3.2
         version: 5.3.2
@@ -65,9 +68,6 @@ importers:
       pg:
         specifier: ^8.11.3
         version: 8.11.3
-      pino:
-        specifier: ^8.15.1
-        version: 8.19.0
       reflect-metadata:
         specifier: ^0.1.13
         version: 0.1.14
@@ -76,7 +76,7 @@ importers:
         version: 7.8.1
       viem:
         specifier: ^2.15.1
-        version: 2.15.1(typescript@5.4.2)
+        version: 2.15.1(bufferutil@4.0.8)(typescript@5.4.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       winston:
         specifier: ^3.13.0
         version: 3.13.0
@@ -89,7 +89,10 @@ importers:
         version: 10.3.2(esbuild@0.19.12)
       '@nestjs/testing':
         specifier: ^10.0.0
-        version: 10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(@nestjs/platform-express@10.3.3)
+        version: 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3))
+      '@types/cross-spawn':
+        specifier: ^6.0.6
+        version: 6.0.6
       '@types/express':
         specifier: ^4.17.17
         version: 4.17.21
@@ -110,7 +113,7 @@ importers:
         version: 2.0.16
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.0.0
-        version: 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.4.2)
+        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.2))(eslint@8.57.0)(typescript@5.4.2)
       '@typescript-eslint/parser':
         specifier: ^6.0.0
         version: 6.21.0(eslint@8.57.0)(typescript@5.4.2)
@@ -122,10 +125,16 @@ importers:
         version: 9.1.0(eslint@8.57.0)
       eslint-plugin-prettier:
         specifier: ^5.0.0
-        version: 5.1.3(eslint-config-prettier@9.1.0)(eslint@8.57.0)(prettier@3.2.5)
+        version: 5.1.3(@types/eslint@8.56.5)(eslint-config-prettier@9.1.0(eslint@8.57.0))(eslint@8.57.0)(prettier@3.2.5)
       jest:
         specifier: ^29.5.0
-        version: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+        version: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
+      pino:
+        specifier: ^8.19.0
+        version: 8.19.0
+      pino-pretty:
+        specifier: ^11.2.1
+        version: 11.2.2
       prettier:
         specifier: ^3.0.0
         version: 3.2.5
@@ -137,10 +146,10 @@ importers:
         version: 6.3.4
       ts-jest:
         specifier: ^29.1.0
-        version: 29.1.2(@babel/core@7.24.0)(esbuild@0.19.12)(jest@29.7.0)(typescript@5.4.2)
+        version: 29.1.2(@babel/core@7.24.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.24.0))(esbuild@0.19.12)(jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)))(typescript@5.4.2)
       ts-loader:
         specifier: ^9.4.3
-        version: 9.5.1(typescript@5.4.2)(webpack@5.90.3)
+        version: 9.5.1(typescript@5.4.2)(webpack@5.90.1(esbuild@0.19.12))
       ts-node:
         specifier: ^10.9.1
         version: 10.9.2(@types/node@20.11.25)(typescript@5.4.2)
@@ -1493,6 +1502,9 @@ packages:
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
+  '@types/cross-spawn@6.0.6':
+    resolution: {integrity: sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==}
+
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
@@ -2262,6 +2274,9 @@ packages:
   color@3.2.1:
     resolution: {integrity: sha512-aBl7dZI9ENN6fUGC7mWpMTPNHmWUSNan9tuWN6ahh5ZLNk9baLJOnSMlrQkHcrfFgz2/RigjUVAjdx36VcemKA==}
 
+  colorette@2.0.20:
+    resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
+
   colorspace@1.1.4:
     resolution: {integrity: sha512-BgvKJiuVu1igBUF2kEjRCZXol6wiiGbY5ipL/oVPwm0BL9sIpMIzM8IK7vwuxIIzOXMV3Ey5w+vxhm0rR/TN8w==}
 
@@ -2587,6 +2602,9 @@ packages:
     resolution: {integrity: sha512-MOqHvMWF9/9MX6nza0KgvFH4HpMU0EF5uUDXqX/BtxtU8NfB0QzRtJ8Oe/6SuS4kbhyzVJwjd97EA4PKrzJ8bw==}
     engines: {node: '>=0.12'}
 
+  dateformat@4.6.3:
+    resolution: {integrity: sha512-2P0p0pFGzHS5EMnhdxQi7aJN+iMheud0UhG4dlE1DLAlvL8JHjJJTX/CSm4JXwV0Ka5nGk3zC5mcb5bUQUxxMA==}
+
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
     peerDependencies:
@@ -2844,6 +2862,9 @@ packages:
     resolution: {integrity: sha512-TPJXq8JqFaVYm2CWmPvnP2Iyo4ZSM7/QKcSmuMLDObfpH5fi7RUGmd/rTDf+rut/saiDiQEeVTNgAmJEdAOx0w==}
     engines: {node: '>= 0.8'}
 
+  end-of-stream@1.4.4:
+    resolution: {integrity: sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==}
+
   enhanced-resolve@5.15.1:
     resolution: {integrity: sha512-3d3JRbwsCLJsYgvb6NuWEG44jjPSOMuS73L/6+7BZuoKm3W+qXnSoIYVHi8dG7Qcg4inAY4jbzkZ7MnskePeDg==}
     engines: {node: '>=10.13.0'}
@@ -3075,6 +3096,9 @@ packages:
   eyes@0.1.8:
     resolution: {integrity: sha512-GipyPsXO1anza0AOZdy69Im7hGFCNB7Y/NGjDlZGJ3GJJLtwNSb2vrzYrTYJRrRloVx7pl+bhUaTB8yiccPvFQ==}
     engines: {node: '> 0.1.90'}
+
+  fast-copy@3.0.2:
+    resolution: {integrity: sha512-dl0O9Vhju8IrcLndv2eU4ldt1ftXMqqfgN4H1cpmGV7P6jeB9FwpN9a2c8DPGE1Ys88rNUJVYDHq73CGAGOPfQ==}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -3370,6 +3394,9 @@ packages:
 
   heap@0.2.7:
     resolution: {integrity: sha512-2bsegYkkHO+h/9MGbn6KWcE45cHZgPANo5LXF7EvWdT0yT2EguSVO1nDgU5c8+ZOPwp2vMNa7YFsJhVcDR9Sdg==}
+
+  help-me@5.0.0:
+    resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
   hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
@@ -3741,6 +3768,10 @@ packages:
     peerDependenciesMeta:
       node-notifier:
         optional: true
+
+  joycon@3.1.1:
+    resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
+    engines: {node: '>=10'}
 
   js-base64@3.7.7:
     resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
@@ -4427,6 +4458,10 @@ packages:
   pino-abstract-transport@1.1.0:
     resolution: {integrity: sha512-lsleG3/2a/JIWUtf9Q5gUNErBqwIu1tUKTT3dUzaf5DySw9ra1wcqKjJjLX1VTY64Wk1eEOYsVGSaGfCK85ekA==}
 
+  pino-pretty@11.2.2:
+    resolution: {integrity: sha512-2FnyGir8nAJAqD3srROdrF1J5BIcMT4nwj7hHSc60El6Uxlym00UbCCd8pYIterstVBFlMyF1yFV8XdGIPbj4A==}
+    hasBin: true
+
   pino-std-serializers@6.2.2:
     resolution: {integrity: sha512-cHjPPsE+vhj/tnhCy/wiMh3M3z3h/j15zHQX+S9GkTBgqJuTuJzYJ4gUyACLhDaJ7kk9ba9iRDmbH2tJU03OiA==}
 
@@ -4545,6 +4580,9 @@ packages:
 
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+
+  pump@3.0.0:
+    resolution: {integrity: sha512-LwZy+p3SFs1Pytd/jYct4wpv49HiYCqd9Rlc5ZVdk0V+8Yzv6jR5Blk3TRmPL1ft69TxP0IMZGJ+WPFU2BFhww==}
 
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
@@ -4772,6 +4810,9 @@ packages:
     resolution: {integrity: sha512-TKWX8xvoGHrxVdqbYeZM9w+izTF4b9z3NhSaDkdn81btvuh+ivbIMGT/zQvDtTFWhRlThpoz6LEYTr7n8A5GcA==}
     engines: {node: '>=14.0.0'}
 
+  secure-json-parse@2.7.0:
+    resolution: {integrity: sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==}
+
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
@@ -4860,6 +4901,9 @@ packages:
 
   sonic-boom@3.8.0:
     resolution: {integrity: sha512-ybz6OYOUjoQQCQ/i4LU8kaToD8ACtYP+Cj5qd2AO36bwbdewxWJ3ArmJ2cr6AvxlL2o0PqnCcPGUgkILbfkaCA==}
+
+  sonic-boom@4.0.1:
+    resolution: {integrity: sha512-hTSD/6JMLyT4r9zeof6UtuBDpjJ9sO08/nmS5djaA9eozT9oOlNdpXSnzcgj4FTqpk3nkLrs61l4gip9r1HCrQ==}
 
   source-map-support@0.5.13:
     resolution: {integrity: sha512-SHSKFHadjVA5oR4PPqhtAVdcBWwRYVd6g6cAXnIbRiIwc2EhPrTuKUBdSLvlEKyIP3GCf89fltvcZiP9MMFA1w==}
@@ -5376,16 +5420,6 @@ packages:
       webpack-cli:
         optional: true
 
-  webpack@5.90.3:
-    resolution: {integrity: sha512-h6uDYlWCctQRuXBs1oYpVe6sFcWedl0dpcVaTf/YF67J9bKvwJajFulMVSYKHrksMB3I/pIagRzDxwxkebuzKA==}
-    engines: {node: '>=10.13.0'}
-    hasBin: true
-    peerDependencies:
-      webpack-cli: '*'
-    peerDependenciesMeta:
-      webpack-cli:
-        optional: true
-
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
@@ -5562,11 +5596,12 @@ snapshots:
     dependencies:
       ajv: 8.12.0
       ajv-formats: 2.1.1(ajv@8.12.0)
-      chokidar: 3.6.0
       jsonc-parser: 3.2.0
       picomatch: 3.0.1
       rxjs: 7.8.1
       source-map: 0.7.4
+    optionalDependencies:
+      chokidar: 3.6.0
 
   '@angular-devkit/schematics-cli@17.1.2(chokidar@3.6.0)':
     dependencies:
@@ -5823,7 +5858,7 @@ snapshots:
       '@bull-board/ui': 5.14.2
       redis-info: 3.1.0
 
-  '@bull-board/koa@5.14.2':
+  '@bull-board/koa@5.14.2(lodash@4.17.21)(mustache@4.2.0)':
     dependencies:
       '@bull-board/api': 5.14.2(@bull-board/ui@5.14.2)
       '@bull-board/ui': 5.14.2
@@ -5832,7 +5867,7 @@ snapshots:
       koa-mount: 4.0.0
       koa-router: 10.1.1
       koa-static: 5.0.0
-      koa-views: 7.0.2(ejs@3.1.9)
+      koa-views: 7.0.2(ejs@3.1.9)(lodash@4.17.21)(mustache@4.2.0)
     transitivePeerDependencies:
       - '@types/koa'
       - arc-templates
@@ -5906,15 +5941,15 @@ snapshots:
       '@types/long': 4.0.2
       '@types/node': 18.19.22
 
-  '@certusone/wormhole-sdk@0.10.15(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)':
+  '@certusone/wormhole-sdk@0.10.15(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@certusone/wormhole-sdk-proto-web': 0.0.7(google-protobuf@3.21.2)
       '@certusone/wormhole-sdk-wasm': 0.0.1
-      '@coral-xyz/borsh': 0.2.6(@solana/web3.js@1.90.1)
-      '@mysten/sui.js': 0.32.2
-      '@project-serum/anchor': 0.25.0
-      '@solana/spl-token': 0.3.11(@solana/web3.js@1.90.1)(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/web3.js': 1.90.1
+      '@coral-xyz/borsh': 0.2.6(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@mysten/sui.js': 0.32.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@project-serum/anchor': 0.25.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.3.11(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@terra-money/terra.js': 3.1.9
       '@xpla/xpla.js': 0.2.3
       algosdk: 2.7.0
@@ -5928,7 +5963,7 @@ snapshots:
       near-api-js: 1.1.0
     optionalDependencies:
       '@injectivelabs/networks': 1.10.12(google-protobuf@3.21.2)
-      '@injectivelabs/sdk-ts': 1.10.72
+      '@injectivelabs/sdk-ts': 1.10.72(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@injectivelabs/utils': 1.10.12(google-protobuf@3.21.2)
     transitivePeerDependencies:
       - '@types/react'
@@ -5965,9 +6000,9 @@ snapshots:
       '@noble/hashes': 1.3.3
       protobufjs: 6.11.4
 
-  '@coral-xyz/borsh@0.2.6(@solana/web3.js@1.90.1)':
+  '@coral-xyz/borsh@0.2.6(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
-      '@solana/web3.js': 1.90.1
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       bn.js: 5.2.1
       buffer-layout: 1.2.2
 
@@ -5993,15 +6028,15 @@ snapshots:
       '@cosmjs/utils': 0.30.1
     optional: true
 
-  '@cosmjs/cosmwasm-stargate@0.29.5':
+  '@cosmjs/cosmwasm-stargate@0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/amino': 0.29.5
       '@cosmjs/crypto': 0.29.5
       '@cosmjs/encoding': 0.29.5
       '@cosmjs/math': 0.29.5
       '@cosmjs/proto-signing': 0.29.5
-      '@cosmjs/stargate': 0.29.5
-      '@cosmjs/tendermint-rpc': 0.29.5
+      '@cosmjs/stargate': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@cosmjs/tendermint-rpc': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.29.5
       cosmjs-types: 0.5.2
       long: 4.0.0
@@ -6121,30 +6156,30 @@ snapshots:
       long: 4.0.0
     optional: true
 
-  '@cosmjs/socket@0.28.13':
+  '@cosmjs/socket@0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/stream': 0.28.13
-      isomorphic-ws: 4.0.1(ws@7.5.9)
+      isomorphic-ws: 4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       xstream: 11.14.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@cosmjs/socket@0.29.5':
+  '@cosmjs/socket@0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/stream': 0.29.5
-      isomorphic-ws: 4.0.1(ws@7.5.9)
+      isomorphic-ws: 4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       xstream: 11.14.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@cosmjs/socket@0.30.1':
+  '@cosmjs/socket@0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/stream': 0.30.1
-      isomorphic-ws: 4.0.1(ws@7.5.9)
+      isomorphic-ws: 4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       xstream: 11.14.0
     transitivePeerDependencies:
@@ -6152,7 +6187,7 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@cosmjs/stargate@0.28.13':
+  '@cosmjs/stargate@0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@confio/ics23': 0.6.8
       '@cosmjs/amino': 0.28.13
@@ -6160,7 +6195,7 @@ snapshots:
       '@cosmjs/math': 0.28.13
       '@cosmjs/proto-signing': 0.28.13
       '@cosmjs/stream': 0.28.13
-      '@cosmjs/tendermint-rpc': 0.28.13
+      '@cosmjs/tendermint-rpc': 0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.28.13
       cosmjs-types: 0.4.1
       long: 4.0.0
@@ -6171,7 +6206,7 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@cosmjs/stargate@0.29.5':
+  '@cosmjs/stargate@0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@confio/ics23': 0.6.8
       '@cosmjs/amino': 0.29.5
@@ -6179,7 +6214,7 @@ snapshots:
       '@cosmjs/math': 0.29.5
       '@cosmjs/proto-signing': 0.29.5
       '@cosmjs/stream': 0.29.5
-      '@cosmjs/tendermint-rpc': 0.29.5
+      '@cosmjs/tendermint-rpc': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.29.5
       cosmjs-types: 0.5.2
       long: 4.0.0
@@ -6190,7 +6225,7 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@cosmjs/stargate@0.30.1':
+  '@cosmjs/stargate@0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@confio/ics23': 0.6.8
       '@cosmjs/amino': 0.30.1
@@ -6198,7 +6233,7 @@ snapshots:
       '@cosmjs/math': 0.30.1
       '@cosmjs/proto-signing': 0.30.1
       '@cosmjs/stream': 0.30.1
-      '@cosmjs/tendermint-rpc': 0.30.1
+      '@cosmjs/tendermint-rpc': 0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.30.1
       cosmjs-types: 0.7.2
       long: 4.0.0
@@ -6223,13 +6258,13 @@ snapshots:
       xstream: 11.14.0
     optional: true
 
-  '@cosmjs/tendermint-rpc@0.28.13':
+  '@cosmjs/tendermint-rpc@0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/crypto': 0.28.13
       '@cosmjs/encoding': 0.28.13
       '@cosmjs/json-rpc': 0.28.13
       '@cosmjs/math': 0.28.13
-      '@cosmjs/socket': 0.28.13
+      '@cosmjs/socket': 0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/stream': 0.28.13
       '@cosmjs/utils': 0.28.13
       axios: 0.21.4
@@ -6240,13 +6275,13 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@cosmjs/tendermint-rpc@0.29.5':
+  '@cosmjs/tendermint-rpc@0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/crypto': 0.29.5
       '@cosmjs/encoding': 0.29.5
       '@cosmjs/json-rpc': 0.29.5
       '@cosmjs/math': 0.29.5
-      '@cosmjs/socket': 0.29.5
+      '@cosmjs/socket': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/stream': 0.29.5
       '@cosmjs/utils': 0.29.5
       axios: 0.21.4
@@ -6257,13 +6292,13 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@cosmjs/tendermint-rpc@0.30.1':
+  '@cosmjs/tendermint-rpc@0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/crypto': 0.30.1
       '@cosmjs/encoding': 0.30.1
       '@cosmjs/json-rpc': 0.30.1
       '@cosmjs/math': 0.30.1
-      '@cosmjs/socket': 0.30.1
+      '@cosmjs/socket': 0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/stream': 0.30.1
       '@cosmjs/utils': 0.30.1
       axios: 0.21.4
@@ -6615,7 +6650,7 @@ snapshots:
     dependencies:
       '@ethersproject/logger': 5.7.0
 
-  '@ethersproject/providers@5.7.2':
+  '@ethersproject/providers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethersproject/abstract-provider': 5.7.0
       '@ethersproject/abstract-signer': 5.7.0
@@ -6636,7 +6671,7 @@ snapshots:
       '@ethersproject/transactions': 5.7.0
       '@ethersproject/web': 5.7.1
       bech32: 1.1.4
-      ws: 7.4.6
+      ws: 7.4.6(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -6762,7 +6797,7 @@ snapshots:
 
   '@humanwhocodes/object-schema@2.0.2': {}
 
-  '@improbable-eng/grpc-web-node-http-transport@0.15.0(@improbable-eng/grpc-web@0.15.0)':
+  '@improbable-eng/grpc-web-node-http-transport@0.15.0(@improbable-eng/grpc-web@0.15.0(google-protobuf@3.21.2))':
     dependencies:
       '@improbable-eng/grpc-web': 0.15.0(google-protobuf@3.21.2)
 
@@ -6795,12 +6830,12 @@ snapshots:
       - google-protobuf
     optional: true
 
-  '@injectivelabs/grpc-web-node-http-transport@0.0.2(@injectivelabs/grpc-web@0.0.1)':
+  '@injectivelabs/grpc-web-node-http-transport@0.0.2(@injectivelabs/grpc-web@0.0.1(google-protobuf@3.21.2))':
     dependencies:
       '@injectivelabs/grpc-web': 0.0.1(google-protobuf@3.21.2)
     optional: true
 
-  '@injectivelabs/grpc-web-react-native-transport@0.0.2(@injectivelabs/grpc-web@0.0.1)':
+  '@injectivelabs/grpc-web-react-native-transport@0.0.2(@injectivelabs/grpc-web@0.0.1(google-protobuf@3.21.2))':
     dependencies:
       '@injectivelabs/grpc-web': 0.0.1(google-protobuf@3.21.2)
     optional: true
@@ -6851,18 +6886,18 @@ snapshots:
       - google-protobuf
     optional: true
 
-  '@injectivelabs/sdk-ts@1.10.72':
+  '@injectivelabs/sdk-ts@1.10.72(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@apollo/client': 3.9.6(graphql@16.8.1)
       '@cosmjs/amino': 0.30.1
       '@cosmjs/proto-signing': 0.30.1
-      '@cosmjs/stargate': 0.30.1
+      '@cosmjs/stargate': 0.30.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@ethersproject/bytes': 5.7.0
       '@injectivelabs/core-proto-ts': 0.0.14
       '@injectivelabs/exceptions': 1.14.6(google-protobuf@3.21.2)
       '@injectivelabs/grpc-web': 0.0.1(google-protobuf@3.21.2)
-      '@injectivelabs/grpc-web-node-http-transport': 0.0.2(@injectivelabs/grpc-web@0.0.1)
-      '@injectivelabs/grpc-web-react-native-transport': 0.0.2(@injectivelabs/grpc-web@0.0.1)
+      '@injectivelabs/grpc-web-node-http-transport': 0.0.2(@injectivelabs/grpc-web@0.0.1(google-protobuf@3.21.2))
+      '@injectivelabs/grpc-web-react-native-transport': 0.0.2(@injectivelabs/grpc-web@0.0.1(google-protobuf@3.21.2))
       '@injectivelabs/indexer-proto-ts': 1.10.8-rc.4
       '@injectivelabs/mito-proto-ts': 1.0.9
       '@injectivelabs/networks': 1.14.6(google-protobuf@3.21.2)
@@ -6875,9 +6910,9 @@ snapshots:
       bech32: 2.0.0
       bip39: 3.1.0
       cosmjs-types: 0.7.2
-      eth-crypto: 2.6.0
+      eth-crypto: 2.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       ethereumjs-util: 7.1.5
-      ethers: 5.7.2
+      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       google-protobuf: 3.21.2
       graphql: 16.8.1
       http-status-codes: 2.3.0
@@ -6998,7 +7033,7 @@ snapshots:
       jest-util: 29.7.0
       slash: 3.0.0
 
-  '@jest/core@29.7.0(ts-node@10.9.2)':
+  '@jest/core@29.7.0(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))':
     dependencies:
       '@jest/console': 29.7.0
       '@jest/reporters': 29.7.0
@@ -7012,7 +7047,7 @@ snapshots:
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.7.0
-      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       jest-haste-map: 29.7.0
       jest-message-util: 29.7.0
       jest-regex-util: 29.6.3
@@ -7222,7 +7257,7 @@ snapshots:
     dependencies:
       bs58: 5.0.0
 
-  '@mysten/sui.js@0.32.2':
+  '@mysten/sui.js@0.32.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@mysten/bcs': 0.7.1
       '@noble/curves': 1.3.0
@@ -7230,7 +7265,7 @@ snapshots:
       '@scure/bip32': 1.3.3
       '@scure/bip39': 1.2.2
       '@suchipi/femver': 1.0.0
-      jayson: 4.1.0
+      jayson: 4.1.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       rpc-websockets: 7.9.0
       superstruct: 1.0.3
       tweetnacl: 1.0.3
@@ -7248,7 +7283,7 @@ snapshots:
       chokidar: 3.6.0
       cli-table3: 0.6.3
       commander: 4.1.1
-      fork-ts-checker-webpack-plugin: 9.0.2(typescript@5.3.3)(webpack@5.90.1)
+      fork-ts-checker-webpack-plugin: 9.0.2(typescript@5.3.3)(webpack@5.90.1(esbuild@0.19.12))
       glob: 10.3.10
       inquirer: 8.2.6
       node-emoji: 1.11.0
@@ -7275,11 +7310,9 @@ snapshots:
       tslib: 2.6.2
       uid: 2.0.2
 
-  '@nestjs/core@10.3.3(@nestjs/common@10.3.3)(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)':
+  '@nestjs/core@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)':
     dependencies:
       '@nestjs/common': 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/platform-express': 10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)
-      '@nestjs/websockets': 10.3.7(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       '@nuxtjs/opencollective': 0.3.2
       fast-safe-stringify: 2.1.1
       iterare: 1.2.1
@@ -7288,13 +7321,16 @@ snapshots:
       rxjs: 7.8.1
       tslib: 2.6.2
       uid: 2.0.2
+    optionalDependencies:
+      '@nestjs/platform-express': 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)
+      '@nestjs/websockets': 10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
     transitivePeerDependencies:
       - encoding
 
-  '@nestjs/platform-express@10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)':
+  '@nestjs/platform-express@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)':
     dependencies:
       '@nestjs/common': 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3)(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
+      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       body-parser: 1.20.2
       cors: 2.8.5
       express: 4.18.2
@@ -7303,10 +7339,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@nestjs/platform-ws@10.3.7(@nestjs/common@10.3.3)(@nestjs/websockets@10.3.7)(rxjs@7.8.1)':
+  '@nestjs/platform-ws@10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/websockets@10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1))(bufferutil@4.0.8)(rxjs@7.8.1)(utf-8-validate@5.0.10)':
     dependencies:
       '@nestjs/common': 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/websockets': 10.3.7(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
+      '@nestjs/websockets': 10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       rxjs: 7.8.1
       tslib: 2.6.2
       ws: 8.16.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
@@ -7325,7 +7361,7 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@nestjs/schematics@10.1.1(typescript@5.4.2)':
+  '@nestjs/schematics@10.1.1(chokidar@3.6.0)(typescript@5.4.2)':
     dependencies:
       '@angular-devkit/core': 17.1.2(chokidar@3.6.0)
       '@angular-devkit/schematics': 17.1.2(chokidar@3.6.0)
@@ -7336,17 +7372,18 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@nestjs/testing@10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(@nestjs/platform-express@10.3.3)':
+  '@nestjs/testing@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3))':
     dependencies:
       '@nestjs/common': 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3)(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/platform-express': 10.3.3(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)
+      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       tslib: 2.6.2
+    optionalDependencies:
+      '@nestjs/platform-express': 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)
 
-  '@nestjs/websockets@10.3.7(@nestjs/common@10.3.3)(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)':
+  '@nestjs/websockets@10.3.7(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.3.3)(reflect-metadata@0.1.14)(rxjs@7.8.1)':
     dependencies:
       '@nestjs/common': 10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3)(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
+      '@nestjs/core': 10.3.3(@nestjs/common@10.3.3(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/platform-express@10.3.3)(@nestjs/websockets@10.3.7)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       iterare: 1.2.1
       object-hash: 3.0.0
       reflect-metadata: 0.1.14
@@ -7389,13 +7426,13 @@ snapshots:
 
   '@one-ini/wasm@0.1.1': {}
 
-  '@osmonauts/helpers@0.6.0':
+  '@osmonauts/helpers@0.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/runtime': 7.24.0
       '@cosmjs/amino': 0.28.13
       '@cosmjs/crypto': 0.28.13
       '@cosmjs/proto-signing': 0.28.13
-      '@cosmjs/stargate': 0.28.13
+      '@cosmjs/stargate': 0.28.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       cosmjs-types: 0.5.1
       long: 5.2.3
       protobufjs: 6.11.4
@@ -7416,10 +7453,10 @@ snapshots:
 
   '@pkgr/core@0.1.1': {}
 
-  '@project-serum/anchor@0.25.0':
+  '@project-serum/anchor@0.25.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
-      '@project-serum/borsh': 0.2.5(@solana/web3.js@1.90.1)
-      '@solana/web3.js': 1.90.1
+      '@project-serum/borsh': 0.2.5(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       base64-js: 1.5.1
       bn.js: 5.2.1
       bs58: 4.0.1
@@ -7438,9 +7475,9 @@ snapshots:
       - encoding
       - utf-8-validate
 
-  '@project-serum/borsh@0.2.5(@solana/web3.js@1.90.1)':
+  '@project-serum/borsh@0.2.5(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
-      '@solana/web3.js': 1.90.1
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       bn.js: 5.2.1
       buffer-layout: 1.2.2
 
@@ -7496,21 +7533,21 @@ snapshots:
       '@noble/hashes': 1.3.3
       '@scure/base': 1.1.5
 
-  '@sei-js/core@1.5.0':
+  '@sei-js/core@1.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@cosmjs/amino': 0.29.5
-      '@cosmjs/cosmwasm-stargate': 0.29.5
+      '@cosmjs/cosmwasm-stargate': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/crypto': 0.29.5
       '@cosmjs/encoding': 0.29.5
       '@cosmjs/json-rpc': 0.29.5
       '@cosmjs/math': 0.29.5
       '@cosmjs/proto-signing': 0.29.5
-      '@cosmjs/stargate': 0.29.5
-      '@cosmjs/tendermint-rpc': 0.29.5
+      '@cosmjs/stargate': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@cosmjs/tendermint-rpc': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@cosmjs/utils': 0.29.5
       '@ethersproject/keccak256': 5.7.0
       '@keplr-wallet/types': 0.11.64
-      '@sei-js/proto': 1.3.0
+      '@sei-js/proto': 1.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       crypto-js: 4.2.0
       readonly-date: 1.0.0
       sha.js: 2.4.11
@@ -7520,15 +7557,15 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@sei-js/proto@1.3.0':
+  '@sei-js/proto@1.3.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/runtime': 7.24.0
       '@cosmjs/amino': 0.29.5
       '@cosmjs/encoding': 0.29.5
       '@cosmjs/proto-signing': 0.29.5
-      '@cosmjs/stargate': 0.29.5
-      '@cosmjs/tendermint-rpc': 0.29.5
-      '@osmonauts/helpers': 0.6.0
+      '@cosmjs/stargate': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@cosmjs/tendermint-rpc': 0.29.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@osmonauts/helpers': 0.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@osmonauts/lcd': 0.8.0
       protobufjs: 6.11.4
     transitivePeerDependencies:
@@ -7546,10 +7583,10 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
-  '@solana/buffer-layout-utils@0.2.0':
+  '@solana/buffer-layout-utils@0.2.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.90.1
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       bigint-buffer: 1.1.5
       bignumber.js: 9.1.2
     transitivePeerDependencies:
@@ -7583,7 +7620,7 @@ snapshots:
       '@solana/codecs-core': 2.0.0-experimental.8618508
       '@solana/codecs-numbers': 2.0.0-experimental.8618508
 
-  '@solana/spl-token-metadata@0.1.2(@solana/web3.js@1.90.1)(fastestsmallesttextencoderdecoder@1.0.22)':
+  '@solana/spl-token-metadata@0.1.2(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)':
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.8618508
       '@solana/codecs-data-structures': 2.0.0-experimental.8618508
@@ -7591,16 +7628,16 @@ snapshots:
       '@solana/codecs-strings': 2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options': 2.0.0-experimental.8618508
       '@solana/spl-type-length-value': 0.1.0
-      '@solana/web3.js': 1.90.1
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
-  '@solana/spl-token@0.3.11(@solana/web3.js@1.90.1)(fastestsmallesttextencoderdecoder@1.0.22)':
+  '@solana/spl-token@0.3.11(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(utf-8-validate@5.0.10)':
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/buffer-layout-utils': 0.2.0
-      '@solana/spl-token-metadata': 0.1.2(@solana/web3.js@1.90.1)(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/web3.js': 1.90.1
+      '@solana/buffer-layout-utils': 0.2.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@solana/spl-token-metadata': 0.1.2(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -7612,7 +7649,7 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@solana/web3.js@1.90.1':
+  '@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)':
     dependencies:
       '@babel/runtime': 7.24.0
       '@noble/curves': 1.3.0
@@ -7625,7 +7662,7 @@ snapshots:
       bs58: 4.0.1
       buffer: 6.0.3
       fast-stable-stringify: 1.0.0
-      jayson: 4.1.0
+      jayson: 4.1.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       node-fetch: 2.7.0
       rpc-websockets: 7.9.0
       superstruct: 0.14.2
@@ -7676,9 +7713,9 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@typechain/ethers-v6@0.5.1(ethers@5.7.2)(typechain@8.3.2)(typescript@5.4.2)':
+  '@typechain/ethers-v6@0.5.1(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typechain@8.3.2(typescript@5.4.2))(typescript@5.4.2)':
     dependencies:
-      ethers: 5.7.2
+      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       lodash: 4.17.21
       ts-essentials: 7.0.3(typescript@5.4.2)
       typechain: 8.3.2(typescript@5.4.2)
@@ -7729,6 +7766,10 @@ snapshots:
       '@types/node': 20.11.25
 
   '@types/cookiejar@2.1.5': {}
+
+  '@types/cross-spawn@6.0.6':
+    dependencies:
+      '@types/node': 20.11.25
 
   '@types/eslint-scope@3.7.7':
     dependencies:
@@ -7868,7 +7909,7 @@ snapshots:
     dependencies:
       '@types/yargs-parser': 21.0.3
 
-  '@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.0)(typescript@5.4.2)':
+  '@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.0)(typescript@5.4.2))(eslint@8.57.0)(typescript@5.4.2)':
     dependencies:
       '@eslint-community/regexpp': 4.10.0
       '@typescript-eslint/parser': 6.21.0(eslint@8.57.0)(typescript@5.4.2)
@@ -7883,6 +7924,7 @@ snapshots:
       natural-compare: 1.4.0
       semver: 7.6.0
       ts-api-utils: 1.2.1(typescript@5.4.2)
+    optionalDependencies:
       typescript: 5.4.2
     transitivePeerDependencies:
       - supports-color
@@ -7895,6 +7937,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 6.21.0
       debug: 4.3.4
       eslint: 8.57.0
+    optionalDependencies:
       typescript: 5.4.2
     transitivePeerDependencies:
       - supports-color
@@ -7911,6 +7954,7 @@ snapshots:
       debug: 4.3.4
       eslint: 8.57.0
       ts-api-utils: 1.2.1(typescript@5.4.2)
+    optionalDependencies:
       typescript: 5.4.2
     transitivePeerDependencies:
       - supports-color
@@ -7927,6 +7971,7 @@ snapshots:
       minimatch: 9.0.3
       semver: 7.6.0
       ts-api-utils: 1.2.1(typescript@5.4.2)
+    optionalDependencies:
       typescript: 5.4.2
     transitivePeerDependencies:
       - supports-color
@@ -8028,20 +8073,20 @@ snapshots:
       '@webassemblyjs/ast': 1.11.6
       '@xtuc/long': 4.2.2
 
-  '@wormhole-foundation/relayer-engine@0.3.2(@bull-board/ui@5.14.2)(@improbable-eng/grpc-web@0.15.0)(@types/node@20.11.25)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(typescript@5.4.2)':
+  '@wormhole-foundation/relayer-engine@0.3.2(@bull-board/ui@5.14.2)(@improbable-eng/grpc-web@0.15.0(google-protobuf@3.21.2))(@types/node@20.11.25)(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(lodash@4.17.21)(mustache@4.2.0)(typescript@5.4.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@bull-board/api': 5.14.2(@bull-board/ui@5.14.2)
-      '@bull-board/koa': 5.14.2
-      '@certusone/wormhole-sdk': 0.10.15(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)
+      '@bull-board/koa': 5.14.2(lodash@4.17.21)(mustache@4.2.0)
+      '@certusone/wormhole-sdk': 0.10.15(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(google-protobuf@3.21.2)(utf-8-validate@5.0.10)
       '@certusone/wormhole-spydk': 0.0.1
       '@datastructures-js/queue': 4.2.3
-      '@improbable-eng/grpc-web-node-http-transport': 0.15.0(@improbable-eng/grpc-web@0.15.0)
-      '@mysten/sui.js': 0.32.2
-      '@sei-js/core': 1.5.0
-      '@xlabs-xyz/wallet-monitor': 0.2.16(@types/node@20.11.25)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.2)
+      '@improbable-eng/grpc-web-node-http-transport': 0.15.0(@improbable-eng/grpc-web@0.15.0(google-protobuf@3.21.2))
+      '@mysten/sui.js': 0.32.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@sei-js/core': 1.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@xlabs-xyz/wallet-monitor': 0.2.16(@types/node@20.11.25)(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.2)(utf-8-validate@5.0.10)
       bech32: 2.0.0
       bullmq: 3.15.8
-      ethers: 5.7.2
+      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       generic-pool: 3.9.0
       ioredis: 5.3.2
       koa: 2.15.0
@@ -8144,15 +8189,15 @@ snapshots:
       tslib: 2.6.2
     optional: true
 
-  '@xlabs-xyz/wallet-monitor@0.2.16(@types/node@20.11.25)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.2)':
+  '@xlabs-xyz/wallet-monitor@0.2.16(@types/node@20.11.25)(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethersproject/bignumber': 5.7.0
-      '@mysten/sui.js': 0.32.2
-      '@solana/spl-token': 0.3.11(@solana/web3.js@1.90.1)(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/web3.js': 1.90.1
+      '@mysten/sui.js': 0.32.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.3.11(@solana/web3.js@1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(fastestsmallesttextencoderdecoder@1.0.22)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.90.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       bluebird: 3.7.2
       bs58: 5.0.0
-      ethers: 5.7.2
+      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       google-protobuf: 3.21.2
       koa: 2.15.0
       koa-router: 12.0.1
@@ -8209,9 +8254,10 @@ snapshots:
 
   abbrev@2.0.0: {}
 
-  abitype@1.0.0(typescript@5.4.2):
-    dependencies:
+  abitype@1.0.0(typescript@5.4.2)(zod@3.22.4):
+    optionalDependencies:
       typescript: 5.4.2
+      zod: 3.22.4
 
   abort-controller-x@0.4.3: {}
 
@@ -8248,7 +8294,7 @@ snapshots:
       humanize-ms: 1.2.1
 
   ajv-formats@2.1.1(ajv@8.12.0):
-    dependencies:
+    optionalDependencies:
       ajv: 8.12.0
 
   ajv-keywords@3.5.2(ajv@6.12.6):
@@ -8372,7 +8418,6 @@ snapshots:
     dependencies:
       follow-redirects: 1.15.5
       form-data: 4.0.0
-      proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
 
@@ -8771,6 +8816,8 @@ snapshots:
       color-convert: 1.9.3
       color-string: 1.9.1
 
+  colorette@2.0.20: {}
+
   colorspace@1.1.4:
     dependencies:
       color: 3.2.1
@@ -8834,10 +8881,13 @@ snapshots:
 
   consola@2.15.3: {}
 
-  consolidate@0.16.0(ejs@3.1.9):
+  consolidate@0.16.0(ejs@3.1.9)(lodash@4.17.21)(mustache@4.2.0):
     dependencies:
       bluebird: 3.7.2
+    optionalDependencies:
       ejs: 3.1.9
+      lodash: 4.17.21
+      mustache: 4.2.0
 
   content-disposition@0.5.4:
     dependencies:
@@ -8886,6 +8936,7 @@ snapshots:
       js-yaml: 4.1.0
       parse-json: 5.2.0
       path-type: 4.0.0
+    optionalDependencies:
       typescript: 5.3.3
 
   cosmjs-types@0.4.1:
@@ -8929,13 +8980,13 @@ snapshots:
       safe-buffer: 5.2.1
       sha.js: 2.4.11
 
-  create-jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2):
+  create-jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)):
     dependencies:
       '@jest/types': 29.6.3
       chalk: 4.1.2
       exit: 0.1.2
       graceful-fs: 4.2.11
-      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       jest-util: 29.7.0
       prompts: 2.4.2
     transitivePeerDependencies:
@@ -8980,6 +9031,8 @@ snapshots:
     dependencies:
       es5-ext: 0.10.64
       type: 2.7.2
+
+  dateformat@4.6.3: {}
 
   debug@2.6.9:
     dependencies:
@@ -9102,7 +9155,7 @@ snapshots:
       - supports-color
 
   drizzle-orm@0.29.5(@types/pg@8.11.2)(pg@8.11.3):
-    dependencies:
+    optionalDependencies:
       '@types/pg': 8.11.2
       pg: 8.11.3
 
@@ -9162,6 +9215,10 @@ snapshots:
   enabled@2.0.0: {}
 
   encodeurl@1.0.2: {}
+
+  end-of-stream@1.4.4:
+    dependencies:
+      once: 1.4.0
 
   enhanced-resolve@5.15.1:
     dependencies:
@@ -9293,13 +9350,15 @@ snapshots:
     dependencies:
       eslint: 8.57.0
 
-  eslint-plugin-prettier@5.1.3(eslint-config-prettier@9.1.0)(eslint@8.57.0)(prettier@3.2.5):
+  eslint-plugin-prettier@5.1.3(@types/eslint@8.56.5)(eslint-config-prettier@9.1.0(eslint@8.57.0))(eslint@8.57.0)(prettier@3.2.5):
     dependencies:
       eslint: 8.57.0
-      eslint-config-prettier: 9.1.0(eslint@8.57.0)
       prettier: 3.2.5
       prettier-linter-helpers: 1.0.0
       synckit: 0.8.8
+    optionalDependencies:
+      '@types/eslint': 8.56.5
+      eslint-config-prettier: 9.1.0(eslint@8.57.0)
 
   eslint-scope@5.1.1:
     dependencies:
@@ -9387,14 +9446,14 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eth-crypto@2.6.0:
+  eth-crypto@2.6.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@babel/runtime': 7.20.13
       '@ethereumjs/tx': 3.5.2
       '@types/bn.js': 5.1.1
       eccrypto: 1.1.6
       ethereumjs-util: 7.1.5
-      ethers: 5.7.2
+      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       secp256k1: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -9444,7 +9503,7 @@ snapshots:
       ethereum-cryptography: 0.1.3
       rlp: 2.2.7
 
-  ethers@5.7.2:
+  ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@ethersproject/abi': 5.7.0
       '@ethersproject/abstract-provider': 5.7.0
@@ -9464,7 +9523,7 @@ snapshots:
       '@ethersproject/networks': 5.7.1
       '@ethersproject/pbkdf2': 5.7.0
       '@ethersproject/properties': 5.7.0
-      '@ethersproject/providers': 5.7.2
+      '@ethersproject/providers': 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       '@ethersproject/random': 5.7.0
       '@ethersproject/rlp': 5.7.0
       '@ethersproject/sha2': 5.7.0
@@ -9480,7 +9539,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  ethers@6.11.1:
+  ethers@6.11.1(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@adraffy/ens-normalize': 1.10.1
       '@noble/curves': 1.2.0
@@ -9488,7 +9547,7 @@ snapshots:
       '@types/node': 18.15.13
       aes-js: 4.0.0-beta.5
       tslib: 2.4.0
-      ws: 8.5.0
+      ws: 8.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -9588,6 +9647,8 @@ snapshots:
       tmp: 0.0.33
 
   eyes@0.1.8: {}
+
+  fast-copy@3.0.2: {}
 
   fast-deep-equal@3.1.3: {}
 
@@ -9691,7 +9752,7 @@ snapshots:
       cross-spawn: 7.0.3
       signal-exit: 4.1.0
 
-  fork-ts-checker-webpack-plugin@9.0.2(typescript@5.3.3)(webpack@5.90.1):
+  fork-ts-checker-webpack-plugin@9.0.2(typescript@5.3.3)(webpack@5.90.1(esbuild@0.19.12)):
     dependencies:
       '@babel/code-frame': 7.23.5
       chalk: 4.1.2
@@ -9901,6 +9962,8 @@ snapshots:
 
   heap@0.2.7: {}
 
+  help-me@5.0.0: {}
+
   hexoid@1.0.0: {}
 
   hi-base32@0.5.1: {}
@@ -10098,13 +10161,13 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-ws@4.0.1(ws@7.5.9):
+  isomorphic-ws@4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
     dependencies:
       ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
 
-  isows@1.0.4(ws@8.17.1):
+  isows@1.0.4(ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
     dependencies:
-      ws: 8.17.1
+      ws: 8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
 
   istanbul-lib-coverage@3.2.2: {}
 
@@ -10162,7 +10225,7 @@ snapshots:
       filelist: 1.0.4
       minimatch: 3.1.2
 
-  jayson@4.1.0:
+  jayson@4.1.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
     dependencies:
       '@types/connect': 3.4.38
       '@types/node': 12.20.55
@@ -10172,7 +10235,7 @@ snapshots:
       delay: 5.0.0
       es6-promisify: 5.0.0
       eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.9)
+      isomorphic-ws: 4.0.1(ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       json-stringify-safe: 5.0.1
       uuid: 8.3.2
       ws: 7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10)
@@ -10212,16 +10275,16 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-cli@29.7.0(@types/node@20.11.25)(ts-node@10.9.2):
+  jest-cli@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)):
     dependencies:
-      '@jest/core': 29.7.0(ts-node@10.9.2)
+      '@jest/core': 29.7.0(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       '@jest/test-result': 29.7.0
       '@jest/types': 29.6.3
       chalk: 4.1.2
-      create-jest: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      create-jest: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       exit: 0.1.2
       import-local: 3.1.0
-      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      jest-config: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       jest-util: 29.7.0
       jest-validate: 29.7.0
       yargs: 17.7.2
@@ -10231,12 +10294,11 @@ snapshots:
       - supports-color
       - ts-node
 
-  jest-config@29.7.0(@types/node@20.11.25)(ts-node@10.9.2):
+  jest-config@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)):
     dependencies:
       '@babel/core': 7.24.0
       '@jest/test-sequencer': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.11.25
       babel-jest: 29.7.0(@babel/core@7.24.0)
       chalk: 4.1.2
       ci-info: 3.9.0
@@ -10256,6 +10318,8 @@ snapshots:
       pretty-format: 29.7.0
       slash: 3.0.0
       strip-json-comments: 3.1.1
+    optionalDependencies:
+      '@types/node': 20.11.25
       ts-node: 10.9.2(@types/node@20.11.25)(typescript@5.4.2)
     transitivePeerDependencies:
       - babel-plugin-macros
@@ -10338,7 +10402,7 @@ snapshots:
       jest-util: 29.7.0
 
   jest-pnp-resolver@1.2.3(jest-resolve@29.7.0):
-    dependencies:
+    optionalDependencies:
       jest-resolve: 29.7.0
 
   jest-regex-util@29.6.3: {}
@@ -10482,17 +10546,19 @@ snapshots:
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
-  jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2):
+  jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)):
     dependencies:
-      '@jest/core': 29.7.0(ts-node@10.9.2)
+      '@jest/core': 29.7.0(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       '@jest/types': 29.6.3
       import-local: 3.1.0
-      jest-cli: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      jest-cli: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
     transitivePeerDependencies:
       - '@types/node'
       - babel-plugin-macros
       - supports-color
       - ts-node
+
+  joycon@3.1.1: {}
 
   js-base64@3.7.7: {}
 
@@ -10646,9 +10712,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  koa-views@7.0.2(ejs@3.1.9):
+  koa-views@7.0.2(ejs@3.1.9)(lodash@4.17.21)(mustache@4.2.0):
     dependencies:
-      consolidate: 0.16.0(ejs@3.1.9)
+      consolidate: 0.16.0(ejs@3.1.9)(lodash@4.17.21)(mustache@4.2.0)
       debug: 4.3.4
       get-paths: 0.0.7
       koa-send: 5.0.1
@@ -11257,6 +11323,23 @@ snapshots:
       readable-stream: 4.5.2
       split2: 4.2.0
 
+  pino-pretty@11.2.2:
+    dependencies:
+      colorette: 2.0.20
+      dateformat: 4.6.3
+      fast-copy: 3.0.2
+      fast-safe-stringify: 2.1.1
+      help-me: 5.0.0
+      joycon: 3.1.1
+      minimist: 1.2.8
+      on-exit-leak-free: 2.1.2
+      pino-abstract-transport: 1.1.0
+      pump: 3.0.0
+      readable-stream: 4.5.2
+      secure-json-parse: 2.7.0
+      sonic-boom: 4.0.1
+      strip-json-comments: 3.1.1
+
   pino-std-serializers@6.2.2: {}
 
   pino@8.19.0:
@@ -11386,6 +11469,11 @@ snapshots:
       ipaddr.js: 1.9.1
 
   proxy-from-env@1.1.0: {}
+
+  pump@3.0.0:
+    dependencies:
+      end-of-stream: 1.4.4
+      once: 1.4.0
 
   punycode@2.3.1: {}
 
@@ -11615,6 +11703,8 @@ snapshots:
       node-gyp-build: 4.8.0
     optional: true
 
+  secure-json-parse@2.7.0: {}
+
   semver@6.3.1: {}
 
   semver@7.6.0:
@@ -11726,6 +11816,10 @@ snapshots:
     optional: true
 
   sonic-boom@3.8.0:
+    dependencies:
+      atomic-sleep: 1.0.0
+
+  sonic-boom@4.0.1:
     dependencies:
       atomic-sleep: 1.0.0
 
@@ -11883,25 +11977,16 @@ snapshots:
     dependencies:
       bintrees: 1.0.2
 
-  terser-webpack-plugin@5.3.10(esbuild@0.19.12)(webpack@5.90.1):
+  terser-webpack-plugin@5.3.10(esbuild@0.19.12)(webpack@5.90.1(esbuild@0.19.12)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
-      esbuild: 0.19.12
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.29.1
       webpack: 5.90.1(esbuild@0.19.12)
-
-  terser-webpack-plugin@5.3.10(esbuild@0.19.12)(webpack@5.90.3):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
+    optionalDependencies:
       esbuild: 0.19.12
-      jest-worker: 27.5.1
-      schema-utils: 3.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.29.1
-      webpack: 5.90.3(esbuild@0.19.12)
 
   terser@5.29.1:
     dependencies:
@@ -12001,13 +12086,11 @@ snapshots:
       tslib: 2.6.2
     optional: true
 
-  ts-jest@29.1.2(@babel/core@7.24.0)(esbuild@0.19.12)(jest@29.7.0)(typescript@5.4.2):
+  ts-jest@29.1.2(@babel/core@7.24.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.24.0))(esbuild@0.19.12)(jest@29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2)))(typescript@5.4.2):
     dependencies:
-      '@babel/core': 7.24.0
       bs-logger: 0.2.6
-      esbuild: 0.19.12
       fast-json-stable-stringify: 2.1.0
-      jest: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2)
+      jest: 29.7.0(@types/node@20.11.25)(ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2))
       jest-util: 29.7.0
       json5: 2.2.3
       lodash.memoize: 4.1.2
@@ -12015,8 +12098,13 @@ snapshots:
       semver: 7.6.0
       typescript: 5.4.2
       yargs-parser: 21.1.1
+    optionalDependencies:
+      '@babel/core': 7.24.0
+      '@jest/types': 29.6.3
+      babel-jest: 29.7.0(@babel/core@7.24.0)
+      esbuild: 0.19.12
 
-  ts-loader@9.5.1(typescript@5.4.2)(webpack@5.90.3):
+  ts-loader@9.5.1(typescript@5.4.2)(webpack@5.90.1(esbuild@0.19.12)):
     dependencies:
       chalk: 4.1.2
       enhanced-resolve: 5.15.1
@@ -12024,7 +12112,7 @@ snapshots:
       semver: 7.6.0
       source-map: 0.7.4
       typescript: 5.4.2
-      webpack: 5.90.3(esbuild@0.19.12)
+      webpack: 5.90.1(esbuild@0.19.12)
 
   ts-node@10.9.2(@types/node@20.11.25)(typescript@5.4.2):
     dependencies:
@@ -12180,17 +12268,18 @@ snapshots:
 
   vary@1.1.2: {}
 
-  viem@2.15.1(typescript@5.4.2):
+  viem@2.15.1(bufferutil@4.0.8)(typescript@5.4.2)(utf-8-validate@5.0.10)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.10.0
       '@noble/curves': 1.2.0
       '@noble/hashes': 1.3.2
       '@scure/bip32': 1.3.2
       '@scure/bip39': 1.2.1
-      abitype: 1.0.0(typescript@5.4.2)
-      isows: 1.0.4(ws@8.17.1)
+      abitype: 1.0.0(typescript@5.4.2)(zod@3.22.4)
+      isows: 1.0.4(ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      ws: 8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+    optionalDependencies:
       typescript: 5.4.2
-      ws: 8.17.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -12240,38 +12329,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(esbuild@0.19.12)(webpack@5.90.1)
-      watchpack: 2.4.0
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-
-  webpack@5.90.3(esbuild@0.19.12):
-    dependencies:
-      '@types/eslint-scope': 3.7.7
-      '@types/estree': 1.0.5
-      '@webassemblyjs/ast': 1.11.6
-      '@webassemblyjs/wasm-edit': 1.11.6
-      '@webassemblyjs/wasm-parser': 1.11.6
-      acorn: 8.11.3
-      acorn-import-assertions: 1.9.0(acorn@8.11.3)
-      browserslist: 4.23.0
-      chrome-trace-event: 1.0.3
-      enhanced-resolve: 5.15.1
-      es-module-lexer: 1.4.1
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.3.0
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(esbuild@0.19.12)(webpack@5.90.3)
+      terser-webpack-plugin: 5.3.10(esbuild@0.19.12)(webpack@5.90.1(esbuild@0.19.12))
       watchpack: 2.4.0
       webpack-sources: 3.2.3
     transitivePeerDependencies:
@@ -12344,21 +12402,30 @@ snapshots:
       imurmurhash: 0.1.4
       signal-exit: 3.0.7
 
-  ws@7.4.6: {}
+  ws@7.4.6(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
 
   ws@7.5.9(bufferutil@4.0.8)(utf-8-validate@5.0.10):
-    dependencies:
+    optionalDependencies:
       bufferutil: 4.0.8
       utf-8-validate: 5.0.10
 
   ws@8.16.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
-    dependencies:
+    optionalDependencies:
       bufferutil: 4.0.8
       utf-8-validate: 5.0.10
 
-  ws@8.17.1: {}
+  ws@8.17.1(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
 
-  ws@8.5.0: {}
+  ws@8.5.0(bufferutil@4.0.8)(utf-8-validate@5.0.10):
+    optionalDependencies:
+      bufferutil: 4.0.8
+      utf-8-validate: 5.0.10
 
   xstream@11.14.0:
     dependencies:
