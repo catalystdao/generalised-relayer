@@ -1,0 +1,1101 @@
+[
+    {
+        "type": "constructor",
+        "inputs": [
+            {
+                "name": "sendLostGasTo",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "uniqueChainIndex",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "signer",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "costOfMessages_",
+                "type": "uint128",
+                "internalType": "uint128"
+            },
+            {
+                "name": "proofPeriod",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "MESSAGE_REVERTED",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes1",
+                "internalType": "bytes1"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "MESSAGE_TIMED_OUT",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes1",
+                "internalType": "bytes1"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "NO_AUTHENTICATION",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes1",
+                "internalType": "bytes1"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "SEND_LOST_GAS_TO",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "UNIQUE_SOURCE_IDENTIFIER",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "acceptOwnership",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "accumulator",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint128",
+                "internalType": "uint128"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "bounty",
+        "inputs": [
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "incentive",
+                "type": "tuple",
+                "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+                "components": [
+                    {
+                        "name": "maxGasDelivery",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "maxGasAck",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "refundGasTo",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "priceOfDeliveryGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "priceOfAckGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "targetDelta",
+                        "type": "uint64",
+                        "internalType": "uint64"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "collectPayments",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "convertEVMTo65",
+        "inputs": [
+            {
+                "name": "evmAddress",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "estimateAdditionalCost",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "implementationAddress",
+        "inputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "implementationAddressHash",
+        "inputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            },
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "increaseBounty",
+        "inputs": [
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "deliveryGasPriceIncrease",
+                "type": "uint96",
+                "internalType": "uint96"
+            },
+            {
+                "name": "ackGasPriceIncrease",
+                "type": "uint96",
+                "internalType": "uint96"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "messageDelivered",
+        "inputs": [
+            {
+                "name": "sourceIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "sourceImplementationIdentifier",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "hasMessageBeenExecuted",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "owner",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "pendingOwner",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "processPacket",
+        "inputs": [
+            {
+                "name": "messagingProtocolContext",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "rawMessage",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "feeRecipient",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "proofValidPeriod",
+        "inputs": [
+            {
+                "name": "destinationIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "timestamp",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "recoverAck",
+        "inputs": [
+            {
+                "name": "messagingProtocolContext",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "rawMessage",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "reemitAckMessage",
+        "inputs": [
+            {
+                "name": "sourceIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "implementationIdentifier",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "receiveAckWithContext",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "renounceOwnership",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "setRemoteImplementation",
+        "inputs": [
+            {
+                "name": "destinationIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "implementation",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "submitMessage",
+        "inputs": [
+            {
+                "name": "destinationIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "destinationAddress",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "message",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "incentive",
+                "type": "tuple",
+                "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+                "components": [
+                    {
+                        "name": "maxGasDelivery",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "maxGasAck",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "refundGasTo",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "priceOfDeliveryGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "priceOfAckGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "targetDelta",
+                        "type": "uint64",
+                        "internalType": "uint64"
+                    }
+                ]
+            },
+            {
+                "name": "deadline",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "gasRefund",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "thisBytes65",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "timeoutMessage",
+        "inputs": [
+            {
+                "name": "sourceIdentifier",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "implementationIdentifier",
+                "type": "bytes",
+                "internalType": "bytes"
+            },
+            {
+                "name": "originBlockNumber",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "message",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "transferOwnership",
+        "inputs": [
+            {
+                "name": "newOwner",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "event",
+        "name": "BountyClaimed",
+        "inputs": [
+            {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "gasSpentOnDestination",
+                "type": "uint64",
+                "indexed": false,
+                "internalType": "uint64"
+            },
+            {
+                "name": "gasSpentOnSource",
+                "type": "uint64",
+                "indexed": false,
+                "internalType": "uint64"
+            },
+            {
+                "name": "destinationRelayerReward",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            },
+            {
+                "name": "sourceRelayerReward",
+                "type": "uint128",
+                "indexed": false,
+                "internalType": "uint128"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BountyIncreased",
+        "inputs": [
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "newDeliveryGasPrice",
+                "type": "uint96",
+                "indexed": false,
+                "internalType": "uint96"
+            },
+            {
+                "name": "newAckGasPrice",
+                "type": "uint96",
+                "indexed": false,
+                "internalType": "uint96"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "BountyPlaced",
+        "inputs": [
+            {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "incentive",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct IMessageEscrowStructs.IncentiveDescription",
+                "components": [
+                    {
+                        "name": "maxGasDelivery",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "maxGasAck",
+                        "type": "uint48",
+                        "internalType": "uint48"
+                    },
+                    {
+                        "name": "refundGasTo",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "priceOfDeliveryGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "priceOfAckGas",
+                        "type": "uint96",
+                        "internalType": "uint96"
+                    },
+                    {
+                        "name": "targetDelta",
+                        "type": "uint64",
+                        "internalType": "uint64"
+                    }
+                ]
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "Message",
+        "inputs": [
+            {
+                "name": "destinationIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "recipient",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "message",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "MessageAcked",
+        "inputs": [
+            {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "MessageDelivered",
+        "inputs": [
+            {
+                "name": "sourceImplementation",
+                "type": "bytes",
+                "indexed": true,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "MessageTimedOut",
+        "inputs": [
+            {
+                "name": "destinationImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "OwnershipTransferStarted",
+        "inputs": [
+            {
+                "name": "previousOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "OwnershipTransferred",
+        "inputs": [
+            {
+                "name": "previousOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "RemoteImplementationSet",
+        "inputs": [
+            {
+                "name": "application",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "implementationAddressHash",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "implementationAddress",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "TimeoutInitiated",
+        "inputs": [
+            {
+                "name": "sourceImplementation",
+                "type": "bytes",
+                "indexed": false,
+                "internalType": "bytes"
+            },
+            {
+                "name": "chainIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "messageIdentifier",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "error",
+        "name": "AckHasNotBeenExecuted",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "CannotRetryWrongMessage",
+        "inputs": [
+            {
+                "name": "expected",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "actual",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "DeadlineInPast",
+        "inputs": [
+            {
+                "name": "blocktimestamp",
+                "type": "uint64",
+                "internalType": "uint64"
+            },
+            {
+                "name": "actual",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "DeadlineNotPassed",
+        "inputs": [
+            {
+                "name": "expected",
+                "type": "uint64",
+                "internalType": "uint64"
+            },
+            {
+                "name": "actual",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "DeadlineTooLong",
+        "inputs": [
+            {
+                "name": "maxAllowed",
+                "type": "uint64",
+                "internalType": "uint64"
+            },
+            {
+                "name": "actual",
+                "type": "uint64",
+                "internalType": "uint64"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "ImplementationAddressAlreadySet",
+        "inputs": [
+            {
+                "name": "currentImplementation",
+                "type": "bytes",
+                "internalType": "bytes"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "IncorrectValueProvided",
+        "inputs": [
+            {
+                "name": "expected",
+                "type": "uint128",
+                "internalType": "uint128"
+            },
+            {
+                "name": "actual",
+                "type": "uint128",
+                "internalType": "uint128"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "InvalidBytes65Address",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "InvalidImplementationAddress",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "InvalidSigner",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "InvalidTimeoutPackage",
+        "inputs": [
+            {
+                "name": "expected",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "actual",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "MessageAlreadyAcked",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "MessageAlreadyBountied",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "MessageAlreadyProcessed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "MessageAlreadySpent",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "MessageDoesNotExist",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "MessageHasInvalidContext",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "NoImplementationAddressSet",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "NotEnoughGasExecution",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "NotEnoughGasProvided",
+        "inputs": [
+            {
+                "name": "expected",
+                "type": "uint128",
+                "internalType": "uint128"
+            },
+            {
+                "name": "actual",
+                "type": "uint128",
+                "internalType": "uint128"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "NotImplementedError",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "RefundGasToIsZero",
+        "inputs": []
+    }
+]
