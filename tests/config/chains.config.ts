@@ -110,7 +110,7 @@ export let config = {
 export let deploymentConfig = {
     publicKey: publicKey,
     privateKey: privateKey,
-    catalystVault: "0xd8058efe0198ae9dD7D563e1b4938Dcbc86A1F81",
+    catalystVault: "",
 };
 
 export const generateConfig = (escrowAddress: string, catalystVault: string) => {
