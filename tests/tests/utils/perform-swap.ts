@@ -1,7 +1,7 @@
 import { Wallet, JsonRpcProvider, AbiCoder, ContractTransactionResponse } from 'ethers6';
 import { strict as assert } from 'assert';
 import { CatalystVaultCommon__factory } from '../../contracts';
-import { config, deploymentConfig } from '../../config/chains.config';
+import { config, deploymentConfig } from '../../config/config';
 
 const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
@@ -36,14 +36,11 @@ function encode65ByteAddress(address: string): string {
     return `0x14${address.slice(2).padStart(128, '0')}`;
 }
 
-
 export async function performSwap(
     wallet: Wallet,
-    direction: boolean,
-    swapAmount: string,
-    incentivePayment: string,
-    incentive: Incentive
+    transaction: Transaction,
 ): Promise<ContractTransactionResponse> {
+    const direction = transaction.direction;
     const chainA = chainDefinitions.localA;
     const chainB = chainDefinitions.localB;
 
@@ -82,21 +79,21 @@ export async function performSwap(
                 toVault: encodedToVaultAddress,
                 toAccount: swapRecipientEncodedAddress,
                 incentive: {
-                    ...incentive,
-                    priceOfDeliveryGas: BigInt(incentive.priceOfDeliveryGas),
-                    priceOfAckGas: BigInt(incentive.priceOfAckGas),
+                    ...transaction.incentive,
+                    priceOfDeliveryGas: BigInt(transaction.incentive.priceOfDeliveryGas),
+                    priceOfAckGas: BigInt(transaction.incentive.priceOfAckGas),
                 },
                 deadline: 0,
             },
             fromAsset,
             toAssetIndex,
-            BigInt(swapAmount),
+            BigInt(transaction.swapAmount),
             0,
             wallet.address,
             underwriteIncentiveX16,
             '0x',
             {
-                value: BigInt(incentivePayment),
+                value: BigInt(transaction.incentivePayment),
                 gasLimit: 1000000n,
             },
         );
@@ -104,6 +101,13 @@ export async function performSwap(
         await tx.wait();
         return tx;
     } catch (error) {
-        throw new Error('Transaction failed' + error);
+        throw new Error('Transaction failed: ' + error);
     }
 }
+
+export type Transaction = {
+    direction: boolean;
+    swapAmount: string;
+    incentivePayment: string;
+    incentive: Incentive;
+};

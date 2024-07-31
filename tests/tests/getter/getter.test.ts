@@ -1,18 +1,16 @@
 import { Wallet, parseEther, JsonRpcProvider } from 'ethers6';
-import { loadConfig } from '../../config/chains.config';
-import { Incentive, performSwap } from '../utils/perform-swap';
+import { ATTEMPTS_MAXIMUM, loadConfig } from '../../config/config';
+import { Incentive, Transaction, performSwap } from '../utils/perform-swap';
 import { IMessageEscrowEvents__factory } from '../../contracts/factories/IMessageEscrowEvents__factory';
 import { Store } from '@App/store/store.lib';
 import { queryLogs } from '../utils/query-logs';
 import { BountyPlacedEvent } from '@App/contracts/IMessageEscrowEvents';
 import { wait } from '@App/common/utils';
-import dotenv from 'dotenv';
 import { RelayState } from '@App/store/store.types';
 
 
 jest.setTimeout(30000000);
 
-let ATTEMPTS_MAXIMUM: number
 let TIME_BETWEEN_ATTEMPTS: number
 
 let relayState: Partial<RelayState> | null;
@@ -23,14 +21,6 @@ let config = loadConfig('./tests/config/config.test.yaml');
 
 beforeAll(async () => {
     store = new Store();
-    //TODO: Move attempts maximum and time between attempts load to setup files
-    dotenv.config();
-    if (process.env['ATTEMPTS_MAXIMUM']) {
-        ATTEMPTS_MAXIMUM = parseInt(process.env['ATTEMPTS_MAXIMUM']);
-    }
-    if (process.env['TIME_BETWEEN_ATTEMPTS']) {
-        TIME_BETWEEN_ATTEMPTS = parseInt(process.env['TIME_BETWEEN_ATTEMPTS']);
-    }
 });
 
 beforeEach(async () => {
@@ -53,6 +43,20 @@ describe('BountyPlaced Events Tests', () => {
     }
     const provider = new JsonRpcProvider(config.chains[0]?.rpc, undefined, { staticNetwork: true });
 
+    const validTransactOpts: Transaction = {
+        direction: true,
+        swapAmount: parseEther('0.1').toString(),
+        incentivePayment: parseEther('0.5').toString(),
+        incentive: {
+            maxGasDelivery: 2000000,
+            maxGasAck: 2000000,
+            refundGasTo: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+            priceOfDeliveryGas: "50000000000",
+            priceOfAckGas: "50000000000",
+            targetDelta: 0
+        }
+    };
+
     it('should retrieve expected Bounty Placed Event transaction successfully', async () => {
 
         const wallet = new Wallet(privateKey, new JsonRpcProvider(config.chains[0]?.rpc));
@@ -69,7 +73,7 @@ describe('BountyPlaced Events Tests', () => {
             targetDelta: 0
         };
 
-        const tx = await performSwap(wallet, direction, swapAmount, incentivePayment, incentive)
+        const tx = await performSwap(wallet, validTransactOpts)
 
         const receipt = await tx.wait(1);
         const blockHash = receipt?.blockHash;
@@ -119,4 +123,6 @@ describe('BountyPlaced Events Tests', () => {
         }
 
     });
+
+
 });
