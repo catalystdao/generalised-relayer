@@ -1,6 +1,6 @@
 import { Wallet, parseEther, JsonRpcProvider } from 'ethers6';
-import { ATTEMPTS_MAXIMUM, loadConfig } from '../../config/config';
-import { Incentive, Transaction, performSwap } from '../utils/perform-swap';
+import { ATTEMPTS_MAXIMUM, TIME_BETWEEN_ATTEMPTS, loadConfig } from '../../config/config';
+import { Transaction, performSwap } from '../utils/perform-swap';
 import { IMessageEscrowEvents__factory } from '../../contracts/factories/IMessageEscrowEvents__factory';
 import { Store } from '@App/store/store.lib';
 import { queryLogs } from '../utils/query-logs';
@@ -10,8 +10,6 @@ import { RelayState } from '@App/store/store.types';
 
 
 jest.setTimeout(30000000);
-
-let TIME_BETWEEN_ATTEMPTS: number
 
 let relayState: Partial<RelayState> | null;
 let attemptsCounter = 0;
@@ -60,18 +58,6 @@ describe('BountyPlaced Events Tests', () => {
     it('should retrieve expected Bounty Placed Event transaction successfully', async () => {
 
         const wallet = new Wallet(privateKey, new JsonRpcProvider(config.chains[0]?.rpc));
-        const direction = true;
-        const swapAmount = parseEther('0.1').toString();
-        const incentivePayment = parseEther('0.5').toString();
-
-        const incentive: Incentive = {
-            maxGasDelivery: 2000000,
-            maxGasAck: 2000000,
-            refundGasTo: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-            priceOfDeliveryGas: "50000000000",
-            priceOfAckGas: "50000000000",
-            targetDelta: 0
-        };
 
         const tx = await performSwap(wallet, validTransactOpts)
 
