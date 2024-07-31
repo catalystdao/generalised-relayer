@@ -20,7 +20,7 @@ import { fundWallets } from './deployment/fund-wallets';
 import dotenv from 'dotenv';
 import crossSpawn from 'cross-spawn';
 import { deployFullEnvironment } from './deployment/deployment';
-import { generateConfig } from './chains.config';
+import { generateConfig } from './config';
 
 
 export default async function globalSetup() {

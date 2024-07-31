@@ -2,7 +2,7 @@ import { WETH9__factory } from '../../contracts/factories/WETH9__factory';
 import { AbiCoder, JsonRpcProvider, parseEther, Wallet } from "ethers6";
 import { strict as assert } from 'assert';
 import { CatalystVaultCommon__factory } from '../../contracts/factories/CatalystVaultCommon__factory';
-import { config, deploymentConfig } from '../chains.config';
+import { config, deploymentConfig } from '../config';
 
 export const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 function encode65ByteAddress(

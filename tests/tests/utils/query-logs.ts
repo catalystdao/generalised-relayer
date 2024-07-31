@@ -1,5 +1,5 @@
 import { JsonRpcProvider, Log } from "ethers6";
-import { config } from "../../config/chains.config";
+import { config } from "../../config/config";
 import { wait } from "@App/common/utils";
 
 const retryInterval = config.global.getter.retryInterval;

@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import crossSpawn from 'cross-spawn';
 import { deployFullEnvironment } from './deployment/deployment';
 import { fundWallets } from './deployment/fund-wallets';
-import { generateConfig } from './chains.config';
+import { generateConfig } from './config';
 
 async function startAnvil(port: string, chainId: string): Promise<void> {
     return new Promise((resolve, reject) => {

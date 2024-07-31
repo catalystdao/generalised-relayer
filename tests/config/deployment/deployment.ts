@@ -12,7 +12,7 @@ import { CatalystChainInterface } from '../../contracts/CatalystChainInterface';
 import { CatalystMathVol } from '../../contracts/CatalystMathVol';
 import { CatalystVaultVolatile } from '../../contracts/CatalystVaultVolatile';
 import { IncentivizedMockEscrow__factory } from '../../contracts/factories/IncentivizedMockEscrow__factory';
-import { config, deploymentConfig } from '../chains.config';
+import { config, deploymentConfig } from '../config';
 import { wait } from '../../../src/common/utils';
 
 // Constants
