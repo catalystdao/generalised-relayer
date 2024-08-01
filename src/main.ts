@@ -23,15 +23,8 @@ function logLoadedOptions(
 }
 
 async function bootstrap() {
-    const configFilePath = process.env['CONFIG_FILE_PATH'];
-    let app;
 
-    if (configFilePath && existsSync(resolve(configFilePath))) {
-        app = await NestFactory.create(AppModule.initiateWithConfig(configFilePath));
-    } else {
-        app = await NestFactory.create(AppModule.initiateWithConfig());
-    }
-
+    const app = await NestFactory.create(AppModule);
     app.useWebSocketAdapter(new WsAdapter(app));
 
     const configService = app.get(ConfigService);

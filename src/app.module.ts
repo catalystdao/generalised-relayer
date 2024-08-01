@@ -11,6 +11,7 @@ import { ConfigModule } from './config/config.module';
 
 @Module({
     imports: [
+        ConfigModule,
         LoggerModule,
         MonitorModule,
         GetterModule,
@@ -21,21 +22,4 @@ import { ConfigModule } from './config/config.module';
         StoreModule,
     ],
 })
-export class AppModule {
-    static initiateWithConfig(configFilePath?: string): DynamicModule {
-        return {
-            module: AppModule,
-            imports: [
-                ConfigModule.withConfigFile(configFilePath),
-                LoggerModule,
-                MonitorModule,
-                GetterModule,
-                CollectorModule,
-                PricingModule,
-                SubmitterModule,
-                PersisterModule,
-                StoreModule,
-            ],
-        };
-    }
-}
+export class AppModule { }

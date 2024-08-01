@@ -19,13 +19,11 @@ export class ConfigService {
 
     readonly isReady: Promise<void>;
 
-    constructor(
-        @Optional() private configFilePath?: string
-    ) {
+    constructor() {
         this.nodeEnv = this.loadNodeEnv();
 
         this.loadEnvFile();
-        this.rawConfig = this.loadConfigFile(configFilePath);
+        this.rawConfig = this.loadConfigFile();
 
         this.globalConfig = this.loadGlobalConfig();
         this.chainsConfig = this.loadChainsConfig();
@@ -58,7 +56,8 @@ export class ConfigService {
         dotenv.config();
     }
 
-    private loadConfigFile(configFilePath?: string): Record<string, any> {
+    private loadConfigFile(): Record<string, any> {
+        const configFilePath = process.env['CONFIG_FILE_PATH'];
         const configFileName = configFilePath || `config.${this.nodeEnv}.yaml`;
 
         let rawConfig;

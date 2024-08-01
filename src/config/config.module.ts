@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigService } from './config.service';
 
 @Global()
@@ -6,29 +6,4 @@ import { ConfigService } from './config.service';
     exports: [ConfigService],
     providers: [ConfigService],
 })
-export class ConfigModule {
-    static withConfigFile(configFilePath?: string): DynamicModule {
-        return {
-            module: ConfigModule,
-            providers: [
-                {
-                    provide: ConfigService,
-                    useFactory: () => new ConfigService(configFilePath),
-                },
-            ],
-            exports: [ConfigService],
-        };
-    }
-    static defaultConfig(): DynamicModule {
-        return {
-            module: ConfigModule,
-            providers: [
-                {
-                    provide: ConfigService,
-                    useFactory: () => new ConfigService(),
-                },
-            ],
-            exports: [ConfigService],
-        };
-    }
-}
+export class ConfigModule { }
