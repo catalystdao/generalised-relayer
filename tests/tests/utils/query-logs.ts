@@ -17,12 +17,10 @@ export async function queryLogs(address: string, topic: string, provider: JsonRp
     };
 
     let logs: Log[] | undefined;
-    let i = 0;
     while (logs === undefined || logs.length === 0) {
         try {
             logs = await provider.getLogs(filter);
         } catch (error) {
-            i++;
             await wait(retryInterval);
         }
     }

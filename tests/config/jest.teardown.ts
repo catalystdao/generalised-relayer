@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import util from 'util';
+import { promises as fs } from 'fs';
 
 const execPromise = util.promisify(exec);
 
@@ -12,16 +13,21 @@ export default async function globalTeardown() {
     console.log('Running global teardown...');
 
     try {
-        await execPromise('pkill pnpm');
-        console.log('Relayer process stopped.');
-    } catch (error) {
-        console.error('Failed to stop relayer process:', error);
-    }
+        const pidsData = await fs.readFile('pids.json', 'utf-8');
+        const pids: string[] = JSON.parse(pidsData);
 
-    try {
-        await execPromise('pkill anvil');
-        console.log('Anvil processes stopped.');
+        for (const pid of pids) {
+            try {
+                await execPromise(`kill ${pid}`);
+                console.log(`Process with PID ${pid} stopped.`);
+            } catch (error) {
+                console.error(`Failed to stop process with PID ${pid}:`, error);
+            }
+        }
+
+        // Delete the pids.json file after teardown
+        await fs.unlink('pids.json');
     } catch (error) {
-        console.error('Failed to stop Anvil processes:', error);
+        console.error('Failed to process teardown:', error);
     }
 }

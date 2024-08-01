@@ -1,12 +1,18 @@
 import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
 import crossSpawn from 'cross-spawn';
 import { deployFullEnvironment } from './deployment/deployment';
 import { fundWallets } from './deployment/fund-wallets';
 import { generateConfig } from './config';
 
-async function startAnvil(port: string, chainId: string): Promise<void> {
+
+async function startAnvil(port: string, chainId: string, pids: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
         const anvil = spawn('anvil', ['--port', port, '--chain-id', chainId], { stdio: 'inherit' });
+
+        if (anvil.pid) {
+            pids.push(anvil.pid.toString());
+        }
 
         anvil.stdout?.on('data', (data) => {
             console.log(data);
@@ -33,9 +39,11 @@ async function startAnvil(port: string, chainId: string): Promise<void> {
 }
 
 export default async function globalSetup() {
+    const pids: string[] = [];
+
     try {
-        await startAnvil('8545', '1');
-        await startAnvil('8546', '2');
+        await startAnvil('8545', '1', pids);
+        await startAnvil('8546', '2', pids);
 
         const [escrowAddress, vaultAAddress] = await new Promise<string[]>((resolve, reject) => {
             deployFullEnvironment()
@@ -57,15 +65,21 @@ export default async function globalSetup() {
         }
 
         await new Promise<void>((resolve) => {
-            crossSpawn('sh', ['-c', 'CONFIG_FILE_PATH=./tests/config/config.test.yaml nest start'], {
+            const relayer = crossSpawn('sh', ['-c', 'CONFIG_FILE_PATH=./tests/config/config.test.yaml nest start'], {
                 stdio: 'inherit'
             });
 
+            if (relayer.pid) {
+                pids.push(relayer.pid.toString());
+            }
             // Give some time to ensure the relayer has started properly
             setTimeout(() => {
                 resolve();
             }, 30000);
         });
+
+        await fs.writeFile('pids.json', JSON.stringify(pids, null, 2));
+
     } catch (error) {
         console.error('Global setup failed:', error);
         throw error;
