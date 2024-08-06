@@ -1,4 +1,4 @@
-import { Module, DynamicModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { CollectorModule } from './collector/collector.module';
 import { GetterModule } from './getter/getter.module';
 import { LoggerModule } from './logger/logger.module';

@@ -3,8 +3,6 @@ import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { LoggerService } from './logger/logger.service';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
 
 function logLoadedOptions(
     configService: ConfigService,
