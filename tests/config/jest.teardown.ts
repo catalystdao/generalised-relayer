@@ -13,8 +13,9 @@ export default async function globalTeardown() {
     console.log('Running global teardown...');
 
     try {
-        const pidsData = await fs.readFile('pids.json', 'utf-8');
+        const pidsData = await fs.readFile('./tests/config/pids.json', 'utf-8');
         const pids: string[] = JSON.parse(pidsData);
+        console.log('PIDs to stop:', pids);
 
         for (const pid of pids) {
             try {
@@ -25,8 +26,9 @@ export default async function globalTeardown() {
             }
         }
 
-        // Delete the pids.json file after teardown
-        await fs.unlink('pids.json');
+        await fs.unlink('./tests/config/pids.json');
+        await fs.unlink('./tests/config/config.test.yaml');
+
     } catch (error) {
         console.error('Failed to process teardown:', error);
     }

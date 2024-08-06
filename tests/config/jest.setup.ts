@@ -65,7 +65,7 @@ export default async function globalSetup() {
         }
 
         await new Promise<void>((resolve) => {
-            const relayer = crossSpawn('sh', ['-c', 'CONFIG_FILE_PATH=./tests/config/config.test.yaml nest start'], {
+            const relayer = crossSpawn('sh', ['-c', 'NODE_ENV=test CONFIG_FILE_PATH=./tests/config/config.test.yaml nest start'], {
                 stdio: 'inherit'
             });
 
@@ -78,7 +78,7 @@ export default async function globalSetup() {
             }, 30000);
         });
 
-        await fs.writeFile('pids.json', JSON.stringify(pids, null, 2));
+        await fs.writeFile('./tests/config/pids.json', JSON.stringify(pids, null, 2));
 
     } catch (error) {
         console.error('Global setup failed:', error);

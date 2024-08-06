@@ -38,30 +38,21 @@ const wrapAmount = parseEther(wrapAmountEth.toString());
 
 export const defaultAbiCoder = AbiCoder.defaultAbiCoder();
 
-// Utility Functions
+//Interfaces +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-function add0X(val: string): string {
-    return `0x${val}`;
-}
-
-function encodeNumber(value: number | bigint): string {
-    return add0X(value.toString(16));
-}
-
-// Interfaces
-interface CatalystContractsAddresses {
+export interface CatalystContractsAddresses {
     factoryAddress: string,
     volatileVaultTemplateAddress: string,
     chainInterfaceAddress: string
 }
 
-interface CatalystContracts extends CatalystContractsAddresses {
+export interface CatalystContracts extends CatalystContractsAddresses {
     factory: CatalystFactory,
     volatileVaultTemplate: CatalystVaultVolatile,
     chainInterface: CatalystChainInterface,
 }
 
-interface ChainDeploymentAddresses {
+export interface ChainDeploymentAddresses {
     chainId: number,
     chainIdBytes: BytesLike,
     escrowAddress: string,
@@ -69,14 +60,15 @@ interface ChainDeploymentAddresses {
     catalyst: CatalystContractsAddresses,
 }
 
-interface ChainDeployment extends ChainDeploymentAddresses {
+export interface ChainDeployment extends ChainDeploymentAddresses {
     escrow: IncentivizedMockEscrow,
     weth: WETH9,
     catalyst: CatalystContracts,
 }
 
-// Blockchain Interaction Functions
-async function setAccountBalance(
+//Helpers Functions +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+export async function setAccountBalance(
     provider: JsonRpcProvider,
     account: string,
     ethBalance: bigint,
@@ -86,9 +78,18 @@ async function setAccountBalance(
         encodeNumber(ethBalance),
     ]);
 }
+export function add0X(val: string): string {
+    return `0x${val}`;
+}
 
-// Deployment Functions
-async function deployMockEscrow(
+export function encodeNumber(value: number | bigint): string {
+    return add0X(value.toString(16));
+}
+
+
+//Deployment Functions +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+export async function deployMockEscrow(
     deployer: Wallet,
     uniqueChainIndex: BytesLike,
     sendLostGasTo?: AddressLike,
@@ -96,31 +97,37 @@ async function deployMockEscrow(
     costOfMessages_?: BigNumberish,
     proofPeriod?: BigNumberish,
 ): Promise<IncentivizedMockEscrow> {
+
     const mockEscrow = new IncentivizedMockEscrow__factory(deployer);
     const deployResponse = await mockEscrow.deploy(
         sendLostGasTo ?? ZeroAddress,
         uniqueChainIndex,
-        signer ?? deploymentConfig.publicKey,
+        signer ?? deployer.address,
         costOfMessages_ ?? DEFAULT_COST_OF_MESSAGE,
         proofPeriod ?? DEFAULT_PROOF_PERIOD
     );
+
     await deployResponse.waitForDeployment();
+
     return deployResponse;
 }
 
-async function deployCatalystFactory(
+export async function deployCatalystFactory(
     deployer: Wallet,
     factoryOwner?: AddressLike,
 ): Promise<CatalystFactory> {
     const factory = new CatalystFactory__factory(deployer);
     const deployResponse = await factory.deploy(
-        factoryOwner ?? deploymentConfig.publicKey
+        factoryOwner ?? deployer.address,
     );
+
     await deployResponse.waitForDeployment();
+
     return deployResponse;
+
 }
 
-async function deployChainInterface(
+export async function deployChainInterface(
     deployer: Wallet,
     garpAddress: AddressLike,
     interfaceOwner?: AddressLike,
@@ -128,13 +135,15 @@ async function deployChainInterface(
     const chainInterface = new CatalystChainInterface__factory(deployer);
     const deployResponse = await chainInterface.deploy(
         garpAddress,
-        interfaceOwner ?? deploymentConfig.publicKey,
+        interfaceOwner ?? deployer.address,
     );
+
     await deployResponse.waitForDeployment();
+
     return deployResponse;
 }
 
-async function deployCatalystMathVol(
+export async function deployCatalystMathVol(
     deployer: Wallet,
 ): Promise<CatalystMathVol> {
     const catalystMathVol = new CatalystMathVol__factory(deployer);
@@ -143,7 +152,7 @@ async function deployCatalystMathVol(
     return deployResponse;
 }
 
-async function deployCatalystVaultVolatile(
+export async function deployCatalystVaultVolatile(
     deployer: Wallet,
     factoryAddress: AddressLike,
     mathlibAddress: AddressLike
@@ -157,7 +166,7 @@ async function deployCatalystVaultVolatile(
     return deployResponse;
 }
 
-async function deployWETH(
+export async function deployWETH(
     deployer: Wallet
 ): Promise<WETH9> {
     const weth9 = new WETH9__factory(deployer);
@@ -166,7 +175,7 @@ async function deployWETH(
     return deployResponse;
 }
 
-async function deployVault(
+export async function deployVault(
     deployer: Wallet,
     factory: CatalystFactory,
     vaultTemplateAddress: AddressLike,
@@ -179,6 +188,7 @@ async function deployVault(
     vaultName?: string,
     vaultSymbol?: string,
 ): Promise<string> {
+
     // Set approvals
     for (let i = 0; i < assets.length; i++) {
         const asset = assets[i]!;
@@ -192,7 +202,7 @@ async function deployVault(
             isAddressable(asset) ? await asset.getAddress() : asset.toString(),
             deployer
         );
-        const approveTx = await tokenContract.approve(factory.getAddress(), assetAmount);
+        const approveTx = await tokenContract.approve(factory, assetAmount);
         await approveTx.wait();
     }
 
@@ -237,22 +247,28 @@ async function deployVault(
     return parsedDeployLog!.args['vaultAddress'];
 }
 
-async function deployCatalyst(
+export async function deployCatalyst(
     deployer: Wallet,
     escrowAddress: AddressLike,
 ): Promise<CatalystContracts> {
-    const factory = await deployCatalystFactory(deployer);
-    const catalystMathVol = await deployCatalystMathVol(deployer);
+
+    const factory = await deployCatalystFactory(
+        deployer,
+    );
+
+    const catalystMathVol = await deployCatalystMathVol(
+        deployer,
+    );
     const volatileVaultTemplate = await deployCatalystVaultVolatile(
         deployer,
-        factory.getAddress(),
-        catalystMathVol.getAddress()
+        factory,
+        catalystMathVol,
     );
 
     const chainInterface = await deployChainInterface(
         deployer,
         escrowAddress,
-        deployer.getAddress()
+        deployer
     );
 
     return {
@@ -265,7 +281,17 @@ async function deployCatalyst(
     };
 }
 
-async function initializeChainDeployments(
+export function getCatalystAddresses(
+    catalyst: CatalystContracts
+): CatalystContractsAddresses {
+    return {
+        factoryAddress: catalyst.factoryAddress,
+        volatileVaultTemplateAddress: catalyst.volatileVaultTemplateAddress,
+        chainInterfaceAddress: catalyst.chainInterfaceAddress,
+    }
+}
+
+export async function initializeChainDeployments(
     chainId: number,
     deployer: Wallet,
     deployerFundAmount = parseEther("10000"),
@@ -310,11 +336,24 @@ async function initializeChainDeployments(
     }
 }
 
-async function connectInterfaces(
+export function getChainDeploymentAddresses(
+    deployment: ChainDeployment,
+): ChainDeploymentAddresses {
+    return {
+        chainId: deployment.chainId,
+        chainIdBytes: deployment.chainIdBytes,
+        escrowAddress: deployment.escrowAddress,
+        wethAddress: deployment.wethAddress,
+        catalyst: getCatalystAddresses(deployment.catalyst),
+    }
+}
+
+export async function connectInterfaces(
     deploymentA: ChainDeployment,
     deploymentB: ChainDeployment,
 ): Promise<void> {
 
+    // Connect interfaces
     const txA = await deploymentA.catalyst.chainInterface.connectNewChain(
         deploymentB.chainIdBytes,
         add0X(`14${deploymentB.catalyst.chainInterfaceAddress.slice(2).padStart(128, '0')}`),
@@ -336,7 +375,7 @@ async function connectInterfaces(
     await Promise.all([txA.wait(), txB.wait()]);
 }
 
-async function deployBasicVault(
+export async function deployBasicVault(
     deployer: Wallet,
     deployment: ChainDeployment,
     initialBalance: bigint,
@@ -354,12 +393,13 @@ async function deployBasicVault(
     );
 }
 
-async function connectVaults(
+export async function connectVaults(
     vaultA: CatalystVaultVolatile,
     chainAId: BytesLike,
     vaultB: CatalystVaultVolatile,
     chainBId: BytesLike,
 ): Promise<void> {
+
     const vaultAAddress = await vaultA.getAddress();
     const encodedVaultAAddress = add0X(`14${vaultAAddress.slice(2).padStart(128, '0')}`);
 
@@ -386,43 +426,47 @@ async function connectVaults(
 }
 
 // Main Deployment Function
-export async function deployFullEnvironment(
-): Promise<string[]> {
-    const chainADeploymentPromise = initializeChainDeployments(
-        chainAId,
-        deployerA,
-        fundAmount,
-        wrapAmount,
-    );
+export async function deployFullEnvironment(): Promise<string[]> {
+    try {
+        console.log(`Starting full environment deployment`);
 
-    const chainBDeploymentPromise = initializeChainDeployments(
-        chainBId,
-        deployerB,
-        fundAmount,
-        wrapAmount,
-    );
-    const [deploymentA, deploymentB] = await Promise.all([chainADeploymentPromise, chainBDeploymentPromise]);
+        const chainADeploymentPromise = initializeChainDeployments(
+            chainAId,
+            deployerA,
+            fundAmount,
+            wrapAmount,
+        );
 
-    await wait(1000);
+        const chainBDeploymentPromise = initializeChainDeployments(
+            chainBId,
+            deployerB,
+            fundAmount,
+            wrapAmount,
+        );
+        const [deploymentA, deploymentB] = await Promise.all([chainADeploymentPromise, chainBDeploymentPromise]);
 
-    await connectInterfaces(deploymentA, deploymentB);
-    await wait(1000);
-    const initialBalance = 100n;
-    const vaultAAddressPromise = deployBasicVault(deployerA, deploymentA, initialBalance);
-    const vaultBAddressPromise = deployBasicVault(deployerB, deploymentB, initialBalance);
+        await wait(1500);
 
-    const [vaultAAddress, vaultBAddress] = await Promise.all([vaultAAddressPromise, vaultBAddressPromise]);
-    await wait(1000);
+        await connectInterfaces(deploymentA, deploymentB);
+        await wait(1500);
+        const initialBalance = 100n;
+        const vaultAAddressPromise = deployBasicVault(deployerA, deploymentA, initialBalance);
+        const vaultBAddressPromise = deployBasicVault(deployerB, deploymentB, initialBalance);
 
-    // Connect vaults
-    const vaultA = CatalystVaultVolatile__factory.connect(vaultAAddress, deployerA);
-    const vaultB = CatalystVaultVolatile__factory.connect(vaultBAddress, deployerB);
-    await connectVaults(vaultA, deploymentA.chainIdBytes, vaultB, deploymentB.chainIdBytes);
+        const [vaultAAddress, vaultBAddress] = await Promise.all([vaultAAddressPromise, vaultBAddressPromise]);
+        await wait(1500);
 
-    await wait(1000);
+        // Connect vaults
+        const vaultA = CatalystVaultVolatile__factory.connect(vaultAAddress, deployerA);
+        const vaultB = CatalystVaultVolatile__factory.connect(vaultBAddress, deployerB);
+        await connectVaults(vaultA, deploymentA.chainIdBytes, vaultB, deploymentB.chainIdBytes);
 
-    return [deploymentA.escrowAddress, vaultAAddress];
+        await wait(1500);
 
+        console.log(`Full environment deployment completed successfully`);
+        return [deploymentA.escrowAddress, vaultAAddress];
+    } catch (error) {
+        console.error("Error during full environment deployment:", error);
+        throw error;
+    }
 }
-
-
