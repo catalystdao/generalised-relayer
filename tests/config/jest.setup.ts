@@ -64,8 +64,9 @@ export default async function globalSetup() {
             throw new Error('Deployment failed');
         }
 
+        //The relayer port must be different for the github actions proccess
         await new Promise<void>((resolve) => {
-            const relayer = crossSpawn('sh', ['-c', 'NODE_ENV=test CONFIG_FILE_PATH=./tests/config/config.test.yaml nest start'], {
+            const relayer = crossSpawn('sh', ['-c', 'NODE_ENV=test CONFIG_FILE_PATH=./tests/config/config.test.yaml RELAYER_PORT=3001 nest start'], {
                 stdio: 'inherit'
             });
 

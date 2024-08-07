@@ -1,0 +1,57 @@
+name: Run pnpm tests
+
+on:
+  push:
+    branches:
+      - 'testnet'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'testnet'
+
+jobs:
+  test:
+    name: Run pnpm tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3, 4, 5] 
+
+    services:
+        redis:
+            image: redis:latest
+            ports:
+            - 6379:6379
+            options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '21.7.1' 
+
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Create typechain artifacts for relayer
+      run: pnpm postinstall
+    
+    - name: Create typechain artifacts for tests
+      run: pnpm before-test
+
+    - name: Run tests
+      run: pnpm test
+      
+
+    - name: Retry test if failed
+      if: ${{ failure() && matrix.attempt != '5' }}
+      run: exit 1 # This forces the workflow to retry
