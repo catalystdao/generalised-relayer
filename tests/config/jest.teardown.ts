@@ -26,6 +26,11 @@ export default async function globalTeardown() {
             }
         }
 
+
+        //TODO: Stop the relayer cleaner way and using PIDs
+        await execPromise(`pkill node`);
+
+
         await fs.unlink('./tests/config/pids.json');
         await fs.unlink('./tests/config/config.test.yaml');
 
