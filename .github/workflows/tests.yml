@@ -40,7 +40,7 @@ jobs:
       run: npm install -g pnpm
 
     - name: Install dependencies
-      run: pnpm install
+      run: pnpm install --no-frozen-lockfile
 
     - name: Create typechain artifacts for relayer
       run: pnpm postinstall
@@ -54,4 +54,4 @@ jobs:
 
     - name: Retry test if failed
       if: ${{ failure() && matrix.attempt != '5' }}
-      run: exit 1 # This forces the workflow to retry
+      run: exit 1 
