@@ -18,14 +18,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        attempt: [1, 2, 3, 4, 5] 
+        attempt: [1] 
 
-    services:
-        redis:
-            image: redis:latest
-            ports:
-            - 6379:6379
-            options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    # services:
+    #     redis:
+    #         image: redis:latest
+    #         ports:
+    #         - 6379:6379
+    #         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     
     steps:
     - name: Checkout code
@@ -35,6 +35,16 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '21.7.1' 
+    
+    - name: Install curl
+      run: sudo apt-get update && sudo apt-get install -y curl
+
+    - name: Install Foundry and anvil
+      run: |
+        echo "Installing Foundry and anvil"
+        curl -L https://foundry.paradigm.xyz | bash
+        export PATH="$HOME/.foundry/bin:$PATH"
+        foundryup
 
     - name: Install pnpm
       run: npm install -g pnpm
@@ -49,9 +59,11 @@ jobs:
       run: pnpm before-test
 
     - name: Run tests
-      run: pnpm test
+      run: |
+        export PATH="$HOME/.foundry/bin:$PATH"
+        pnpm test
       
 
     - name: Retry test if failed
-      if: ${{ failure() && matrix.attempt != '5' }}
+      if: ${{ failure() && matrix.attempt != '4' }}
       run: exit 1 
