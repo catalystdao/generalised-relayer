@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        attempt: [1] 
+        attempt: [1,2,3] 
 
     # services:
     #     redis:
@@ -65,5 +65,5 @@ jobs:
       
 
     - name: Retry test if failed
-      if: ${{ failure() && matrix.attempt != '4' }}
+      if: ${{ failure() && matrix.attempt != '3' }}
       run: exit 1 
