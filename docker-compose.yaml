@@ -46,6 +46,7 @@ services:
       - NODE_ENV=${NODE_ENV}
       - REDIS_HOST=redis
       - SPY_HOST=spy
+      - RELAYER_PRIVATE_KEY=${RELAYER_PRIVATE_KEY}
     expose:
       - ${RELAYER_PORT}:${RELAYER_PORT}
     container_name: relayer
