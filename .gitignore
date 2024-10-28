@@ -42,3 +42,4 @@ src/contracts
 .env
 config.*.yaml
 !config.example.yaml
+*.keystore
